@@ -1,0 +1,61 @@
+#ifndef YMS_H
+#define YMS_H
+
+#include "offsets.h"
+
+inline bool IsInGame()
+{ return *bw::is_ingame != 0; }
+
+inline bool IsReplay()
+{ return *bw::is_replay != 0; }
+
+inline bool IsMultiplayer()
+{ return *bw::is_multiplayer != 0; }
+
+inline bool IsPaused()
+{ return *bw::is_paused != 0; }
+
+inline bool IsTeamGame()
+{ return *bw::team_game != 0 && IsMultiplayer(); }
+
+inline Rect16 MapBounds()
+{ return Rect16(0, 0, *bw::map_width, *bw::map_height); }
+
+inline void RefreshUi()
+{
+    *bw::force_button_refresh = 1;
+    *bw::force_portrait_refresh = 1;
+    *bw::ui_refresh = 1;
+    *bw::unk_control = 0;
+    *bw::unk_control_value = 0;
+}
+
+inline void ScrambleStruct(void *s, unsigned size)
+{
+    uint8_t val = *bw::rng_seed + *bw::local_player_id;
+    for (unsigned i = 0; i < size; i++)
+        ((uint8_t *)s)[i] = val + i;
+}
+
+// retval 0 meinaa invalid / max len reached, 1 meinaa "" stringiä jne
+int Sc_strlen(const char *str, int maxlen1, int maxlen2, bool accept_color_chars, bool accept_control_chars);
+
+namespace Cheats
+{
+    const uint32_t Operation_Cwal = 0x2;
+    const uint32_t Power_Overwhelming = 0x4;
+    const uint32_t The_Gathering = 0x800;
+}
+
+inline bool IsCheatActive(uint32_t cheats)
+{
+    return *bw::cheat_flags & cheats;
+}
+
+inline int Distance(const Point32 &first, const Point32 &second)
+{
+    return Distance_(first.x, first.y, second.x, second.y);
+}
+
+#endif // YMS_H
+

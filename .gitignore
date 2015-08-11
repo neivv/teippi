@@ -1,0 +1,5 @@
+*.bat
+Release/*
+build/*
+.lock-*
+waf*/*

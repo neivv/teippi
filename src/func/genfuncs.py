@@ -1,0 +1,209 @@
+#!/usr/bin/env python
+# coding: utf-8
+import sys
+import re
+
+indent = '    '
+
+c_nuottei_types = [
+    ('uint32_t', 'dword'), ('uint16_t', 'word'), ('uint8_t', 'byte'), ('char', 'char'),
+    ('void', 'void'), ('int', 'int'), ('x32', 'x32'), ('y32', 'y32')
+]
+
+def ToCType(name):
+    for pair in c_nuottei_types:
+        name = name.replace(pair[1], pair[0])
+    return name
+
+def IsType(name):
+    return name in [pair[1] for pair in c_nuottei_types]
+
+class Func:
+    def __init__(this, line, module):
+        match = re.match('(?P<addr>[0-9A-F]{8})\s=\s(?P<return_attr_name>.*)\(\)($|(, (?P<args>.*)))', line)
+        if match:
+            this.module = module
+            this.addr = match.group('addr')
+            type_f = '()|(?P<ret_type>(.*?\S))' # Nothing or anything not ending in space, lazy, as name is greedy
+            attr_f = '()|(\s\((?P<attr>.+)\))' # Nothing or everything inside braces
+            ran_m = re.match('({ret_type})({attr})\s?(?P<name>[^*()\s]*)$'.format(ret_type=type_f, attr=attr_f),
+                match.group('return_attr_name'))
+
+            if ran_m.group('ret_type'):
+                this.ret = ran_m.group('ret_type')
+            else:
+                this.ret = 'void'
+            this.attr = []
+            if ran_m.group('attr'):
+                this.attr = ran_m.group('attr').split()
+            this.name = ran_m.group('name')
+            this.args = []
+            if match.group('args'):
+                args = match.group('args').split(', ')
+                for arg in args:
+                    arg_match = re.match('arg (\d+) (.*)', arg)
+                    if arg_match:
+                        stack_arg = True
+                        reg = int(arg_match.group(1))
+                    else:
+                        stack_arg = False
+                        arg_match = re.match('(\S+) (.*)', arg)
+                        reg = arg_match.group(1)
+                    rest = arg_match.group(2)
+                    rest.strip()
+                    if ' ' in rest:
+                        rest_match = re.match('(?P<type>.*?\S)\s?(?P<name>[^*()\s]*)$', rest)
+                        arg_type = rest_match.group('type')
+                        arg_name = rest_match.group('name')
+                        if arg_name == '':
+                            arg_name = None
+                    else:
+                        if IsType(rest):
+                            arg_type = rest
+                            arg_name = None
+                        else:
+                            arg_name = rest
+                            arg_type = None
+                    this.args += [(stack_arg, reg, arg_type, arg_name)]
+
+        else:
+            raise ValueError('Not a func: "{}"'.format(line))
+
+def IsSection(line):
+    match = re.match('### (?P<name>\S+)( \((?P<base>[\dA-F]+)\))?', line)
+    if match:
+        if match.group('base'):
+            return {'base': int(match.group('base'), 16), 'name': match.group('name')}
+        return True
+    return False
+
+def CArgs(args):
+    ret = ''
+    num = 1
+    for arg in args:
+        if ret != '':
+            ret += ', '
+        type = ToCType(arg[2] or 'int')
+        name = arg[3] or 'a{}'.format(num)
+        ret = ret + type + ' ' + name
+        num += 1
+    return ret
+
+def ToCCompatName(name):
+    return name.replace('.', '_').replace('-', '_')
+
+def ToGccConstraint(name):
+    if name == 'esi':
+        return 'eS'
+    elif name == 'edi':
+        return 'eD'
+    return name[:2]
+
+def GenerateGccAsm(func):
+    ret = ''
+    ret += 'inline {type} {name}({args})\n{{\n'.format(type=ToCType(func.ret), name=func.name, args=CArgs(func.args))
+    stack_size = 0
+    for arg in func.args:
+        if arg[0]:
+            stack_size += 4
+
+    inputs = ''
+    if func.ret != 'void':
+        ret += indent + 'int ret;\n'
+    if stack_size:
+        ret += indent + 'register uintptr_t *stack asm("esp");\n'
+        # Clang would undefined behaviour without "assigning" something to the stack
+        ret += indent + 'asm("" : "=r"(stack));\n'
+        num = 1
+        for arg in func.args:
+            name = arg[3] or 'a{}'.format(num)
+            if arg[0]:
+                ret += indent + 'stack[{pos}] = (uintptr_t){name};\n'.format(pos=-(stack_size // 4) + arg[1] - 1, name=name)
+            num += 1
+
+    num = 1
+    freeregs = ['eax', 'ecx', 'edx', 'ebx', 'esi', 'edi']
+    for arg in func.args:
+        name = arg[3] or 'a{}'.format(num)
+        if not arg[0]:
+            ret += '{ind}register uintptr_t reg_{name} asm("{reg}");\n{ind}reg_{name} = (uintptr_t){name};\n'.format(ind=indent, name=name, reg=arg[1])
+            inputs += '"{}"(reg_{name}), '.format(ToGccConstraint(arg[1]), name=name)
+            if arg[1] in freeregs:
+                freeregs.remove(arg[1])
+        num += 1
+
+    ret += indent + 'register uintptr_t _target asm("{reg}");\n'.format(reg=freeregs[0])
+    if func.module:
+        ret += indent + '_target = 0x{addr} + {name}::base_diff;\n'.format(addr=func.addr, name=ToCCompatName(func.module['name']))
+    else:
+        ret += indent + '_target = 0x{addr};\n'.format(addr=func.addr)
+
+    ret += indent + 'asm("'
+    num = 1
+    input_count = 0
+    if stack_size:
+        ret += 'sub ${}, %%esp\\n\\t"\n'.format(stack_size)
+        ret += indent + '    "'
+
+    ret += 'call *%%{reg}'.format(reg=freeregs[0])
+    if 'cdecl' in func.attr:
+        ret += '\\n\\t"\n' + indent + '    "add ${}, %%esp'.format(stack_size)
+
+    ret += '"\n{ind}    '.format(ind=indent)
+    clobber = '"memory"'
+    #if freeregs[0] == 'ebx' or freeregs[0] == 'esi' or freeregs[0] == 'edi':
+        #clobber += ', "{}"'.format(freeregs[0])
+    
+    inputs += '"{}"(_target) '.format(freeregs[0])
+    if 'eax' in freeregs[1:]:
+        clobber += ', "eax"'
+    if 'ecx' in freeregs[1:]:
+        clobber += ', "ecx"'
+    if 'edx' in freeregs[1:]:
+        clobber += ', "edx"'
+
+    ret += ': : {}: {});\n'.format(inputs, clobber)
+    if func.ret != 'void':
+        ret += indent + 'asm volatile("" : "=ea"(ret): : "ecx", "edx");\n'
+        ret += '{ind}return ({type})ret;\n'.format(ind=indent, type=ToCType(func.ret))
+    else:
+        ret += indent + 'asm volatile("" : : : "eax", "ecx", "edx");\n'
+
+    ret += '}\n'
+    return ret
+
+def GenerateFuncs(nuottei):
+    filu = open(nuottei)
+    funcs = []
+    out = b''
+    module = None
+    for line in filu:
+        line = line.strip()
+        if line == '':
+            pass
+        else:
+            new_mod = IsSection(line)
+            if new_mod == False:
+                funcs += [Func(line, module)]
+            elif new_mod != True:
+                module = new_mod
+    for func in funcs:
+        out += bytes(GenerateGccAsm(func), 'utf-8')
+        out += b'\n'
+    return out
+    
+def main():
+    try:
+        nuottei = sys.argv[1]
+        output = sys.argv[2]
+    except IndexError:
+        print('functonuot.py <nuottei.txt> <funcs.autogen>')
+        return
+
+    data = GenerateFuncs(nuottei)
+    out = open(output, 'wb') # Windows line endingit voi painua hiitee
+    out.write(data)
+
+if __name__ == "__main__":
+    main()
+
