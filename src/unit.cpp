@@ -19,7 +19,6 @@
 #include "sound.h"
 #include "yms.h"
 #include "player.h"
-#include "terrain.h"
 #include "unitsearch.h"
 #include "perfclock.h"
 #include "log.h"

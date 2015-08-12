@@ -1,6 +1,5 @@
 #include "triggers.h"
 
-#include "terrain.h"
 #include "offsets.h"
 #include "unit.h"
 #include "player.h"

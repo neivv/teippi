@@ -8,7 +8,6 @@
 #include "sound.h"
 #include "bullet.h"
 #include "image.h"
-#include "terrain.h"
 #include "yms.h"
 #include "ai.h"
 #include "strings.h"
