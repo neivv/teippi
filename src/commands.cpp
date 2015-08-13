@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <chrono>
+#include <ctime>
 
 #include "offsets.h"
 #include "patchmanager.h"

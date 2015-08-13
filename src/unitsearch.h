@@ -110,7 +110,7 @@ class MainUnitSearch : public UnitSearch
         void ChangeUnitPosition_Finish();
 
         // Bw-compatible signature
-        Unit *FindNearestUnit(Unit *self, const Point &pos, int __fastcall (*IsValid)(const Unit *, void *), void *func_param, const Rect16 &area_);
+        Unit *FindNearestUnit(Unit *self, const Point &pos, int (__fastcall *IsValid)(const Unit *, void *), void *func_param, const Rect16 &area_);
 
         void GetNearbyBlockingUnits(PathingData *pd);
         void Remove(Unit *unit);

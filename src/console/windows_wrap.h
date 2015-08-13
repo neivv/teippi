@@ -8,6 +8,12 @@
 #ifdef DrawText
 #undef DrawText
 #endif
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
 
 #endif // asd_fasd_ja_jasd
 

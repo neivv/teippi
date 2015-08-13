@@ -8,6 +8,7 @@
 #include "common/unsorted_vector.h"
 #include "common/claimable.h"
 #include <tuple>
+#include <array>
 
 void __fastcall RemoveFromBulletTargets(Unit *unit);
 // Returns true if there's need for UnitWasHit processing

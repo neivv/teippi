@@ -10,6 +10,9 @@
 #include "limits.h"
 
 #include <algorithm>
+#ifdef _MSC_VER
+#include <intrin.h> // For __lzcnt
+#endif
 
 #include "unitsearch_cache.hpp"
 
@@ -133,7 +136,11 @@ void UnitSearchAreaCache::SetSize(xuint x, yuint y)
 {
     x = (x - 1) / AreaSize + 1;
     y = (y - 1) / AreaSize + 1;
-    width_shift = (sizeof(x) * 8) - __builtin_clz(x - 1); // Eli clp2
+#ifdef __GNUC__
+    width_shift = (sizeof(x) * 8) - __builtin_clz(x - 1); // Clp2
+#else
+    width_shift = (sizeof(x) * 8) - __lzcnt(x - 1); // Clp2
+#endif
     x = 1 << width_shift;
     cache_size = x * y;
     cache.resize(cache_size);

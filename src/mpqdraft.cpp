@@ -15,6 +15,13 @@
 
 MPQDraftPluginInterface thePluginInterface;
 
+#ifdef __GNUC__
+extern "C" void Initialize() __attribute__ ((visibility ("default")));
+extern "C" bool Metaplugin_Init() __attribute__ ((visibility ("default")));
+extern "C" BOOL APIENTRY DllMain(HINSTANCE hInstance, DWORD ul_reason_for_call, LPVOID lpReserved) __attribute__ ((visibility ("default")));
+extern "C" BOOL __stdcall GetMPQDraftPlugin(IMPQDraftPlugin **lppMPQDraftPlugin) __attribute__ ((visibility ("default")));
+#endif
+
 BOOL WINAPI MPQDraftPluginInterface::Identify(LPDWORD pluginID)
 {
     *pluginID = PLUGIN_ID;
@@ -48,7 +55,6 @@ BOOL WINAPI MPQDraftPluginInterface::GetModules(MPQDRAFTPLUGINMODULE* pluginmodu
     return TRUE;
 }
 
-extern "C" void Initialize() __attribute__ ((visibility ("default")));
 extern "C" void Initialize()
 {
     #ifdef DEBUG
@@ -73,7 +79,6 @@ BOOL WINAPI MPQDraftPluginInterface::InitializePlugin(IMPQDraftServer* server)
     return TRUE;
 }
 
-extern "C" bool Metaplugin_Init() __attribute__ ((visibility ("default")));
 extern "C" bool Metaplugin_Init()
 {
     Initialize();
@@ -91,7 +96,6 @@ void MPQDraftPluginInterface::SetInstance(HINSTANCE hInst)
     hInstance = hInst;
 }
 
-extern "C" BOOL APIENTRY DllMain(HINSTANCE hInstance, DWORD ul_reason_for_call, LPVOID lpReserved) __attribute__ ((visibility ("default")));
 extern "C" BOOL APIENTRY DllMain(HINSTANCE hInstance, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
 	switch (ul_reason_for_call)
@@ -109,7 +113,6 @@ extern "C" BOOL APIENTRY DllMain(HINSTANCE hInstance, DWORD ul_reason_for_call, 
 	return TRUE;
 }
 
-extern "C" BOOL __stdcall GetMPQDraftPlugin(IMPQDraftPlugin **lppMPQDraftPlugin) __attribute__ ((visibility ("default")));
 extern "C" BOOL __stdcall GetMPQDraftPlugin(IMPQDraftPlugin **lppMPQDraftPlugin)
 {
 	*lppMPQDraftPlugin = &thePluginInterface;

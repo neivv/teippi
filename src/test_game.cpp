@@ -20,7 +20,7 @@
 
 using std::min;
 
-#define TestAssert(s) if (!(s)) { if(IsDebuggerPresent()) { asm("int3"); } Fail(#s); return; }
+#define TestAssert(s) if (!(s)) { if(IsDebuggerPresent()) { INT3(); } Fail(#s); return; }
 
 // This file has special permission for different brace style =)
 
@@ -744,25 +744,28 @@ struct Test_AiSpell : public GameTest {
     }
 };
 
+struct AiCloakVariation {
+    int unit_id;
+};
+
+static AiCloakVariation ai_cloak_variations[] = {
+    { Unit::Zealot },
+    { Unit::Goliath },
+    { Unit::Wraith },
+    { -1 }
+};
+
 struct Test_AiCloak : public GameTest {
     Unit *cloaker;
     Unit *attacker;
-    struct Variation {
-        int unit_id;
-    } const *variation;
-    static constexpr Variation variations[] = {
-        { Unit::Zealot },
-        { Unit::Goliath },
-        { Unit::Wraith },
-        { -1 }
-    };
+    AiCloakVariation const *variation;
 
     void Init() override {
         ResetVisions();
         SetEnemy(0, 1);
         SetEnemy(1, 0);
         AiPlayer(1);
-        variation = variations;
+        variation = ai_cloak_variations;
     }
     void NextFrame() override {
         switch (state) {
@@ -798,7 +801,6 @@ struct Test_AiCloak : public GameTest {
         }
     }
 };
-constexpr Test_AiCloak::Variation Test_AiCloak::variations[]; // Sigh
 
 struct Test_Liftoff : public GameTest {
     Unit *building;
@@ -1301,6 +1303,6 @@ void GameTests::NextFrame()
         *bw::is_paused = 1;
         current_test = -1;
         if (IsDebuggerPresent())
-            asm("int3");
+            INT3();
     }
 }

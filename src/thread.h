@@ -36,7 +36,7 @@ class Thread
         {
             thread_variables = nullptr;
         }
-        void Init(void *parent, unsigned long (*ThreadProc)(void *)) noexcept
+        void Init(void *parent, unsigned long (*ThreadProc)(void *))
         {
             ThreadParams<Tvar> *params = new ThreadParams<Tvar>;
             cv.reset(new std::condition_variable);

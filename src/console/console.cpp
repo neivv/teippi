@@ -63,7 +63,7 @@ LineIterator &LineIterator::operator=(LogContainer::iterator it_)
     return *this;
 }
 
-typedef LRESULT CALLBACK(WndProc)(HWND, UINT, WPARAM, LPARAM);
+typedef LRESULT (CALLBACK WndProc)(HWND, UINT, WPARAM, LPARAM);
 static WndProc *OldWndProc;
 static HWND console_hwnd = NULL;
 LRESULT CALLBACK ConsoleWndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)

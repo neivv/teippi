@@ -1,6 +1,7 @@
 #ifdef DEBUG
 #include "windows_wrap.h"
 #include <stdio.h>
+#include "types.h"
 
 void AssertionFailure(const char *file, int line, const char *pred)
 {
@@ -11,6 +12,6 @@ void AssertionFailure(const char *file, int line, const char *pred)
         snprintf(buf, sizeof buf, format, file, line, pred);
         MessageBoxA(0, buf, "Hui", 0);
     }
-    asm("int3");
+    INT3();
 }
 #endif

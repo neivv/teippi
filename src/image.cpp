@@ -150,7 +150,8 @@ void Image::UpdateSpecialOverlayPos()
 
 void Image::SetFlipping(bool set)
 {
-    if ((flags & 0x2) >> 1 != set)
+    bool state = ((flags & 0x2) >> 1) != 0;
+    if (state != set)
     {
         flags = flags | (set << 1) | 0x1;
         SetDrawFunc(drawfunc, drawfunc_param);
@@ -346,7 +347,7 @@ void Image::DrawFunc_ProgressFrame(IscriptContext *ctx, Rng *rng)
 // Could only have one padding between lines,
 // it can work as both left/right padding
 template <class Operation>
-void __fastcall Render_NonFlipped(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, Operation op)
+void Render_NonFlipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, Operation op)
 {
     const int loop_unroll_count = grp_padding_size;
 
@@ -390,7 +391,7 @@ void __fastcall Render_NonFlipped(int x, int y, GrpFrameHeader *__restrict__ fra
 }
 
 template <class Operation>
-void __fastcall Render_Flipped(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, Operation op)
+void Render_Flipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, Operation op)
 {
     const int loop_unroll_count = grp_padding_size;
 
@@ -432,7 +433,7 @@ void __fastcall Render_Flipped(int x, int y, GrpFrameHeader *__restrict__ frame_
     }
 }
 
-void __fastcall DrawBlended_NonFlipped(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, void *param)
+void __fastcall DrawBlended_NonFlipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *param)
 {
     uint8_t *blend_table = (uint8_t *)param;
     Render_NonFlipped(x, y, frame_header, rect, [&](uint8_t *in, uint8_t *out) {
@@ -440,7 +441,7 @@ void __fastcall DrawBlended_NonFlipped(int x, int y, GrpFrameHeader *__restrict_
     });
 }
 
-void __fastcall DrawBlended_Flipped(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, void *param)
+void __fastcall DrawBlended_Flipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *param)
 {
     uint8_t *blend_table = (uint8_t *)param;
     Render_Flipped(x, y, frame_header, rect, [&](uint8_t *in, uint8_t *out) {
@@ -448,7 +449,7 @@ void __fastcall DrawBlended_Flipped(int x, int y, GrpFrameHeader *__restrict__ f
     });
 }
 
-void __fastcall DrawNormal_NonFlipped(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, void *unused)
+void __fastcall DrawNormal_NonFlipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *unused)
 {
     STATIC_PERF_CLOCK(Dn2);
     uint8_t *remap = (uint8_t *)bw::default_grp_remap.v();
@@ -457,7 +458,7 @@ void __fastcall DrawNormal_NonFlipped(int x, int y, GrpFrameHeader *__restrict__
     });
 }
 
-void __fastcall DrawNormal_Flipped(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, void *unused)
+void __fastcall DrawNormal_Flipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *unused)
 {
     STATIC_PERF_CLOCK(Dn2);
     uint8_t *remap = (uint8_t *)bw::default_grp_remap.v();
@@ -466,7 +467,7 @@ void __fastcall DrawNormal_Flipped(int x, int y, GrpFrameHeader *__restrict__ fr
     });
 }
 
-void __fastcall DrawUncloakedPart_NonFlipped(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, int state)
+void __fastcall DrawUncloakedPart_NonFlipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, int state)
 {
     uint8_t *remap = (uint8_t *)bw::default_grp_remap.v();
     Render_NonFlipped(x, y, frame_header, rect, [&](uint8_t *in, uint8_t *out) {
@@ -476,7 +477,7 @@ void __fastcall DrawUncloakedPart_NonFlipped(int x, int y, GrpFrameHeader *__res
     });
 }
 
-void __fastcall DrawUncloakedPart_Flipped(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, int state)
+void __fastcall DrawUncloakedPart_Flipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, int state)
 {
     uint8_t *remap = (uint8_t *)bw::default_grp_remap.v();
     Render_Flipped(x, y, frame_header, rect, [&](uint8_t *in, uint8_t *out) {
@@ -486,7 +487,7 @@ void __fastcall DrawUncloakedPart_Flipped(int x, int y, GrpFrameHeader *__restri
     });
 }
 
-void __fastcall DrawCloaked_NonFlipped(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, void *unused)
+void __fastcall DrawCloaked_NonFlipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *unused)
 {
     uint8_t *remap = (uint8_t *)bw::cloak_remap_palette.v();
     uint8_t *surface = (*bw::current_canvas)->image;
@@ -500,7 +501,7 @@ void __fastcall DrawCloaked_NonFlipped(int x, int y, GrpFrameHeader *__restrict_
     });
 }
 
-void __fastcall DrawCloaked_Flipped(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, void *unused)
+void __fastcall DrawCloaked_Flipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *unused)
 {
     uint8_t *remap = (uint8_t *)bw::cloak_remap_palette.v();
     uint8_t *surface = (*bw::current_canvas)->image;
@@ -521,7 +522,7 @@ static GrpFrameHeader *GetGrpFrameHeader(int image_id, int frame)
 }
 
 // TODO: million slow divisions here
-void __fastcall DrawWarpTexture_NonFlipped(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, void *param)
+void __fastcall DrawWarpTexture_NonFlipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *param)
 {
     Assert(frame_header->IsDecoded());
     int texture_frame = (int)param;
@@ -535,7 +536,7 @@ void __fastcall DrawWarpTexture_NonFlipped(int x, int y, GrpFrameHeader *__restr
     });
 }
 
-void __fastcall DrawWarpTexture_Flipped(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, void *param)
+void __fastcall DrawWarpTexture_Flipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *param)
 {
     Assert(frame_header->IsDecoded());
     int texture_frame = (int)param;
@@ -549,7 +550,7 @@ void __fastcall DrawWarpTexture_Flipped(int x, int y, GrpFrameHeader *__restrict
     });
 }
 
-void __fastcall DrawShadow_NonFlipped(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, void *unused)
+void __fastcall DrawShadow_NonFlipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *unused)
 {
     STATIC_PERF_CLOCK(Ds1);
     // Dark.pcx
@@ -559,7 +560,7 @@ void __fastcall DrawShadow_NonFlipped(int x, int y, GrpFrameHeader *__restrict__
     });
 }
 
-void __fastcall DrawShadow_Flipped(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, void *unused)
+void __fastcall DrawShadow_Flipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *unused)
 {
     STATIC_PERF_CLOCK(Ds2);
     uint8_t *remap = (uint8_t *)bw::shadow_remap.v();

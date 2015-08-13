@@ -4,7 +4,8 @@
 #include <string.h>
 #include <time.h>
 #include <io.h>
-#include <windows.h>
+#include <direct.h>
+#include "console/windows_wrap.h"
 
 #include <algorithm>
 
@@ -18,8 +19,9 @@ SyncLog *sync_log;
 DebugLog_Actual *unit_dump;
 DebugLog_Actual *error_log;
 
-DebugLog_Actual::DebugLog_Actual(const char *f) : lock(ATOMIC_FLAG_INIT), filename(f)
+DebugLog_Actual::DebugLog_Actual(const char *f) : filename(f)
 {
+    lock.clear();
     log_file = nullptr;
     indent = 0;
     prev_frame = 0xffffffff;
@@ -94,12 +96,12 @@ void DebugLog_Actual::Indent(int diff)
 
 void InitLogs()
 {
-    mkdir("Logs");
+    _mkdir("Logs");
     CreateEvent(NULL, FALSE, FALSE, "Teippi log multi-instance check");
     if (GetLastError() == ERROR_ALREADY_EXISTS)
     {
         snprintf(log_path, sizeof log_path, "Logs/%lu", GetCurrentProcessId());
-        mkdir(log_path);
+        _mkdir(log_path);
     }
     else
         strncpy(log_path, "Logs", sizeof log_path);
@@ -119,7 +121,7 @@ void InitLogs()
         snprintf(buf, sizeof buf, "%s/sync.txt", log_path);
         sync_log = new SyncLog(buf);
         snprintf(buf, sizeof buf, "%s/dump", log_path);
-        mkdir(buf);
+        _mkdir(buf);
         int i = 1;
         do {
             snprintf(buf, sizeof buf, "%s/dump/units_%d.txt", log_path, i * 1000);

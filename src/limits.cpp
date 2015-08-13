@@ -32,8 +32,16 @@
 extern bool unitframes_in_progress;
 
 void ShowRallyTarget_Hook();
-void ShowCursorMarker_Hook();
 void __stdcall  DamageUnit_Hook(Unit *attacker, int attacking_player, bool show_attacker);
+
+void ShowCursorMarker_Hook()
+{
+    REG_ECX(int, x);
+    REG_EAX(int, y);
+    x &= 0xffff;
+    y &= 0xffff;
+    ShowCursorMarker(x, y);
+}
 
 void __stdcall AddMultipleOverlaySprites(int overlay_type, int count, int sprite_id, bool flip)
 {
@@ -117,7 +125,7 @@ int __stdcall FindUnitPosition(int key)
     return 0;
 }
 
-Unit __stdcall **FindUnitsRect(Rect16 *rect)
+Unit ** __stdcall FindUnitsRect(Rect16 *rect)
 {
     int tmp;
     Rect16 r = *rect;
@@ -142,7 +150,7 @@ int DoUnitsCollide()
     return unit_search->DoUnitsCollide(first, second);
 }
 
-Unit __stdcall **CheckMovementCollision(int y)
+Unit ** __stdcall CheckMovementCollision(int y)
 {
     REG_ECX(Unit *, unit);
     REG_EAX(int, x);
@@ -164,7 +172,7 @@ Unit **FindUnitBordersRect()
     return unit_search->FindUnitBordersRect(&r);
 }
 
-Unit __stdcall *FindNearestUnit(Unit *a, uint16_t b, uint16_t c, int d, int e, int f, int g, int __fastcall (*h)(const Unit *, void *), void *i)
+Unit * __stdcall FindNearestUnit(Unit *a, uint16_t b, uint16_t c, int d, int e, int f, int g, int (__fastcall *h)(const Unit *, void *), void *i)
 {
     REG_EAX(Rect16 *, area);
     if (area->left > area->right)
@@ -230,14 +238,14 @@ Sprite * __stdcall CreateSprite(int sprite_id, int x, int player)
     return Sprite::Allocate(sprite_id, Point(x, y), player);
 }
 
-Sprite __stdcall *CreateLoneSprite(int sprite_id, int x, int player)
+Sprite * __stdcall CreateLoneSprite(int sprite_id, int x, int player)
 {
     REG_EDI(int, y);
     y &= 0xffff;
     return lone_sprites->AllocateLone(sprite_id, Point(x, y), player);
 }
 
-Sprite __stdcall *CreateFowSprite(int unit_id, Sprite *base)
+Sprite * __stdcall CreateFowSprite(int unit_id, Sprite *base)
 {
     return lone_sprites->AllocateFow(base, unit_id);
 }
@@ -263,7 +271,7 @@ extern "C" Unit *AllocateUnit()
     return new Unit;
 }
 
-Order *__stdcall CreateOrder(uint32_t position_xy, Unit *target)
+Order * __stdcall CreateOrder(uint32_t position_xy, Unit *target)
 {
     REG_ECX(int, order);
     REG_EDX(int, fow_unit_id);
@@ -408,7 +416,7 @@ void __stdcall Order_AttackMove_TryPickTarget(uint8_t order)
     unit->Order_AttackMove_TryPickTarget(order);
 }
 
-int __stdcall ForEachLoadedUnit(int __fastcall (*Func)(Unit *unit, void *param), void *param)
+int __stdcall ForEachLoadedUnit(int (__fastcall *Func)(Unit *unit, void *param), void *param)
 {
     REG_EAX(Unit *, transport);
     for (Unit *unit = transport->first_loaded; unit; unit = unit->next_loaded)
@@ -637,37 +645,37 @@ static void __stdcall LoadBlendPalettes_Hook(const char *tileset)
     LoadBlendPalettes(tileset);
 }
 
-static void __fastcall DrawImage_Detected_Hook(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, uint8_t *__restrict__ blend_table)
+static void __fastcall DrawImage_Detected_Hook(int x, int y, GrpFrameHeader * frame_header, Rect32 * rect, uint8_t * blend_table)
 {
     DrawBlended_NonFlipped(x, y, frame_header, rect, blend_table);
 }
 
-static void __fastcall DrawImage_Detected_Flipped_Hook(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, uint8_t *__restrict__ blend_table)
+static void __fastcall DrawImage_Detected_Flipped_Hook(int x, int y, GrpFrameHeader * frame_header, Rect32 * rect, uint8_t * blend_table)
 {
     DrawBlended_Flipped(x, y, frame_header, rect, blend_table);
 }
 
-static void __fastcall DrawUncloakedPart_Hook(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, int state)
+static void __fastcall DrawUncloakedPart_Hook(int x, int y, GrpFrameHeader * frame_header, Rect32 * rect, int state)
 {
     DrawUncloakedPart_NonFlipped(x, y, frame_header, rect, state & 0xff);
 }
 
-static void __fastcall DrawUncloakedPart_Flipped_Hook(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, int state)
+static void __fastcall DrawUncloakedPart_Flipped_Hook(int x, int y, GrpFrameHeader * frame_header, Rect32 * rect, int state)
 {
     DrawUncloakedPart_Flipped(x, y, frame_header, rect, state & 0xff);
 }
 
-static void __fastcall DrawImage_Cloaked_Hook(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, void *unused)
+static void __fastcall DrawImage_Cloaked_Hook(int x, int y, GrpFrameHeader * frame_header, Rect32 * rect, void *unused)
 {
     DrawCloaked_NonFlipped(x, y, frame_header, rect, unused);
 }
 
-static void __fastcall DrawImage_Cloaked_Flipped_Hook(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, void *unused)
+static void __fastcall DrawImage_Cloaked_Flipped_Hook(int x, int y, GrpFrameHeader * frame_header, Rect32 * rect, void *unused)
 {
     DrawCloaked_Flipped(x, y, frame_header, rect, unused);
 }
 
-static bool __fastcall DrawGrp_Hook(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, void *unused)
+static bool __fastcall DrawGrp_Hook(int x, int y, GrpFrameHeader * frame_header, Rect32 * rect, void *unused)
 {
     if (frame_header->IsDecoded())
     {
@@ -678,7 +686,7 @@ static bool __fastcall DrawGrp_Hook(int x, int y, GrpFrameHeader *__restrict__ f
         return false;
 }
 
-static bool __fastcall DrawGrp_Flipped_Hook(int x, int y, GrpFrameHeader *__restrict__ frame_header, Rect32 *__restrict__ rect, void *unused)
+static bool __fastcall DrawGrp_Flipped_Hook(int x, int y, GrpFrameHeader * frame_header, Rect32 * rect, void *unused)
 {
     if (frame_header->IsDecoded())
     {

@@ -639,15 +639,6 @@ void ShowCursorMarker(int x, int y)
     *bw::draw_cursor_marker = 1;
 }
 
-void ShowCursorMarker_Hook()
-{
-    REG_ECX(int, x);
-    REG_EAX(int, y);
-    x &= 0xffff;
-    y &= 0xffff;
-    ShowCursorMarker(x, y);
-}
-
 void ShowRallyTarget(Unit *unit)
 {
 

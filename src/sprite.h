@@ -13,7 +13,7 @@
 void ShowRallyTarget(Unit *unit);
 void RefreshCursorMarker();
 void DrawCursorMarker();
-extern "C" void __stdcall ShowCursorMarker(int x, int y);
+void ShowCursorMarker(int x, int y);
 void DrawMinimapUnits();
 Sprite *ShowCommandResponse(int x, int y, Sprite *alternate);
 Sprite *__stdcall FindBlockingFowResource(int x_tile, int y_tile, int radius);

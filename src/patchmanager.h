@@ -23,12 +23,21 @@ namespace Common
 
 class PatchManager;
 
+#ifdef __GNUC__
 #define REG_EAX(type, var) type var; asm volatile("" : "=ea"(var))
 #define REG_ECX(type, var) type var; asm volatile("" : "=ec"(var))
 #define REG_EDX(type, var) type var; asm volatile("" : "=ed"(var))
 #define REG_EBX(type, var) type var; asm volatile("" : "=eb"(var))
 #define REG_ESI(type, var) type var; asm volatile("" : "=eS"(var))
 #define REG_EDI(type, var) type var; asm volatile("" : "=eD"(var))
+#else // Assume msvc
+#define REG_EAX(type, var) type var; __asm { mov var, eax }
+#define REG_ECX(type, var) type var; __asm { mov var, ecx }
+#define REG_EDX(type, var) type var; __asm { mov var, edx }
+#define REG_EBX(type, var) type var; __asm { mov var, ebx }
+#define REG_ESI(type, var) type var; __asm { mov var, esi }
+#define REG_EDI(type, var) type var; __asm { mov var, edi }
+#endif
 
 struct Patch
 {

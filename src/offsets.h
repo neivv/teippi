@@ -201,7 +201,7 @@ namespace bw
     const offset<Trigger *> current_trigger = 0x006509AC;
     const offset<uint32_t> options = 0x006CDFEC;
 
-    const offset<int __fastcall (*)(TriggerAction *)> trigger_actions = 0x00512800;
+    const offset<int (__fastcall *)(TriggerAction *)> trigger_actions = 0x00512800;
 
     const Offset TriggerPortraitFinished = 0x0045E610;
 
@@ -531,7 +531,7 @@ namespace bw
     const Offset ChangeMovementTarget = 0x004EB820;
     const Offset ChangeMovementTargetToUnit = 0x004EB720;
 
-    const offset<int __fastcall (*) (Unit *, int, int, Unit **target, int unit_id)> GetRightClickOrder = 0x005153FC;
+    const offset<int (__fastcall *) (Unit *, int, int, Unit **target, int unit_id)> GetRightClickOrder = 0x005153FC;
     const Offset ReplayCommands_Nothing = 0x004CDCE0;
     const Offset SDrawLockSurface = 0x00411E4E;
     const Offset SDrawUnlockSurface = 0x00411E48;

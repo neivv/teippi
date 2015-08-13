@@ -18,7 +18,7 @@ void Warning(const char *format, ...)
     debug_log->Log("Warning: %s\n", buf);
     Print("Warning: %s\n", buf);
     if (IsDebuggerPresent())
-        asm("int3");
+        INT3();
 }
 
 void FatalError(const char *format, ...)
@@ -31,6 +31,6 @@ void FatalError(const char *format, ...)
     MessageBoxA(0, buf, "Fatal error", 0);
     error_log->Log("Fatal error: %s\n", buf);
     if (IsDebuggerPresent())
-        asm("int3");
+        INT3();
     ExitProcess(1);
 }

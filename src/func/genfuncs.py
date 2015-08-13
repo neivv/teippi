@@ -57,12 +57,14 @@ class Func:
                         arg_name = rest_match.group('name')
                         if arg_name == '':
                             arg_name = None
+                        else:
+                            arg_name = 'arg_' + arg_name
                     else:
                         if IsType(rest):
                             arg_type = rest
                             arg_name = None
                         else:
-                            arg_name = rest
+                            arg_name = 'arg_' + rest
                             arg_type = None
                     this.args += [(stack_arg, reg, arg_type, arg_name)]
 
@@ -172,7 +174,58 @@ def GenerateGccAsm(func):
     ret += '}\n'
     return ret
 
-def GenerateFuncs(nuottei):
+def GenerateMsvcAsm(func):
+    ret = ''
+    ret += 'inline {type} {name}({args})\n{{\n'.format(
+            type=ToCType(func.ret), name=func.name, args=CArgs(func.args))
+
+    stack_size = 0
+    for arg in func.args:
+        if arg[0]:
+            stack_size += 4
+
+    ret += indent + '__asm {\n'
+
+    freeregs = ['eax', 'ecx', 'edx', 'ebx', 'esi', 'edi']
+
+    num = 1
+    # Push all stack args first
+    stack_arg_order = []
+    for arg in func.args:
+        name = arg[3] or 'a{}'.format(num)
+        if arg[0]:
+            stack_arg_order += [(arg[1], name)]
+        num += 1
+    stack_arg_order.sort(reverse=True)
+    for arg in stack_arg_order:
+        ret += '{ind}push {name};\n'.format(ind=indent + indent, name=arg[1])
+    num = 1
+    # Then order register args
+    for arg in func.args:
+        name = arg[3] or 'a{}'.format(num)
+        if not arg[0]:
+            ret += '{ind}mov {reg}, {name}\n'.format(ind=indent + indent, name=name, reg=arg[1])
+            if arg[1] in freeregs:
+                freeregs.remove(arg[1])
+        num += 1
+
+    # And use one free register as the call target
+    # Calling an immediate doesn't play nice with dll rebasing
+    ret += '{ind}mov {reg}, 0x{addr}\n'.format(ind=indent + indent, reg=freeregs[0], addr=func.addr)
+    if func.module:
+        name = ToCCompatName(func.module['name'])
+        ret += '{ind}add {reg}, {name}::base_diff\n'.format(ind=indent + indent, reg=freeregs[0], name=name)
+    ret += '{ind}call {reg}\n'.format(ind=indent + indent, reg=freeregs[0])
+
+    if 'cdecl' in func.attr:
+        ret += '{ind}add esp, {size}\n'.format(ind=indent + indent, size=stack_size)
+
+    ret += indent + '}\n'
+
+    ret += '}\n'
+    return ret
+
+def GenerateFuncs(nuottei, msvc_asm):
     filu = open(nuottei)
     funcs = []
     out = b''
@@ -188,7 +241,10 @@ def GenerateFuncs(nuottei):
             elif new_mod != True:
                 module = new_mod
     for func in funcs:
-        out += bytes(GenerateGccAsm(func), 'utf-8')
+        if msvc_asm:
+            out += bytes(GenerateMsvcAsm(func), 'utf-8')
+        else:
+            out += bytes(GenerateGccAsm(func), 'utf-8')
         out += b'\n'
     return out
     
@@ -200,7 +256,8 @@ def main():
         print('functonuot.py <nuottei.txt> <funcs.autogen>')
         return
 
-    data = GenerateFuncs(nuottei)
+    msvc_asm = '--msvc' in sys.argv
+    data = GenerateFuncs(nuottei, msvc_asm)
     out = open(output, 'wb') # Windows line endingit voi painua hiitee
     out.write(data)
 

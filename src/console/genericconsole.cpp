@@ -99,7 +99,7 @@ bool GenericConsole::Crash(const CmdArgs &args)
 
 bool GenericConsole::Int3(const CmdArgs &args)
 {
-    asm("int3");
+    INT3();
     return true;
 }
 

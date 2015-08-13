@@ -14,7 +14,7 @@ struct TriggerList
 
 struct KillUnitArgs
 {
-    bool __fastcall (*IsValid)(int player, int unit_id, Unit *unit);
+    bool (__fastcall *IsValid)(int player, int unit_id, Unit *unit);
     uint32_t player;
     uint16_t unit_id;
     uint16_t flags;

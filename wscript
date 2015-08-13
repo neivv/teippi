@@ -23,6 +23,7 @@ def configure(conf):
     import waflib.Tools.compiler_cxx as compiler_cxx
     import waflib.Errors
 
+    conf.env.MSVC_TARGETS = 'x86'
     # Custom compiler preference based on c++14 support
     if conf.options.check_c_compiler is None:
         conf.options.check_c_compiler = 'clang gcc msvc'
@@ -53,7 +54,11 @@ def configure(conf):
 
     conf.env.cshlib_PATTERN = conf.env.cxxshlib_PATTERN = '%s.qdp'
 
-    cflags = ['-m32', '-march=i686', '-Wall', '-g', '-O3']
+    msvc = 'msvc' in conf.env.CC_NAME
+    if msvc:
+        cflags = []
+    else:
+        cflags = ['-m32', '-march=i686', '-Wall', '-g', '-O3']
     conf.env.append_value('CFLAGS', cflags)
     conf.env.append_value('CXXFLAGS', cflags)
 
@@ -70,25 +75,43 @@ def build(bld):
     perf_test = bld.env.perf_test or bld.options.perf_test
     sync_test = bld.env.sync_test or bld.options.sync_test
     forced_seed = bld.options.forced_seed or bld.env.forced_seed
+    msvc = 'msvc' in bld.env.CC_NAME
 
-    cflags = ['-Wno-sign-compare', '-Wno-format']
-    cxxflags = ['--std=c++14']
+    cflags = []
+    cxxflags = []
+    except_cxxflags = []
+    noexcept_cxxflags = []
     linkflags = []
     defines = []
+    noexcept_defines = []
     includes = []
     libs = []
     stlibs = []
     libpath = []
     stlibpath = []
+    if not msvc:
+        cflags += ['-Wno-sign-compare', '-Wno-format']
+        cxxflags += ['--std=c++14']
+        noexcept_cxxflags += ['-fno-exceptions']
+        if debug:
+            linkflags += ['-Wl,--image-base=0x42300000']
+        else:
+            cflags += ['-ffunction-sections', '-fdata-sections']
+            linkflags += ['-Wl,--gc-sections']
+        if static:
+            linkflags += ['-static']
+            bld.env.SHLIB_MARKER = ''
+    else:
+        if perf_test or not debug:
+            cflags += ['/Ox']
+        libs += ['user32']
+        except_cxxflags += ['/EHsc']
+        noexcept_defines += ['_HAS_EXCEPTIONS=0']
+        cxxflags += ['/wd4624'] # Silence a seemingly incorrect warning in game.cpp
+
     if debug:
         defines += ['DEBUG']
-        linkflags += ['-Wl,--image-base=0x42300000']
-    else:
-        cflags += ['-ffunction-sections', '-fdata-sections']
-        linkflags += ['-Wl,--gc-sections']
-    if static:
-        linkflags += ['-static']
-        bld.env.SHLIB_MARKER = ''
+
     if forced_seed:
         defines += ['STATIC_SEED={}'.format(forced_seed)]
     #if perf_test or not debug:
@@ -150,14 +173,24 @@ def build(bld):
     src_with_exceptions = ['src/' + file for file in src_with_exceptions]
 
     includes += [bld.bldnode.find_dir('src')]
-    bld(rule = 'python ${SRC} ${TGT}', source = ['src/func/genfuncs.py', 'src/func/nuottei.txt'], target = 'src/funcs.autogen')
+    if msvc:
+        bld(rule = 'python ${SRC} ${TGT} --msvc', source = ['src/func/genfuncs.py', 'src/func/nuottei.txt'], target = 'src/funcs.autogen')
+    else:
+        bld(rule = 'python ${SRC} ${TGT}', source = ['src/func/genfuncs.py', 'src/func/nuottei.txt'], target = 'src/funcs.autogen')
+
+    if msvc:
+        def_file = ['msvc.def'] # Why doesn't msvc allow @4 prefix on stdcall ???
+    else:
+        def_file = ['gcc.def']
 
     bld.shlib(source='', linkflags=linkflags, target='teippi', use='obj_with_exceptions obj',
-        uselib='freetype', defs=['teippi.def'], features='cxx cxxshlib', install_path=None, lib=libs, stlib=stlibs,
+        uselib='freetype', defs=def_file, features='cxx cxxshlib', install_path=None, lib=libs, stlib=stlibs,
         libpath=libpath, stlibpath=stlibpath)
 
-    bld.objects(source=src, cflags=cflags, cxxflags=cxxflags + ['-fno-exceptions'], defines=defines, includes=includes, target='obj')
-    bld.objects(source=src_with_exceptions, cflags=cflags, cxxflags=cxxflags, defines=defines, includes=includes, target='obj_with_exceptions')
-    bld(rule='objcopy -S ${SRC} ${TGT}', source='teippi.qdp', target='teippi_stripped.qdp')
+    bld.objects(source=src, cflags=cflags, cxxflags=cxxflags + noexcept_cxxflags,
+            defines=defines + noexcept_defines, includes=includes, target='obj')
+    bld.objects(source=src_with_exceptions, cxxflags=cxxflags + except_cxxflags, defines=defines, includes=includes, target='obj_with_exceptions')
+    if not msvc:
+        bld(rule='objcopy -S ${SRC} ${TGT}', source='teippi.qdp', target='teippi_stripped.qdp')
 
     bld.install_as('${PREFIX}/teippi.qdp', 'teippi_stripped.qdp')

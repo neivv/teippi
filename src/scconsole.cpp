@@ -193,7 +193,7 @@ vector<int> ScConsole::ParseUnitId(const char *unit_str, int max_amt)
             char buf[128];
             snprintf(buf, sizeof buf, "Too many canditates for '%s':", unit_str);
             std::string msg(buf);
-            bool first;
+            bool first = true;
             for (auto cand : unit_ids)
             {
                 snprintf(buf, sizeof buf, " %s (%x)", (*bw::stat_txt_tbl)->GetTblString(cand + 1), cand);
@@ -964,9 +964,9 @@ void ScConsole::DrawCoords(uint8_t *framebuf, xuint w, yuint h)
     snprintf(buf, sizeof buf, "Game: %04hx.%04hx", *bw::screen_x + *bw::mouse_clickpos_x,
             *bw::screen_y + *bw::mouse_clickpos_y);
     info_lines.emplace_back(buf);
-    snprintf(buf, sizeof buf, "Mouse: %04hx.%04hx", *bw::mouse_clickpos_x, *bw::mouse_clickpos_y);
+    snprintf(buf, sizeof buf, "Mouse: %04hx.%04hx", (int)*bw::mouse_clickpos_x, (int)*bw::mouse_clickpos_y);
     info_lines.emplace_back(buf);
-    snprintf(buf, sizeof buf, "Screen: %04hx.%04hx", *bw::screen_x, *bw::screen_y);
+    snprintf(buf, sizeof buf, "Screen: %04hx.%04hx", (int)*bw::screen_x, (int)*bw::screen_y);
     info_lines.emplace_back(buf);
 }
 

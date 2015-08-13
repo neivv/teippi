@@ -520,7 +520,9 @@ class LeftSortHelper : public SortHelperBase
         LeftSortHelper &operator+=(diff val) { pos += val; return *this; }
         LeftSortHelper &operator-=(diff val) { pos -= val; return *this; }
         LeftSortHelper &operator++() { return *this += 1; }
+        LeftSortHelper operator++(int) { LeftSortHelper copy(*this); *this += 1; return copy; }
         LeftSortHelper &operator--() { return *this -= 1; }
+        LeftSortHelper operator--(int) { LeftSortHelper copy(*this); *this -= 1; return copy; }
         diff operator-(const LeftSortHelper &other) const { return pos - other.pos; }
         Unit ** const unit;
         y32 * const top;
@@ -569,7 +571,7 @@ void MainUnitSearch::ChangeUnitPosition_Finish()
     Validate();
 }
 
-Unit *MainUnitSearch::FindNearestUnit(Unit *self, const Point &pos, int __fastcall (*IsValid)(const Unit *, void *), void *func_param, const Rect16 &area)
+Unit *MainUnitSearch::FindNearestUnit(Unit *self, const Point &pos, int (__fastcall *IsValid)(const Unit *, void *), void *func_param, const Rect16 &area)
 {
     return UnitSearch::FindNearest(pos, area, [self, IsValid, func_param](const Unit *unit) -> bool {
         return self != unit && IsValid(unit, func_param);
@@ -898,7 +900,9 @@ class ChooseTargetSort
         ChooseTargetSort &operator+=(diff val) { pos += val; return *this; }
         ChooseTargetSort &operator-=(diff val) { pos -= val; return *this; }
         ChooseTargetSort &operator++() { return *this += 1; }
+        ChooseTargetSort operator++(int) { ChooseTargetSort copy(*this); *this += 1; return copy; }
         ChooseTargetSort &operator--() { return *this -= 1; }
+        ChooseTargetSort operator--(int) { ChooseTargetSort copy(*this); *this -= 1; return copy; }
         diff operator-(const ChooseTargetSort &other) const { return pos - other.pos; }
         Unit **pos;
         Unit ** const units;

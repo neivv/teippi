@@ -7,6 +7,12 @@
 
 #include "../common/vector.h"
 
+#ifdef __GNUC__
+#define INT3() asm("int3")
+#else
+#define INT3() __asm { int 3 }
+#endif
+
 namespace Common {
 template <typename C>
 using ptr = std::unique_ptr<C>;

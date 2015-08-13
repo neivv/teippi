@@ -4,8 +4,12 @@
 #include <string.h>
 #include <windows.h>
 
+#ifdef __GNUC__
 static void Panic(const char *str) __attribute__((noreturn));
 static void Panic(const char *str)
+#else // Msvc
+static void __declspec(noreturn) Panic(const char *str)
+#endif
 {
     MessageBoxA(0, str, "Whoops", 0);
     abort();

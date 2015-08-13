@@ -1,0 +1,4 @@
+EXPORTS
+GetMPQDraftPlugin = GetMPQDraftPlugin
+Initialize = Initialize
+Metaplugin_Init = Metaplugin_Init

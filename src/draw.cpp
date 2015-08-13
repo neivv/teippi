@@ -24,8 +24,8 @@ std::vector<drawhook> draw_hooks;
 
 #include "console/windows_wrap.h"
 
-typedef int __stdcall (SDrawLockSurface_Type)(int surface_id, Rect32 *a2, uint8_t **surface, int *width, int unused);
-typedef int __stdcall (SDrawUnlockSurface_Type)(int surface_id, uint8_t *surface, int a3, int a4);
+typedef int (__stdcall SDrawLockSurface_Type)(int surface_id, Rect32 *a2, uint8_t **surface, int *width, int unused);
+typedef int (__stdcall SDrawUnlockSurface_Type)(int surface_id, uint8_t *surface, int a3, int a4);
 static SDrawLockSurface_Type *SDrawLockSurface_Orig;
 static SDrawUnlockSurface_Type *SDrawUnlockSurface_Orig;
 

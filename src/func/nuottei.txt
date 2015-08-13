@@ -567,7 +567,7 @@
 00435770 = InheritAi(), ecx Unit *parent, eax Unit *unit
 0045D890 = MutateBuilding(), eax Unit *drone, arg 1 unit_id
 0042CE40 = ReduceBuildResources(), eax player
-0042CF70 = int CheckSupplyForBuilding(), arg 1 player_id, arg 2 unit_id, arg 3 bool notify_error
+0042CF70 = int CheckSupplyForBuilding(), arg 1 player_id, arg 2 unit_id, arg 3 int notify_error
 004678A0 = Unit *BeginGasBuilding(), arg 1 unit_id, eax Unit *worker
 0045D2E0 = StartZergBuilding(), eax Unit *unit
 
@@ -577,7 +577,7 @@
 00402BE0 = bool IsFacingMoveTarget(), esi Flingy *flingy
 00468E40 = FinishedMining(), ecx Unit *resource, eax Unit *worker
 00447A70 = bool Ai_CanMineExtra(), eax Unit *worker
-004F3AF0 = CreateResourceOverlay(), arg 1 unused_count, edx bool minerals, edi Unit *worker, esi image_id
+004F3AF0 = CreateResourceOverlay(), arg 1 unused_count, edx int minerals, edi Unit *worker, esi image_id
 00468830 = UpdateMineralAmountAnimation(), ecx Unit *minerals
 00493180 = MergeArchonStats(), eax Unit *archon, ecx Unit *other_templar
 
