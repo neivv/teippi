@@ -235,7 +235,7 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
 
     auto flingy_id = weapons_dat_flingy[weapon];
     auto result = InitializeFlingy((Flingy *)this, player_, direction, flingy_id, pos.x, pos.y);
-    if (result != 0) { Assert(result != 0); } // Avoids an unused var warning
+    if (result == 0) { Assert(result != 0); } // Avoids an unused var warning
     player = player_;
     weapon_id = weapon;
     time_remaining = weapons_dat_death_time[weapon_id];
