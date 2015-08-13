@@ -3,3 +3,9 @@ Release/*
 build/*
 .lock-*
 waf*/*
+
+.vs/*
+x86/*
+*.user
+*.opensdf
+*.sdf

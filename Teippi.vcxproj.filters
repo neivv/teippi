@@ -1,0 +1,446 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Sources">
+      <UniqueIdentifier>{5088f974-fbe4-4a41-8acb-5bc0eb490e10}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Headers">
+      <UniqueIdentifier>{795b9e32-8ee2-4aa5-ae8c-d448c30e2889}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sources\console">
+      <UniqueIdentifier>{f00bb6cc-3d29-42e2-bd39-3056719fcab5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sources\func">
+      <UniqueIdentifier>{444193c3-0b05-4a82-a480-7575cef0fa3c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Headers\console">
+      <UniqueIdentifier>{966d5892-7eb4-4a78-8840-41b6ece6db88}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Headers\common">
+      <UniqueIdentifier>{a1b5e92a-04a7-4407-926a-ae33fcae0fc6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Headers\constants">
+      <UniqueIdentifier>{5b5665f0-11e1-4e65-b9bc-4e0592ce2a50}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\possearch.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="src\unitsearch.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="src\unitsearch_cache.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ai.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\building.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\bullet.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\bunker.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\commands.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\datastream.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dialog.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\draw.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\flingy.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\image.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\init.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\iscript.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\limits.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\list.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\lofile.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\log.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\mainpatch.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\mapdirectory.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\memory.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\mpqdraft.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\MPQDraftPlugin.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\nuke.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\offsets.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\order.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\patchmanager.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\pathing.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\perfclock.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\player.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\replay.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\resolution.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rng.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\save.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scconsole.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scthread.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\selection.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sound.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sprite.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\strings.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sync.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\targeting.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\tech.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\test_game.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\text.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\thread.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\triggers.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\types.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\unit.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\unit_cache.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\unitlist.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\unitsearch.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\unitsearch_cache.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\upgrade.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\warn.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\x86.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\yms.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\console\assert.h">
+      <Filter>Headers\console</Filter>
+    </ClInclude>
+    <ClInclude Include="src\console\cmdargs.h">
+      <Filter>Headers\console</Filter>
+    </ClInclude>
+    <ClInclude Include="src\console\console.h">
+      <Filter>Headers\console</Filter>
+    </ClInclude>
+    <ClInclude Include="src\console\font.h">
+      <Filter>Headers\console</Filter>
+    </ClInclude>
+    <ClInclude Include="src\console\genericconsole.h">
+      <Filter>Headers\console</Filter>
+    </ClInclude>
+    <ClInclude Include="src\console\surface.h">
+      <Filter>Headers\console</Filter>
+    </ClInclude>
+    <ClInclude Include="src\console\types.h">
+      <Filter>Headers\console</Filter>
+    </ClInclude>
+    <ClInclude Include="src\console\windows_wrap.h">
+      <Filter>Headers\console</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\assert.h">
+      <Filter>Headers\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\claimable.h">
+      <Filter>Headers\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\iter.h">
+      <Filter>Headers\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\ll-deque.h">
+      <Filter>Headers\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\log_freeze.h">
+      <Filter>Headers\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\optional.h">
+      <Filter>Headers\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\unsorted_vector.h">
+      <Filter>Headers\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\vector.h">
+      <Filter>Headers\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants\image.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants\iscript.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants\order.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants\sound.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants\sprite.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants\string.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants\tech.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants\unit.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants\upgrade.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\ai.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\building.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\bullet.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\bunker.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\commands.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\datastream.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\dialog.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\draw.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\flingy.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\game.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\image.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\init.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\iscript.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\limits.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\lofile.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\log.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mainpatch.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\memory.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mpqdraft.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\nuke.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\order.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\patchmanager.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\pathing.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\perfclock.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\player.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\replay.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\save.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scconsole.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scthread.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\selection.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sprite.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\strings.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\targeting.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\tech.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\test_game.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\text.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\triggers.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\unit.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\unit_ai.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\unit_movement.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\unitsearch.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\unitsearch_cache.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\upgrade.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\warn.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\x86.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\yms.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\console\assert.cpp">
+      <Filter>Sources\console</Filter>
+    </ClCompile>
+    <ClCompile Include="src\console\cmdargs.cpp">
+      <Filter>Sources\console</Filter>
+    </ClCompile>
+    <ClCompile Include="src\console\console.cpp">
+      <Filter>Sources\console</Filter>
+    </ClCompile>
+    <ClCompile Include="src\console\font.cpp">
+      <Filter>Sources\console</Filter>
+    </ClCompile>
+    <ClCompile Include="src\console\genericconsole.cpp">
+      <Filter>Sources\console</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="src\func\genfuncs.py">
+      <Filter>Sources\func</Filter>
+    </None>
+    <None Include="wscript" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="src\func\nuottei.txt">
+      <Filter>Sources\func</Filter>
+    </Text>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,204 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\ai.h" />
+    <ClInclude Include="src\building.h" />
+    <ClInclude Include="src\bullet.h" />
+    <ClInclude Include="src\bunker.h" />
+    <ClInclude Include="src\commands.h" />
+    <ClInclude Include="src\common\assert.h" />
+    <ClInclude Include="src\common\claimable.h" />
+    <ClInclude Include="src\common\iter.h" />
+    <ClInclude Include="src\common\ll-deque.h" />
+    <ClInclude Include="src\common\log_freeze.h" />
+    <ClInclude Include="src\common\optional.h" />
+    <ClInclude Include="src\common\unsorted_vector.h" />
+    <ClInclude Include="src\common\vector.h" />
+    <ClInclude Include="src\console\assert.h" />
+    <ClInclude Include="src\console\cmdargs.h" />
+    <ClInclude Include="src\console\console.h" />
+    <ClInclude Include="src\console\font.h" />
+    <ClInclude Include="src\console\genericconsole.h" />
+    <ClInclude Include="src\console\surface.h" />
+    <ClInclude Include="src\console\types.h" />
+    <ClInclude Include="src\console\windows_wrap.h" />
+    <ClInclude Include="src\constants\image.h" />
+    <ClInclude Include="src\constants\iscript.h" />
+    <ClInclude Include="src\constants\order.h" />
+    <ClInclude Include="src\constants\sound.h" />
+    <ClInclude Include="src\constants\sprite.h" />
+    <ClInclude Include="src\constants\string.h" />
+    <ClInclude Include="src\constants\tech.h" />
+    <ClInclude Include="src\constants\unit.h" />
+    <ClInclude Include="src\constants\upgrade.h" />
+    <ClInclude Include="src\datastream.h" />
+    <ClInclude Include="src\dialog.h" />
+    <ClInclude Include="src\draw.h" />
+    <ClInclude Include="src\flingy.h" />
+    <ClInclude Include="src\game.h" />
+    <ClInclude Include="src\image.h" />
+    <ClInclude Include="src\init.h" />
+    <ClInclude Include="src\iscript.h" />
+    <ClInclude Include="src\limits.h" />
+    <ClInclude Include="src\list.h" />
+    <ClInclude Include="src\lofile.h" />
+    <ClInclude Include="src\log.h" />
+    <ClInclude Include="src\mainpatch.h" />
+    <ClInclude Include="src\mapdirectory.h" />
+    <ClInclude Include="src\memory.h" />
+    <ClInclude Include="src\mpqdraft.h" />
+    <ClInclude Include="src\MPQDraftPlugin.h" />
+    <ClInclude Include="src\nuke.h" />
+    <ClInclude Include="src\offsets.h" />
+    <ClInclude Include="src\order.h" />
+    <ClInclude Include="src\patchmanager.h" />
+    <ClInclude Include="src\pathing.h" />
+    <ClInclude Include="src\perfclock.h" />
+    <ClInclude Include="src\player.h" />
+    <ClInclude Include="src\possearch.hpp" />
+    <ClInclude Include="src\replay.h" />
+    <ClInclude Include="src\resolution.h" />
+    <ClInclude Include="src\rng.h" />
+    <ClInclude Include="src\save.h" />
+    <ClInclude Include="src\scconsole.h" />
+    <ClInclude Include="src\scthread.h" />
+    <ClInclude Include="src\selection.h" />
+    <ClInclude Include="src\sound.h" />
+    <ClInclude Include="src\sprite.h" />
+    <ClInclude Include="src\strings.h" />
+    <ClInclude Include="src\sync.h" />
+    <ClInclude Include="src\targeting.h" />
+    <ClInclude Include="src\tech.h" />
+    <ClInclude Include="src\test_game.h" />
+    <ClInclude Include="src\text.h" />
+    <ClInclude Include="src\thread.h" />
+    <ClInclude Include="src\triggers.h" />
+    <ClInclude Include="src\types.h" />
+    <ClInclude Include="src\unit.h" />
+    <ClInclude Include="src\unitlist.h" />
+    <ClInclude Include="src\unitsearch.h" />
+    <ClInclude Include="src\unitsearch.hpp" />
+    <ClInclude Include="src\unitsearch_cache.h" />
+    <ClInclude Include="src\unitsearch_cache.hpp" />
+    <ClInclude Include="src\unit_cache.h" />
+    <ClInclude Include="src\upgrade.h" />
+    <ClInclude Include="src\warn.h" />
+    <ClInclude Include="src\x86.h" />
+    <ClInclude Include="src\yms.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\ai.cpp" />
+    <ClCompile Include="src\building.cpp" />
+    <ClCompile Include="src\bullet.cpp" />
+    <ClCompile Include="src\bunker.cpp" />
+    <ClCompile Include="src\commands.cpp" />
+    <ClCompile Include="src\console\assert.cpp" />
+    <ClCompile Include="src\console\cmdargs.cpp" />
+    <ClCompile Include="src\console\console.cpp" />
+    <ClCompile Include="src\console\font.cpp" />
+    <ClCompile Include="src\console\genericconsole.cpp" />
+    <ClCompile Include="src\datastream.cpp" />
+    <ClCompile Include="src\dialog.cpp" />
+    <ClCompile Include="src\draw.cpp" />
+    <ClCompile Include="src\flingy.cpp" />
+    <ClCompile Include="src\game.cpp" />
+    <ClCompile Include="src\image.cpp" />
+    <ClCompile Include="src\init.cpp" />
+    <ClCompile Include="src\iscript.cpp" />
+    <ClCompile Include="src\limits.cpp" />
+    <ClCompile Include="src\lofile.cpp" />
+    <ClCompile Include="src\log.cpp" />
+    <ClCompile Include="src\mainpatch.cpp" />
+    <ClCompile Include="src\memory.cpp" />
+    <ClCompile Include="src\mpqdraft.cpp" />
+    <ClCompile Include="src\nuke.cpp" />
+    <ClCompile Include="src\order.cpp" />
+    <ClCompile Include="src\patchmanager.cpp" />
+    <ClCompile Include="src\pathing.cpp" />
+    <ClCompile Include="src\perfclock.cpp" />
+    <ClCompile Include="src\player.cpp" />
+    <ClCompile Include="src\replay.cpp" />
+    <ClCompile Include="src\save.cpp" />
+    <ClCompile Include="src\scconsole.cpp" />
+    <ClCompile Include="src\scthread.cpp" />
+    <ClCompile Include="src\selection.cpp" />
+    <ClCompile Include="src\sprite.cpp" />
+    <ClCompile Include="src\strings.cpp" />
+    <ClCompile Include="src\targeting.cpp" />
+    <ClCompile Include="src\tech.cpp" />
+    <ClCompile Include="src\test_game.cpp" />
+    <ClCompile Include="src\text.cpp" />
+    <ClCompile Include="src\triggers.cpp" />
+    <ClCompile Include="src\unit.cpp" />
+    <ClCompile Include="src\unitsearch.cpp" />
+    <ClCompile Include="src\unitsearch_cache.cpp" />
+    <ClCompile Include="src\unit_ai.cpp" />
+    <ClCompile Include="src\unit_movement.cpp" />
+    <ClCompile Include="src\upgrade.cpp" />
+    <ClCompile Include="src\warn.cpp" />
+    <ClCompile Include="src\x86.cpp" />
+    <ClCompile Include="src\yms.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="src\func\genfuncs.py" />
+    <None Include="wscript" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="src\func\nuottei.txt" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{E4F0C53F-8541-4895-9050-EA38F8874F96}</ProjectGuid>
+    <Keyword>MakeFileProj</Keyword>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <NMakeBuildCommandLine>python waf</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>python waf clean</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>python waf clean build</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <NMakeBuildCommandLine>python waf</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>python waf clean</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>python waf clean build</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
