@@ -1114,7 +1114,9 @@ struct Test_Attack : public GameTest {
 struct Test_Splash : public GameTest {
     Unit *attacker;
     Unit *target;
+    Unit *second_target;
     void Init() override {
+        SetEnemy(0, 1);
     }
     void NextFrame() override {
         switch (state) {
@@ -1127,6 +1129,16 @@ struct Test_Splash : public GameTest {
                 if (target->GetHealth() != target->GetMaxHealth()) {
                     int dmg = weapons_dat_damage[units_dat_ground_weapon[Unit::InfestedTerran]];
                     TestAssert(target->GetMaxHealth() - target->GetHealth() > dmg * 3 / 4);
+                    ClearUnits();
+                    target = CreateUnitForTestAt(Unit::SupplyDepot, 1, Point(100, 100));
+                    second_target = CreateUnitForTestAt(Unit::SupplyDepot, 1, Point(100, 100));
+                    attacker = CreateUnitForTestAt(Unit::Lurker, 0, Point(100, 150));
+                    IssueOrderTargetingNothing(attacker, Order::Burrow);
+                    state++;
+                }
+            } break; case 2: {
+                TestAssert(target->GetHealth() == second_target->GetHealth());
+                if (target->GetHealth() < target->GetMaxHealth() / 2) {
                     Pass();
                 }
             }

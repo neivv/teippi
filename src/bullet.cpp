@@ -1104,14 +1104,14 @@ void Bullet::Splash_Lurker(ProgressBulletBufs *bufs)
         {
             for (int i = 0; i < 0x200; i++)
             {
-                if (bw::lurker_hits[i * 2] == parent && bw::lurker_hits[i * 2 + 1] == target)
+                if (bw::lurker_hits[i * 2] == parent && bw::lurker_hits[i * 2 + 1] == unit)
                     return false;
             }
             int pos = *bw::lurker_hits_used;
             if (pos != 0x10)
             {
                 bw::lurker_hits[*bw::lurker_hits_pos * 0x20 + pos * 2] = parent;
-                bw::lurker_hits[*bw::lurker_hits_pos * 0x20 + pos * 2 + 1] = target;
+                bw::lurker_hits[*bw::lurker_hits_pos * 0x20 + pos * 2 + 1] = unit;
                 *bw::lurker_hits_used = pos + 1;
             }
         }
