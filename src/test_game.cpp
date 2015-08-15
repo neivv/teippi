@@ -15,6 +15,8 @@
 #include "yms.h"
 #include "ai.h"
 
+#include "possearch.hpp"
+
 #include <algorithm>
 #include "console/windows_wrap.h"
 
@@ -1198,6 +1200,37 @@ struct Test_MindControl : public GameTest {
     }
 };
 
+struct Test_PosSearch : public GameTest {
+    Unit *unit;
+    void Init() override {
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                unit = CreateUnitForTestAt(Unit::Marine, 0, Point(100, 100));
+                state++;
+            } break; case 1: {
+                Unit *result = unit_search->FindNearest(Point(100, 150),
+                        Rect16(Point(100, 150), 5), [](const auto *a) { return true; });
+                TestAssert(result == nullptr);
+                result = unit_search->FindNearest(Point(150, 100),
+                        Rect16(Point(150, 100), 5), [](const auto *a) { return true; });
+                TestAssert(result == nullptr);
+                result = unit_search->FindNearest(Point(110, 110),
+                        Rect16(Point(110, 100), 25), [](const auto *a) { return true; });
+                TestAssert(result == unit);
+                result = unit_search->FindNearest(Point(110, 100),
+                        Rect16(Point(110, 100), 9), [](const auto *a) { return true; });
+                TestAssert(result == nullptr);
+                result = unit_search->FindNearest(Point(110, 100),
+                        Rect16(Point(110, 100), 10), [](const auto *a) { return true; });
+                TestAssert(result == unit);
+                Pass();
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -1226,6 +1259,7 @@ GameTests::GameTests()
     AddTest("Splash", new Test_Splash);
     AddTest("Ai aggro", new Test_AiAggro);
     AddTest("Mind control", new Test_MindControl);
+    AddTest("Pos search", new Test_PosSearch);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)

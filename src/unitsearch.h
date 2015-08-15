@@ -36,6 +36,7 @@ class PosSearch
 
         unsigned Size() const { return left_to_value.size(); }
         void Find(const Rect16 &rect, Type *out, Type **out_end);
+        /// Only units with their 'position' inside the rect are counted
         template <class Func1, class Func2>
         Type *FindNearest(const Point &pos, const Rect16 &area, Func1 IsValid, Func2 Position);
         void Add(uintptr_t pos, Type &&val, const Rect16 &box);

@@ -4,6 +4,8 @@
 #include "unitsearch.h"
 #include "yms.h"
 
+#include <algorithm>
+
 template <class C>
 void PosSearch<C>::Clear()
 {
@@ -82,18 +84,20 @@ C *PosSearch<C>::FindNearest(const Point &pos, const Rect16 &area, F IsValid, F2
         cont = false;
         if (left_pos >= 0)
         {
-            int widest_right = left_positions[left_pos] + max_width;
+            int left = left_positions[left_pos];
+            int widest_right = left + max_width;
             if (widest_right < area.left || pos.x - widest_right > max_dist)
                 left_pos = -1;
             else
             {
                 cont = true;
-                if (left_to_top[left_pos] < area.bottom && left_to_bottom[left_pos] > area.top)
+                C *value = &left_to_value[left_pos];
+                Point val_pos = Position(*value);
+                if (val_pos.y < area.bottom && val_pos.y >= area.top && val_pos.x >= area.left)
                 {
-                    C *value = &left_to_value[left_pos];
                     if (IsValid(*value))
                     {
-                        int dist = Distance(pos, Position(*value));
+                        int dist = Distance(pos, val_pos);
                         if (dist < max_dist)
                         {
                             closest = value;
@@ -106,18 +110,20 @@ C *PosSearch<C>::FindNearest(const Point &pos, const Rect16 &area, F IsValid, F2
         }
         if (right_pos < (int)Size())
         {
-            int widest_left = left_to_right[right_pos] - max_width;
+            int right = left_to_right[right_pos];
+            int widest_left = right - max_width;
             if (widest_left > area.right || widest_left - pos.x > max_dist)
                 right_pos = Size();
             else
             {
                 cont = true;
-                if (left_to_top[right_pos] < area.bottom && left_to_bottom[right_pos] > area.top)
+                C *value = &left_to_value[right_pos];
+                Point val_pos = Position(*value);
+                if (val_pos.y < area.bottom && val_pos.y >= area.top && val_pos.x < area.right)
                 {
-                    C *value = &left_to_value[right_pos];
                     if (IsValid(*value))
                     {
-                        int dist = Distance(pos, Position(*value));
+                        int dist = Distance(pos, val_pos);
                         if (dist < max_dist)
                         {
                             closest = value;
