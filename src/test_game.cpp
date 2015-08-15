@@ -245,18 +245,20 @@ struct Test_Storm : public GameTest {
         switch (state) {
             case 0:
                 state++;
-            break; case 1:
-                ht1 = CreateUnitForTest(Unit::HighTemplar, 0);
-                ht2 = CreateUnitForTest(Unit::HighTemplar, 0);
+            break; case 1: {
+                ht1 = CreateUnitForTestAt(Unit::HighTemplar, 0, Point(100, 100));
+                auto crect = ht1->GetCollisionRect();
+                ht2 = CreateUnitForTestAt(Unit::HighTemplar, 0, Point(100 + crect.Width(), 100));
                 target = CreateUnitForTestAt(Unit::Battlecruiser, 0, Point(300, 100));
                 IssueOrderTargetingUnit_Simple(ht1, Order::PsiStorm, target);
                 state++;
             // Cases 2 and 3 should behave same, no matter if 2 storms are casted or 1
-            break; case 2: case 3: {
+            } break; case 2: case 3: {
                 int dmg = target->GetMaxHitPoints() - target->GetHitPoints();
                 int storm_dmg = weapons_dat_damage[Weapon::PsiStorm];
                 TestAssert(dmg % storm_dmg == 0);
                 if (dmg != 0) {
+                    TestAssert(dmg < storm_dmg * 10);
                     bool storms_active = bullet_system->BulletCount() != 0;
                     // The 2 hts don't cast in perfect sync, which might give an extra cycle of damage
                     bool dmg_done = (dmg == storm_dmg * 8) || (state == 3 && dmg == storm_dmg * 9);
@@ -279,13 +281,13 @@ struct Test_Storm : public GameTest {
                         target = unit;
                         auto &pos = ht1->sprite->position;
                         IssueOrderTargetingGround(target, Order::Move, pos.x, pos.y);
-                        IssueOrderTargetingGround(ht2, Order::Move, pos.x, pos.y);
                         state++;
                         break;
                     }
                 }
             break; case 5:
-                if (target->IsStandingStill() != 0) {
+                if (target->order != Order::Move) {
+                    TestAssert(target->GetCollisionRect().top < ht2->sprite->position.y);
                     IssueOrderTargetingUnit_Simple(ht2, Order::PsiStorm, target);
                     storm_area = Rect16(target->sprite->position, weapons_dat_outer_splash[Weapon::PsiStorm]);
                     state++;

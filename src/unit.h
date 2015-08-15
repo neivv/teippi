@@ -540,6 +540,7 @@ class Unit
         int GetGroundWeapon() const;
         int GetCooldown(int weapon_id) const;
 
+        /// Returns 0 if moving, 1 if not and 2 if can't tell???
         int IsStandingStill() const;
         bool IsAtHome() const;
 
