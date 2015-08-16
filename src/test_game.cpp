@@ -1233,6 +1233,37 @@ struct Test_PosSearch : public GameTest {
     }
 };
 
+struct Test_AiTarget : public GameTest {
+    Unit *unit;
+    Unit *enemy;
+    void Init() override {
+        SetEnemy(0, 1);
+        SetEnemy(1, 0);
+        AiPlayer(1);
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                unit = CreateUnitForTestAt(Unit::Devourer, 1, Point(100, 100));
+                enemy = CreateUnitForTestAt(Unit::Scout, 0, Point(120, 120));
+                state++;
+            } break; case 1: {
+                TestAssert(!unit->IsDying() && !enemy->IsDying());
+                if (unit->target == enemy) {
+                    CreateUnitForTestAt(Unit::Scout, 0, Point(80, 80));
+                    state++;
+                }
+            } break; case 2: {
+                if (unit->GetHealth() == 0 || enemy->GetHealth() == 0) {
+                    Pass();
+                } else {
+                    TestAssert(unit->target == enemy);
+                }
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -1262,6 +1293,7 @@ GameTests::GameTests()
     AddTest("Ai aggro", new Test_AiAggro);
     AddTest("Mind control", new Test_MindControl);
     AddTest("Pos search", new Test_PosSearch);
+    AddTest("Ai targeting", new Test_AiTarget);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)

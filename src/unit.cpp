@@ -3397,12 +3397,12 @@ Unit *Unit::ChooseBetterTarget(Unit *cmp, Unit *prev)
             return prev;
         }
     }
-    if (IsThreat(prev) && !IsThreat(cmp))
+    if (!IsThreat(prev) && IsThreat(cmp))
+        return prev;
+    if (IsInAttackRange(prev))
         return prev;
     if (IsInAttackRange(cmp))
         return cmp;
-    if (IsInAttackRange(prev))
-        return prev;
 
     if (GetDistanceToUnit(cmp) < GetDistanceToUnit(prev))
         return cmp;
