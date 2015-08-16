@@ -66,6 +66,7 @@ class ScConsole : public Common::GenericConsole
         void DrawRange(uint8_t *framebuf, xuint w, yuint h);
         void DrawGrids(uint8_t *framebuf, xuint w, yuint h);
         void DrawBullets(uint8_t *framebuf, xuint w, yuint h);
+        void DrawResourceAreas(uint8_t *textbuf, uint8_t *framebuf, xuint w, yuint h);
 
         Unit *GetUnit();
 
@@ -83,6 +84,7 @@ class ScConsole : public Common::GenericConsole
         bool draw_range;
         bool draw_info;
         bool draw_bullets;
+        bool draw_resource_areas;
 
         // player_mask, unit_id
         vector<tuple<uint16_t, int>> death_counters;

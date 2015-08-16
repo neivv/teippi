@@ -44,6 +44,7 @@ ScConsole::ScConsole()
     draw_coords = false;
     draw_range = false;
     draw_bullets = false;
+    draw_resource_areas = false;
 
     AddCommand("heal", &ScConsole::Heal);
     AddCommand("kill", &ScConsole::Kill);
@@ -941,6 +942,41 @@ void ScConsole::DrawAiInfo(uint8_t *textbuf, uint8_t *framebuf, xuint w, yuint h
     }
 }
 
+void ScConsole::DrawResourceAreas(uint8_t *textbuf, uint8_t *framebuf, xuint w, yuint h)
+{
+    if (!draw_resource_areas || !IsInGame())
+        return;
+
+    Common::Surface surface(framebuf, w, h);
+    Common::Surface text_surface(textbuf, w, h);
+    Point32 screen_pos(*bw::screen_x, *bw::screen_y);
+    for (int i = 0; i < bw::resource_areas->used_count; i++)
+    {
+        // First entry is not used
+        const auto &area = bw::resource_areas->areas[i + 1];
+        int x = area.position.x - screen_pos.x;
+        int y = area.position.y - screen_pos.y;
+        if (x >= 0 && x < w && y >= 0 && y < h)
+        {
+            char buf[256];
+            snprintf(buf, sizeof buf, "Area %x: Mine %d in %d, Gas %d in %d, flags %02x", i + 1,
+                    area.total_minerals, area.mineral_field_count,
+                    area.total_gas, area.geyser_count, area.flags);
+            text_surface.DrawText(&font, buf, Point32(x - 50, y + 20), 0x55);
+            snprintf(buf, sizeof buf, "Unk: %02x %08x %08x %08x %08x", area.dc6,
+                    *(uint32_t *)(&area.dc10[0x0]), *(uint32_t *)(&area.dc10[0x4]),
+                    *(uint32_t *)(&area.dc10[0x8]), *(uint32_t *)(&area.dc10[0xc]));
+            text_surface.DrawText(&font, buf, Point32(x - 50, y + 30), 0x55);
+            snprintf(buf, sizeof buf, "%08x %08x %08x %08x", area.dc6,
+                    *(uint32_t *)(&area.dc10[0x10]), *(uint32_t *)(&area.dc10[0x14]),
+                    *(uint32_t *)(&area.dc10[0x18]), *(uint32_t *)(&area.dc10[0x1c]));
+            text_surface.DrawText(&font, buf, Point32(x - 50, y + 40), 0x55);
+            Rect32 rect = Rect32(Point32(area.position), 15).OffsetBy(screen_pos.Negate());
+            surface.DrawRect(rect, 0xb9);
+        }
+    }
+}
+
 void ScConsole::DrawOrders(uint8_t *framebuf, xuint w, yuint h)
 {
     if (!draw_orders || !IsInGame())
@@ -1073,6 +1109,7 @@ void ScConsole::DrawDebugInfo(uint8_t *framebuf, xuint w, yuint h)
     DrawCrects(framebuf, w, h);
     DrawGrids(buffer, resolution::screen_width, resolution::screen_height);
     DrawAiInfo(text_buf, buffer, resolution::screen_width, resolution::screen_height);
+    DrawResourceAreas(text_buf, buffer, resolution::screen_width, resolution::screen_height);
     DrawOrders(buffer, resolution::screen_width, resolution::screen_height);
     DrawCoords(buffer, resolution::screen_width, resolution::screen_height);
     DrawDeaths(text_buf, resolution::screen_width, resolution::screen_height);
@@ -1140,7 +1177,7 @@ bool ScConsole::Show(const CmdArgs &args)
     {
         draw_locations = draw_paths = draw_crects = draw_orders = draw_coords = draw_info =
             draw_range = draw_region_borders = draw_region_data = draw_ai_data = draw_ai_towns =
-            show_fps = show_frame = draw_bullets = false;
+            show_fps = show_frame = draw_bullets = draw_resource_areas = false;
     }
     else if (what == "fps")
         show_fps = !show_fps;
@@ -1162,6 +1199,8 @@ bool ScConsole::Show(const CmdArgs &args)
         draw_range = !draw_range;
     else if (what == "bullets")
         draw_bullets = !draw_bullets;
+    else if (what == "resareas")
+        draw_resource_areas = !draw_resource_areas;
     else if (what == "regions")
     {
         draw_region_borders = !draw_region_borders;
@@ -1215,7 +1254,7 @@ bool ScConsole::Show(const CmdArgs &args)
     else
     {
         // Space before info is for line wrapping
-        Printf("show <nothing|fps|frame|regions|locations|paths|collision|ai [..]|orders|coords|range| info|bullets>");
+        Printf("show <nothing|fps|frame|regions|locations|paths|collision|ai [..]|orders|coords|range| info|bullets|resareas>");
         return false;
     }
     return true;
