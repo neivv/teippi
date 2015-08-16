@@ -863,7 +863,7 @@ void ScConsole::DrawAiInfo(uint8_t *textbuf, uint8_t *framebuf, xuint w, yuint h
             std::string req_str = "Requests: ";
             uint32_t requests[0x65];
             requests[0x64] = 0;
-            GetTownRequests(requests, sizeof requests - 1, town->build_requests);
+            GetTownRequests(requests, 0x64, town->build_requests);
             for (int i = 0; requests[i] != 0; )
             {
                 int line_len = draw_ai_named ? 4 : 8;
