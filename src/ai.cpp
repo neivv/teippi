@@ -380,7 +380,7 @@ bool UpdateAttackTarget(Unit *unit, bool accept_if_sieged, bool accept_critters,
         target = unit->Ai_ChooseAirTarget();
     else
         target = unit->Ai_ChooseGroundTarget();
-    if (target)
+    if (target != nullptr)
     {
         if (must_reach && unit->IsUnreachable(target))
             target = nullptr;
@@ -389,7 +389,7 @@ bool UpdateAttackTarget(Unit *unit, bool accept_if_sieged, bool accept_critters,
         else if (!accept_critters && target->IsCritter())
             target = nullptr;
     }
-    if (!target)
+    if (target == nullptr)
     {
         if (unit->IsFlying())
             target = unit->Ai_ChooseGroundTarget();
@@ -407,11 +407,9 @@ bool UpdateAttackTarget(Unit *unit, bool accept_if_sieged, bool accept_critters,
     }
 
     Unit *previous_attack_target = nullptr;
-    if (orders_dat_use_weapon_targeting[unit->order])
-        previous_attack_target = unit->target;
-
-    if (previous_attack_target)
+    if (orders_dat_use_weapon_targeting[unit->order] && unit->target != nullptr)
     {
+        previous_attack_target = unit->target;
         if (must_reach && unit->IsUnreachable(previous_attack_target))
             previous_attack_target = nullptr;
         else if (!unit->CanAttackUnit(previous_attack_target, true))
@@ -422,7 +420,7 @@ bool UpdateAttackTarget(Unit *unit, bool accept_if_sieged, bool accept_critters,
     if (must_reach && unit->previous_attacker && unit->IsUnreachable(unit->previous_attacker))
         unit->previous_attacker = nullptr;
 
-    if (unit->previous_attacker && !unit->previous_attacker->IsDisabled())
+    if (unit->previous_attacker != nullptr && !unit->previous_attacker->IsDisabled())
     {
         if ((unit->previous_attacker->unit_id != Unit::Bunker) && (!unit->previous_attacker->target || unit->previous_attacker->target->player != unit->player))
             unit->previous_attacker = nullptr;
@@ -435,7 +433,7 @@ bool UpdateAttackTarget(Unit *unit, bool accept_if_sieged, bool accept_critters,
     Unit *new_target = unit->ChooseBetterTarget(target, previous_attack_target);
     new_target = unit->ChooseBetterTarget(unit->previous_attacker, new_target);
 
-    if (!new_target)
+    if (new_target == nullptr)
     {
         if (!IsNotChasing(unit))
             return false;
@@ -627,11 +625,12 @@ void ReactToHit_Main(HitUnit *own_base, Unit *attacker, bool main_target_reactio
     return;
 }
 
-Script::Script(uint32_t player_, uint32_t pos_, bool bwscript, Rect32 *area_) : pos(pos_), player(player_), flags(bwscript)
+Script::Script(uint32_t player_, uint32_t pos_, bool bwscript, Rect32 *area_) : pos(pos_), player(player_)
 {
+    flags = bwscript ? 0x1 : 0x0;
     list.Add(*bw::first_active_ai_script);
     wait = 0;
-    town = 0;
+    town = nullptr;
     if (area_)
     {
         memcpy(&area, area_, 0x10);
@@ -640,7 +639,7 @@ Script::Script(uint32_t player_, uint32_t pos_, bool bwscript, Rect32 *area_) : 
     }
     else
     {
-        memset(&area, 0, 0x18);
+        memset(&area, 0, 0x10);
         center[0] = 0;
         center[1] = 0;
     }

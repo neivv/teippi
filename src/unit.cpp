@@ -3366,18 +3366,18 @@ Unit *Unit::ValidateTarget(Unit *unit)
 
 Unit *Unit::ChooseBetterTarget(Unit *cmp, Unit *prev)
 {
-    if (!prev)
+    if (prev == nullptr)
         return cmp;
-    if (!cmp)
+    if (cmp == nullptr)
         return prev;
 
     //STATIC_PERF_CLOCK(Unit_ChooseBetterTarget);
 
     cmp = ValidateTarget(GetBetterTarget(cmp));
-    if (!cmp)
+    if (cmp == nullptr)
         return prev;
     prev = ValidateTarget(GetBetterTarget(prev));
-    if (!prev)
+    if (prev == nullptr)
         return cmp;
 
     bool prev_can_attack = prev->HasWayOfAttacking();

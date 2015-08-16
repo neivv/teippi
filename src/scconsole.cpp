@@ -758,7 +758,7 @@ static const char *RequestStr(int req)
         case 7:
             return "Addon";
         case 8:
-            return "Observer???";
+            return "Observer";
         default:
             return "Error";
     }
