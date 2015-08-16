@@ -62,6 +62,7 @@ static inline void UpdateRegionStr(int player, int n)
 {
     if (ai_region_enemy_strength_updates[n + player * 0x2000] & 0x1)
     {
+        ai_region_enemy_strength_updates[n + player * 0x2000] = 0;
         Region *region = bw::player_ai_regions[player] + n;
         region->enemy_air_strength = GetEnemyAirStrength(n, player);
         region->enemy_ground_strength = GetEnemyStrength(n, player, false);
