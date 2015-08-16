@@ -35,7 +35,7 @@ ScConsole::ScConsole()
     draw_locations = false;
     draw_crects = false;
     draw_ai_towns = false;
-    draw_orders = false;
+    draw_orders = DrawOrders::None;
     draw_ai_data = false;
     draw_ai_full = false;
     draw_ai_named = false;
@@ -979,15 +979,26 @@ void ScConsole::DrawResourceAreas(uint8_t *textbuf, uint8_t *framebuf, xuint w, 
 
 void ScConsole::DrawOrders(uint8_t *framebuf, xuint w, yuint h)
 {
-    if (!draw_orders || !IsInGame())
+    if (draw_orders == DrawOrders::None || !IsInGame())
         return;
 
     Common::Surface surface(framebuf, w, h);
     Point32 screen_pos(*bw::screen_x, *bw::screen_y);
-    for (Unit *unit : *bw::first_active_unit)
+    if (draw_orders == DrawOrders::All)
     {
-        if (unit->target)
-            surface.DrawLine(unit->target->sprite->position - screen_pos, unit->sprite->position - screen_pos, 0xa4);
+        for (Unit *unit : *bw::first_active_unit)
+        {
+            if (unit->target)
+                surface.DrawLine(unit->target->sprite->position - screen_pos, unit->sprite->position - screen_pos, 0xa4);
+        }
+    }
+    else if (draw_orders == DrawOrders::Selected)
+    {
+        for (Unit *unit : client_select)
+        {
+            if (unit->target)
+                surface.DrawLine(unit->target->sprite->position - screen_pos, unit->sprite->position - screen_pos, 0xa4);
+        }
     }
 }
 
@@ -1175,9 +1186,10 @@ bool ScConsole::Show(const CmdArgs &args)
     std::string what(args[1]);
     if (what == "nothing")
     {
-        draw_locations = draw_paths = draw_crects = draw_orders = draw_coords = draw_info =
+        draw_locations = draw_paths = draw_crects = draw_coords = draw_info =
             draw_range = draw_region_borders = draw_region_data = draw_ai_data = draw_ai_towns =
             show_fps = show_frame = draw_bullets = draw_resource_areas = false;
+        draw_orders = DrawOrders::None;
     }
     else if (what == "fps")
         show_fps = !show_fps;
@@ -1189,8 +1201,6 @@ bool ScConsole::Show(const CmdArgs &args)
         draw_paths = !draw_paths;
     else if (what == "collision")
         draw_crects = !draw_crects;
-    else if (what == "orders")
-        draw_orders = !draw_orders;
     else if (what == "coords")
         draw_coords = !draw_coords;
     else if (what == "info")
@@ -1205,6 +1215,23 @@ bool ScConsole::Show(const CmdArgs &args)
     {
         draw_region_borders = !draw_region_borders;
         draw_region_data = draw_region_borders;
+    }
+    else if (what == "orders")
+    {
+        std::string more(args[2]);
+        if (more == "selected")
+            draw_orders = DrawOrders::Selected;
+        else if (more == "all")
+            draw_orders = DrawOrders::All;
+        else if (more != "")
+            return false;
+        else
+        {
+            if (draw_orders == DrawOrders::None)
+                draw_orders = DrawOrders::All;
+            else
+                draw_orders = DrawOrders::None;
+        }
     }
     else if (what == "ai")
     {
@@ -1242,7 +1269,6 @@ bool ScConsole::Show(const CmdArgs &args)
         }
         else
         {
-            Printf("show ai <full|simple|named|raw|player <player|all>>");
             return false;
         }
         if (more != "")
@@ -1253,8 +1279,9 @@ bool ScConsole::Show(const CmdArgs &args)
     }
     else
     {
-        // Space before info is for line wrapping
-        Printf("show <nothing|fps|frame|regions|locations|paths|collision|ai [..]|orders|coords|range| info|bullets|resareas>");
+        Printf("show <nothing|fps|frame|regions|locations|paths|collision|coords|range|info|bullets|resareas>");
+        Printf("show ai [full|simple|named|raw|(player <player|all>>)]");
+        Printf("show orders [all|selected]");
         return false;
     }
     return true;

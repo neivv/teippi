@@ -75,7 +75,11 @@ class ScConsole : public Common::GenericConsole
         bool draw_locations;
         bool draw_crects;
         bool draw_ai_towns;
-        bool draw_orders;
+        enum class DrawOrders {
+            None,
+            All,
+            Selected,
+        } draw_orders;
         bool draw_ai_data;
         bool draw_ai_full;
         bool draw_ai_named;
