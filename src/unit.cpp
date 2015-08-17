@@ -3428,21 +3428,24 @@ int Unit::Order_AttackMove_ReactToAttack(int order)
             return 0;
         order_state = 1;
     }
-    if (previous_attacker)
+    if (previous_attacker != nullptr && IsEnemy(previous_attacker) && !previous_attacker->sprite->IsHidden())
     {
-        if (ai)
+        if (~previous_attacker->flags & UnitStatus::Hallucination && previous_attacker->IsInvisibleTo(this))
         {
-            return Ai::UpdateAttackTarget(this, false, false, false) == false;
-        }
-        else
-        {
-            StopMoving(this);
-            PrependOrder(order, target, order_target_pos);
-            InsertOrder(this, units_dat_attack_unit_order[unit_id], previous_attacker, previous_attacker->sprite->position.AsDword(), None, order_queue_begin.AsRawPointer());
-            previous_attacker = nullptr;
-            DoNextQueuedOrderIfAble(this);
-            AllowSwitchingTarget();
-            return 0;
+            if (ai != nullptr)
+            {
+                return Ai::UpdateAttackTarget(this, false, false, false) == false;
+            }
+            else
+            {
+                StopMoving(this);
+                PrependOrder(order, target, order_target_pos);
+                InsertOrder(this, units_dat_attack_unit_order[unit_id], previous_attacker, previous_attacker->sprite->position.AsDword(), None, order_queue_begin.AsRawPointer());
+                previous_attacker = nullptr;
+                DoNextQueuedOrderIfAble(this);
+                AllowSwitchingTarget();
+                return 0;
+            }
         }
     }
     return 1;
