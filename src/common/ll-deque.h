@@ -64,7 +64,6 @@ class LocklessQueue
             tail_chunk.store(chunk, relaxed);
             C *first = chunk->entries;
             read_pos.store(first, relaxed);
-            write_pos = first;
             read_end.store(first, relaxed);
             free_chunks.store(0, relaxed);
         }
@@ -98,9 +97,9 @@ class LocklessQueue
                 // This may cause small stall, as other threads will fail in chunk->Contains() line above
                 // until this store is done
                 head_chunk.store(chunk->next, relaxed);
-                // ChunkSize is not hard limit, multiple threads passing this check simultaneously
-                // might increase free_chunks above ChunkSize
-                if (free_chunks.load(relaxed) < ChunkSize)
+                // FreeChunkLimit is not hard limit, multiple threads passing this check simultaneously
+                // might increase free_chunks above FreeChunkLimit
+                if (free_chunks.load(relaxed) < FreeChunkLimit)
                 {
                     free_chunks.fetch_add(1, relaxed);
                     Chunk *old_tail = tail_chunk.load(relaxed);
@@ -119,15 +118,14 @@ class LocklessQueue
         {
             const auto relaxed = std::memory_order_relaxed;
             const auto release = std::memory_order_release;
-            C *pos = write_pos;
+            C *pos = read_end.load(relaxed);
             Chunk *chunk = write_chunk;
             Chunk *allocated = nullptr;
             C *next = chunk->GetNextIfInSelf(pos);
             *pos = val;
             if (next)
             {
-                write_pos = next;
-                read_end.store(write_pos, release);
+                read_end.store(next, release);
                 return;
             }
             else
@@ -151,8 +149,7 @@ class LocklessQueue
                         next_chunk->used_entries.store(ChunkSize, release);
                     }
                     write_chunk = next_chunk;
-                    write_pos = next_chunk->entries;
-                    read_end.store(write_pos, release);
+                    read_end.store(next_chunk->entries, release);
                     break;
                 }
                 delete allocated; // If we couldn't use it after all
@@ -166,6 +163,7 @@ class LocklessQueue
             C *old_read_pos = read_pos.load(relaxed);
             C *end = read_end.load(relaxed);
             Chunk *chunk = head_chunk.load(relaxed);
+            // Move read_pos to read_end, and if a consumer managed to pop something before, try again
             while (true)
             {
                 if (chunk->Contains(old_read_pos))
@@ -176,11 +174,13 @@ class LocklessQueue
                 old_read_pos = read_pos.load(relaxed);
                 chunk = head_chunk.load(relaxed);
             }
+            // Now consumers cannot do anything anymore
             head_chunk.store(write_chunk, release);
             // Free chunks until we reach write_chunk
+            Chunk *original_head = chunk;
             while (chunk != write_chunk)
             {
-                if (chunk->Contains(old_read_pos))
+                if (chunk == original_head)
                 {
                     int used_entries = chunk->GetUsedEntriesFrom(old_read_pos);
                     do ; while (chunk->used_entries.load(relaxed) != used_entries);
@@ -189,7 +189,15 @@ class LocklessQueue
                 delete chunk;
                 chunk = next;
             }
-            chunk->used_entries.store(chunk->GetUsedEntriesFrom(end), release);
+            // If original_head == chunk (i.e write_chunk->Contains(old_read_pos)),
+            // the consumer threads may do their respective fetch_sub if they are in midst of pop_front,
+            // and we have to do ours as well. Otherwise just set used_entries to the correct value
+            // The fetch_sub cannot cause chunk to be freed, as it is also the write_chunk and such
+            // has at least one empty entry
+            if (original_head != chunk)
+                chunk->used_entries.store(chunk->GetUsedEntriesFrom(end), release);
+            else
+                chunk->used_entries.fetch_sub(end - old_read_pos, relaxed);
         }
 
         bool empty()
@@ -201,10 +209,9 @@ class LocklessQueue
     private:
         std::atomic<C *> read_pos;
         std::atomic<C *> read_end;
-        C *write_pos;
         std::atomic<Chunk *> head_chunk; // Contains read_pos
         Chunk *write_chunk;
-        std::atomic<Chunk *> tail_chunk; // May not contain write_pos, there may be empty chunks ready
+        std::atomic<Chunk *> tail_chunk; // May not contain read_end, there may be empty chunks ready
         std::atomic<int> free_chunks;
 };
 }

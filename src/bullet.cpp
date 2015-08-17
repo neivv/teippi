@@ -1594,6 +1594,8 @@ void BulletSystem::ProgressFrames(BulletFramesInput input)
 
     ProcessAiUpdateAttackTarget(IterateUat(move(update_attack_targets), move(more_uat)));
 
+    // Sync with child threads. It is possible (but very unlikely) for a child be still busy,
+    // if this thread did not want to wait for its result and did the search itself.
     threads->ClearAll();
     pbf_memory.ClearAll();
     threads->ForEachThread([](ScThreadVars *vars) { vars->unit_search_pool.ClearAll(); });
