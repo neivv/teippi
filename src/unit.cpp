@@ -3902,7 +3902,7 @@ void Unit::PickNewAttackTargetIfNeeded()
         else
         {
             picked_threat_level = GetThreatLevel(this, target);
-            if (picked_threat_level != 0)
+            if (picked_threat_level == 0)
             {
                 if (IsInAttackRange(target))
                     return; // Why?

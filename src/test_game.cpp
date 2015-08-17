@@ -1264,6 +1264,49 @@ struct Test_AiTarget : public GameTest {
     }
 };
 
+struct Test_AttackMove : public GameTest {
+    Unit *unit;
+    Unit *enemy;
+    Unit *enemy2;
+    Unit *target;
+    void Init() override {
+        SetEnemy(0, 1);
+        SetEnemy(1, 0);
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                unit = CreateUnitForTestAt(Unit::Guardian, 0, Point(100, 100));
+                enemy = CreateUnitForTestAt(Unit::HunterKiller, 1, Point(400, 100));
+                enemy2 = CreateUnitForTestAt(Unit::HunterKiller, 1, Point(400, 100));
+                IssueOrderTargetingGround(unit, Order::AttackMove, 400, 100);
+                state++;
+            } break; case 1: {
+                SetHp(unit, 100 * 256);
+                SetHp(enemy, 100 * 256);
+                SetHp(enemy2, 100 * 256);
+                if (unit->target != nullptr) {
+                    target = unit->target;
+                    IssueOrderTargetingGround(target, Order::Move, 1000, 100);
+                    state++;
+                }
+            } break; case 2: {
+                if (target->order == Order::Move) {
+                    state++;
+                }
+            } break; case 3: {
+                SetHp(unit, 100 * 256);
+                SetHp(enemy, 100 * 256);
+                SetHp(enemy2, 100 * 256);
+                TestAssert(target->order == Order::Move);
+                if (unit->target != target && unit->target != nullptr) {
+                    Pass();
+                }
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -1294,6 +1337,7 @@ GameTests::GameTests()
     AddTest("Mind control", new Test_MindControl);
     AddTest("Pos search", new Test_PosSearch);
     AddTest("Ai targeting", new Test_AiTarget);
+    AddTest("Attack move", new Test_AttackMove);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)
