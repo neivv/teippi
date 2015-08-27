@@ -41,7 +41,7 @@ namespace bw
 void WindowCreatedPatch()
 {
     #ifdef CONSOLE
-    Common::console->HookWndProc(FindWindow("SWarClass", 0));
+    Common::console->HookWndProc(*bw::main_window_hwnd);
     #endif
 }
 

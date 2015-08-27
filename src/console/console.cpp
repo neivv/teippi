@@ -82,7 +82,7 @@ LRESULT CALLBACK ConsoleWndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
             break;
         }
     }
-    return (*OldWndProc)(hwnd, msg, wparam, lparam);
+    return CallWindowProcA(OldWndProc, hwnd, msg, wparam, lparam);
 }
 
 void Console::HookWndProc(void *hwnd)
