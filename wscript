@@ -161,7 +161,7 @@ def build(bld):
             'player.cpp', 'unitsearch.cpp', 'unitsearch_cache.cpp', 'scthread.cpp',
             'selection.cpp', 'sprite.cpp', 'strings.cpp', 'targeting.cpp', 'tech.cpp', 'text.cpp',
             'triggers.cpp', 'unit_ai.cpp', 'unit_movement.cpp', 'upgrade.cpp', 'x86.cpp', 'yms.cpp',
-            'replay.cpp', 'warn.cpp', 'building.cpp', 'console/assert.cpp', 'init.cpp']
+            'replay.cpp', 'warn.cpp', 'building.cpp', 'console/assert.cpp', 'init.cpp', 'bwlauncher.cpp']
     if console:
         src += ['scconsole.cpp', 'console/cmdargs.cpp', 'console/console.cpp',
                 'console/font.cpp', 'console/genericconsole.cpp']

@@ -55,6 +55,23 @@ BOOL WINAPI MPQDraftPluginInterface::GetModules(MPQDRAFTPLUGINMODULE* pluginmodu
     return TRUE;
 }
 
+BOOL WINAPI MPQDraftPluginInterface::TerminatePlugin()
+{
+	// Does not get ever called
+    return TRUE;
+}
+
+void MPQDraftPluginInterface::SetInstance(HINSTANCE hInst)
+{
+    hInstance = hInst;
+}
+
+extern "C" BOOL __stdcall GetMPQDraftPlugin(IMPQDraftPlugin **lppMPQDraftPlugin)
+{
+	*lppMPQDraftPlugin = &thePluginInterface;
+	return TRUE;
+}
+
 extern "C" void Initialize()
 {
     #ifdef DEBUG
@@ -85,36 +102,23 @@ extern "C" bool Metaplugin_Init()
     return true;
 }
 
-BOOL WINAPI MPQDraftPluginInterface::TerminatePlugin()
-{
-	// Does not get ever called
-    return TRUE;
-}
-
-void MPQDraftPluginInterface::SetInstance(HINSTANCE hInst)
-{
-    hInstance = hInst;
-}
+// Read from bwlauncher.cpp
+HINSTANCE self_instance = NULL;
 
 extern "C" BOOL APIENTRY DllMain(HINSTANCE hInstance, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
-	switch (ul_reason_for_call)
+    switch (ul_reason_for_call)
     {
-		case DLL_PROCESS_ATTACH:
-			DisableThreadLibraryCalls(hInstance);
-			thePluginInterface.SetInstance(hInstance);
-			break;
-		case DLL_THREAD_ATTACH:
-		case DLL_THREAD_DETACH:
-		    break;
-		case DLL_PROCESS_DETACH:
-			break;
-	}
-	return TRUE;
-}
-
-extern "C" BOOL __stdcall GetMPQDraftPlugin(IMPQDraftPlugin **lppMPQDraftPlugin)
-{
-	*lppMPQDraftPlugin = &thePluginInterface;
-	return TRUE;
+        case DLL_PROCESS_ATTACH:
+            self_instance = hInstance;
+            DisableThreadLibraryCalls(hInstance);
+            thePluginInterface.SetInstance(hInstance);
+            break;
+        case DLL_THREAD_ATTACH:
+        case DLL_THREAD_DETACH:
+            break;
+        case DLL_PROCESS_DETACH:
+        break;
+    }
+    return TRUE;
 }

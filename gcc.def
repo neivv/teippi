@@ -2,3 +2,7 @@ EXPORTS
 GetMPQDraftPlugin = GetMPQDraftPlugin@4
 Initialize = Initialize
 Metaplugin_Init = Metaplugin_Init
+ApplyPatchSuspended = ApplyPatchSuspended
+ApplyPatch = ApplyPatch
+GetPluginAPI = GetPluginAPI
+GetData = GetData
