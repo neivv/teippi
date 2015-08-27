@@ -222,7 +222,7 @@ static void Command_KeepAlive(uint8_t *data)
 static void Command_GameSpeed(uint8_t *data)
 {
     int speed = data[1];
-    if (!IsMultiplayer() || speed > 6)
+    if (!IsMultiplayer() && speed <= 6)
         *bw::game_speed = speed;
 }
 
