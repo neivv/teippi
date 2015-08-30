@@ -431,6 +431,9 @@
     <ClCompile Include="src\console\genericconsole.cpp">
       <Filter>Sources\console</Filter>
     </ClCompile>
+    <ClCompile Include="src\bwlauncher.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\func\genfuncs.py">

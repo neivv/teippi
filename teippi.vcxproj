@@ -101,6 +101,7 @@
     <ClCompile Include="src\building.cpp" />
     <ClCompile Include="src\bullet.cpp" />
     <ClCompile Include="src\bunker.cpp" />
+    <ClCompile Include="src\bwlauncher.cpp" />
     <ClCompile Include="src\commands.cpp" />
     <ClCompile Include="src\console\assert.cpp" />
     <ClCompile Include="src\console\cmdargs.cpp" />

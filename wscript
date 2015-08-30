@@ -4,7 +4,7 @@
 import os
 
 def options(opt):
-    opt.load('compiler_c compiler_cxx')
+    opt.load('compiler_cxx')
     opt.add_option('--debug', action='store_true', help='"Debug" build', dest='debug')
     opt.add_option('--nodebug', action='store_true', help='Release build (Default)', dest='nodebug')
     opt.add_option('--static', action='store_true', help='Enable static linkage (Default)', dest='static')
@@ -19,18 +19,11 @@ def options(opt):
     opt.add_option('--forced-seed', action='store', help='Force sc use always same rng seed', dest='forced_seed')
 
 def configure(conf):
-    import waflib.Tools.compiler_c as compiler_c
     import waflib.Tools.compiler_cxx as compiler_cxx
     import waflib.Errors
 
     conf.env.MSVC_TARGETS = 'x86'
-    # Custom compiler preference based on c++14 support
-    if conf.options.check_c_compiler is None:
-        conf.options.check_c_compiler = 'clang gcc msvc'
-    if conf.options.check_cxx_compiler is None:
-        conf.options.check_cxx_compiler = 'clang++ g++ msvc'
 
-    compiler_c.configure(conf)
     compiler_cxx.configure(conf)
 
     if conf.options.console:
@@ -108,6 +101,7 @@ def build(bld):
         except_cxxflags += ['/EHsc']
         noexcept_defines += ['_HAS_EXCEPTIONS=0']
         cxxflags += ['/wd4624'] # Silence a seemingly incorrect warning in game.cpp
+        cxxflags += ['/Zi']
 
     if debug:
         defines += ['DEBUG']
@@ -174,9 +168,9 @@ def build(bld):
 
     includes += [bld.bldnode.find_dir('src')]
     if msvc:
-        bld(rule = 'python ${SRC} ${TGT} --msvc', source = ['src/func/genfuncs.py', 'src/func/nuottei.txt'], target = 'src/funcs.autogen')
+        bld(rule = 'py -3 ${SRC} ${TGT} --msvc', source = ['src/func/genfuncs.py', 'src/func/nuottei.txt'], target = 'src/funcs.autogen')
     else:
-        bld(rule = 'python ${SRC} ${TGT}', source = ['src/func/genfuncs.py', 'src/func/nuottei.txt'], target = 'src/funcs.autogen')
+        bld(rule = 'py -3 ${SRC} ${TGT}', source = ['src/func/genfuncs.py', 'src/func/nuottei.txt'], target = 'src/funcs.autogen')
 
     if msvc:
         def_file = ['msvc.def'] # Why doesn't msvc allow @4 prefix on stdcall ???
