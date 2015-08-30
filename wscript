@@ -101,7 +101,7 @@ def build(bld):
         except_cxxflags += ['/EHsc']
         noexcept_defines += ['_HAS_EXCEPTIONS=0']
         cxxflags += ['/wd4624'] # Silence a seemingly incorrect warning in game.cpp
-        cxxflags += ['/Zi']
+        cxxflags += ['/Zi', '/FS']
 
     if debug:
         defines += ['DEBUG']
