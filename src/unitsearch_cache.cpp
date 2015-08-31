@@ -10,9 +10,6 @@
 #include "limits.h"
 
 #include <algorithm>
-#ifdef _MSC_VER
-#include <intrin.h> // For __lzcnt
-#endif
 
 #include "unitsearch_cache.hpp"
 
@@ -132,15 +129,19 @@ UnitSearchRegionCache::Entry UnitSearchRegionCache::FinishEntry(Unit **arr, uint
     return Entry(raw, Limits::Players);
 }
 
+template <typename T>
+unsigned Log2(T value)
+{
+    unsigned result = 0;
+    while (value >>= 1) ++result;
+    return result;
+}
+
 void UnitSearchAreaCache::SetSize(xuint x, yuint y)
 {
     x = (x - 1) / AreaSize + 1;
     y = (y - 1) / AreaSize + 1;
-#ifdef __GNUC__
-    width_shift = (sizeof(x) * 8) - __builtin_clz(x - 1); // Clp2
-#else
-    width_shift = (sizeof(x) * 8) - __lzcnt(x - 1); // Clp2
-#endif
+    width_shift = Log2(x - 1) + 1;
     x = 1 << width_shift;
     cache_size = x * y;
     cache.resize(cache_size);

@@ -1,3 +1,4 @@
+#ifdef CONSOLE
 #include "scconsole.h"
 
 #include "offsets.h"
@@ -1304,3 +1305,4 @@ void PatchConsole()
     AddDrawHook(&DrawHook, 500);
     AddDrawHook(&DrawPathingInfo, 450);
 }
+#endif

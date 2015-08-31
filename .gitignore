@@ -1,5 +1,6 @@
 *.bat
 Release/*
+Debug/*
 build/*
 .lock-*
 waf*/*

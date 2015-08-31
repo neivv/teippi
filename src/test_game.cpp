@@ -1,3 +1,4 @@
+#ifdef DEBUG
 #include "test_game.h"
 
 #include "unit.h"
@@ -1430,3 +1431,5 @@ void GameTests::NextFrame()
             INT3();
     }
 }
+
+#endif
