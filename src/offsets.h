@@ -664,6 +664,9 @@ namespace bw
 
     const Offset AddDamageOverlay = 0x004993C0;
 
+    // Some kind of league thing, size 0xc00?
+    const offset<char> validation_replay_path = 0x00628668;
+
     namespace dat
     {
         const offset<uint32_t> units_dat_flags = 0x00664080;

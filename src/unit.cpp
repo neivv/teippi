@@ -155,6 +155,19 @@ void Unit::DeleteAll()
     next_id = 0;
     for (auto i = 0; i < UNIT_ID_LOOKUP_SIZE; i++)
         id_lookup[i] = nullptr;
+
+    // Some ums maps like using extended players which can have
+    // issues if these are not cleared - especially with the group 3.
+    // Bw works as these will always point to the unit array, which is
+    // readable/writable, but here they may point to deallocated memory
+    // from previous game.
+    for (int i = 0; i < Limits::Selection; i++)
+    {
+        bw::client_selection_group[i] = nullptr;
+        bw::client_selection_group2[i] = nullptr;
+        bw::client_selection_group3[i] = nullptr;
+        memset(bw::validation_replay_path.v(), 0, 0xc00);
+    }
 }
 
 void Unit::DeletePath()
