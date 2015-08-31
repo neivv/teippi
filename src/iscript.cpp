@@ -381,28 +381,49 @@ bool Image::IscriptCmd(const Iscript::Command &cmd, IscriptContext *ctx, Rng *rn
         case Turn1CWise:
         {
             Flingy *entity = ctx->unit != nullptr ? (Flingy *)ctx->unit : (Flingy *)ctx->bullet;
-            int direction = 1;
-            if (cmd.opcode == TurnCcWise)
-                direction = 0 - cmd.val;
-            else if (cmd.opcode == TurnCWise)
-                direction = cmd.val;
-            SetDirection(entity, entity->facing_direction + direction * 8);
+            if (entity == nullptr)
+            {
+                Warning("Iscript for image %x uses turn opcode without parent object", image_id);
+            }
+            else
+            {
+                int direction = 1;
+                if (cmd.opcode == TurnCcWise)
+                    direction = 0 - cmd.val;
+                else if (cmd.opcode == TurnCWise)
+                    direction = cmd.val;
+                SetDirection(entity, entity->facing_direction + direction * 8);
+            }
         }
         break;
         case SetFlDirect:
         {
             Flingy *entity = ctx->unit != nullptr ? (Flingy *)ctx->unit : (Flingy *)ctx->bullet;
-            SetDirection(entity, cmd.val * 8);
+            if (entity == nullptr)
+            {
+                Warning("Iscript for image %x uses setfldirect without parent object", image_id);
+            }
+            else
+            {
+                SetDirection(entity, cmd.val * 8);
+            }
         }
         break;
         case TurnRand:
         {
             Flingy *entity = ctx->unit != nullptr ? (Flingy *)ctx->unit : (Flingy *)ctx->bullet;
-            int num = rng->Rand(4);
-            if (num == 0)
-                SetDirection(entity, entity->facing_direction - cmd.val * 8);
+            if (entity == nullptr)
+            {
+                Warning("Iscript for image %x uses turnrand without parent object", image_id);
+            }
             else
-                SetDirection(entity, entity->facing_direction + cmd.val * 8);
+            {
+                int num = rng->Rand(4);
+                if (num == 0)
+                    SetDirection(entity, entity->facing_direction - cmd.val * 8);
+                else
+                    SetDirection(entity, entity->facing_direction + cmd.val * 8);
+            }
         }
         break;
         case SetSpawnFrame:
@@ -412,10 +433,17 @@ bool Image::IscriptCmd(const Iscript::Command &cmd, IscriptContext *ctx, Rng *rn
         case OrderDone:
         {
             Unit *entity = ctx->unit != nullptr ? ctx->unit : (Unit *)ctx->bullet;
-            if (cmd.opcode == SigOrder)
-                entity->order_signal |= cmd.val;
+            if (entity == nullptr)
+            {
+                Warning("Iscript for image %x uses sigorder/orderdone without parent object", image_id);
+            }
             else
-                entity->order_signal &= ~cmd.val;
+            {
+                if (cmd.opcode == SigOrder)
+                    entity->order_signal |= cmd.val;
+                else
+                    entity->order_signal &= ~cmd.val;
+            }
         }
         break;
         case AttackWith:
