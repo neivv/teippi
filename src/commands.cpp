@@ -14,6 +14,7 @@
 #include "save.h"
 #include "log.h"
 #include "sync.h"
+#include "warn.h"
 
 #pragma pack(push, 1)
 struct MapDl
@@ -312,6 +313,7 @@ static void Command_Chat(uint8_t *buf, bool replay_unk)
     PrintText((char *)buf + 2, replay_unk, buf[1]);
 }
 
+/// Returns -1 for invalid data
 int CommandLength(uint8_t *data, int max_length)
 {
     switch (data[0])
@@ -323,7 +325,7 @@ int CommandLength(uint8_t *data, int max_length)
         case commands::Restart: return 1;
         case commands::Select: case commands::SelectionAdd: case commands::SelectionRemove:
             if (max_length < 6)
-                return INT_MAX;
+                return -1;
             return SelectCommandLength(data);
         case commands::Build: return 8;
         case commands::TargetedOrder: return 11;
@@ -398,8 +400,12 @@ void __stdcall ProcessCommands(int data_length, int replay_process)
         uint8_t command = *data;
         int length = CommandLength(data, data_length);
         data_length -= length;
-        if (data_length < 0)
+        if (data_length < 0 || length <= 0)
+        {
+            const char *name = bw::players[*bw::select_command_user].name;
+            Warning("Player %d (%s) sent an invalid command", *bw::select_command_user, name);
             return;
+        }
         if (IsReplay() && !replay_process && IsReplayCommand(command))
         {
             continue;
@@ -474,8 +480,15 @@ static void ProcessPlayerLobbyCommands(int player, uint8_t *data, int data_len)
     {
         int length = CommandLength(data, data_len);
         data_len -= length;
-        if (data_len < 0)
+        if (data_len < 0 || length <= 0)
+        {
+            const char *name = "???";
+            int player_index = NetPlayerToGame(player);
+            if (player_index != -1)
+                name = bw::players[player_index].name;
+            Warning("Player %d (%s) sent an invalid command", player, name);
             return;
+        }
         switch (data[0])
         {
             case commands::StartGame:
