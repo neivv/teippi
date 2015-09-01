@@ -24,15 +24,13 @@ std::vector<drawhook> draw_hooks;
 
 #include "console/windows_wrap.h"
 
-typedef int (__stdcall SDrawLockSurface_Type)(int surface_id, Rect32 *a2, uint8_t **surface, int *width, int unused);
-typedef int (__stdcall SDrawUnlockSurface_Type)(int surface_id, uint8_t *surface, int a3, int a4);
-static SDrawLockSurface_Type *SDrawLockSurface_Orig;
-static SDrawUnlockSurface_Type *SDrawUnlockSurface_Orig;
-
 uint8_t fake_screenbuf[resolution::screen_width * resolution::screen_height];
 
-// Koska sc ei redraw muualta kuin mistä on pakko, tähän copy sc:n screenbuf, mihin piirretään joka kerta custom muutokset
-// (Jos piirtäs suoraan sc:n screenbuf, pitäs mark dirty jne)
+// As sc only draws the parts of screen marked dirty,
+// this adds an additional buffer to which has the original
+// image without any of the draw hook additions.
+// So the draw hooks do not have to mark areas dirty or
+// anything, but it also makes drawing a lot slower.
 uint8_t fake_screenbuf_2[resolution::screen_width * resolution::screen_height];
 
 
@@ -102,11 +100,11 @@ void DrawScreen()
     }
     uint8_t *surface;
     int width;
-    if ((*SDrawLockSurface_Orig)(0, 0, &surface, &width, 0))
+    if ((*bw::SDrawLockSurface_Import)(0, 0, &surface, &width, 0))
     {
         for (unsigned int  i = 0; i < resolution::screen_height; i++)
             memcpy(surface + i * width, fake_screenbuf_2 + i * resolution::screen_width, resolution::screen_width);
-        (*SDrawUnlockSurface_Orig)(0, surface, 0, 0);
+        (*bw::SDrawUnlockSurface_Import)(0, surface, 0, 0);
     }
 //    if (!*bw::no_draw && *bw::draw_layers[0].draw)
 //    {
@@ -136,7 +134,7 @@ int __stdcall SDrawLockSurface_Hook(int surface_id, Rect32 *a2, uint8_t **surfac
     }
     else
     {
-        return (*SDrawLockSurface_Orig)(surface_id, a2, surface, width, unused);
+        return (*bw::SDrawLockSurface_Import)(surface_id, a2, surface, width, unused);
     }
 }
 
@@ -145,7 +143,7 @@ int __stdcall SDrawUnlockSurface_Hook(int surface_id, uint8_t *surface, int a3, 
     if (surface == fake_screenbuf)
         return 1;
 
-    return (*SDrawUnlockSurface_Orig)(surface_id, surface, a3, a4);
+    return (*bw::SDrawUnlockSurface_Import)(surface_id, surface, a3, a4);
 }
 
 void GenerateFog()
@@ -241,10 +239,6 @@ void AddDrawHook(void (*func)(uint8_t *, xuint, yuint), int priority)
 
 void PatchDraw(Common::PatchContext *patch)
 {
-    HMODULE storm_dll = GetModuleHandle("storm.dll");
-    SDrawLockSurface_Orig = (SDrawLockSurface_Type *)GetProcAddress(storm_dll, (const char *)350);
-    SDrawUnlockSurface_Orig = (SDrawUnlockSurface_Type *)GetProcAddress(storm_dll, (const char *)356);
-
     patch->JumpHook(bw::SDrawLockSurface, SDrawLockSurface_Hook);
     patch->JumpHook(bw::SDrawUnlockSurface, SDrawUnlockSurface_Hook);
 

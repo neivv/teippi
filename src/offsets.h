@@ -535,6 +535,8 @@ namespace bw
     const Offset ReplayCommands_Nothing = 0x004CDCE0;
     const Offset SDrawLockSurface = 0x00411E4E;
     const Offset SDrawUnlockSurface = 0x00411E48;
+    const offset<int (__stdcall *) (int, Rect32 *, uint8_t **, int *, int)> SDrawLockSurface_Import = 0x004FE5A0;
+    const offset<int (__stdcall *) (int, uint8_t *, int, int)> SDrawUnlockSurface_Import = 0x004FE59C;
     const Offset ProcessCommands = 0x004865D0;
 
     const offset<ReplayData *> replay_data = 0x00596BBC;
