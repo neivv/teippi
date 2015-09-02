@@ -1,5 +1,6 @@
 #include "draw.h"
 
+#include "offsets_hooks.h"
 #include "offsets.h"
 #include "patchmanager.h"
 #include "memory.h"

@@ -52,7 +52,7 @@ bool ShouldClearOrderTargeting()
     return true;
 }
 
-extern "C" void __stdcall SendChangeSelectionCommand(int count, Unit **units)
+void SendChangeSelectionCommand(int count, Unit **units)
 {
     int removed_count = 0, added_count = 0;
     uint32_t rem_stack[20], add_stack[20];
@@ -294,7 +294,7 @@ void Command_Select(uint8_t *buf)
     }
 }
 
-void __fastcall CenterOnSelectionGroup(uint8_t group_id)
+void CenterOnSelectionGroup(uint8_t group_id)
 {
     int self = *bw::local_unique_player_id;
     Unit **group = &bw::selection_hotkeys[Limits::Selection * (0x12 * self + group_id)];
@@ -324,9 +324,8 @@ void __fastcall CenterOnSelectionGroup(uint8_t group_id)
 
 static uint32_t hotkey_select_tick = 0;
 static char prev_group = -1;
-void __stdcall SelectHotkeyGroup(uint8_t group_id)
+void SelectHotkeyGroup(uint8_t group_id)
 {
-    group_id &= 0xff; // Gcc assumes it to be zero-extented
     int self = *bw::local_unique_player_id;
     Unit **group = &bw::selection_hotkeys[Limits::Selection * (0x12 * self + group_id)];
     Unit *valid_units[Limits::Selection];
@@ -381,9 +380,8 @@ void __stdcall SelectHotkeyGroup(uint8_t group_id)
     prev_group = group_id;
 }
 
-void __stdcall Command_LoadHotkeyGroup(int group_id)
+void Command_LoadHotkeyGroup(int group_id)
 {
-    group_id &= 0xff;
     int player = *bw::select_command_user;
     Unit **group = &bw::selection_hotkeys[Limits::Selection * (0x12 * player + group_id)];
     Unit **selection = &bw::selection_groups[player * Limits::Selection];
@@ -421,10 +419,8 @@ void __stdcall Command_LoadHotkeyGroup(int group_id)
         AddToRecentSelections();
 }
 
-extern "C" void __stdcall Command_SaveHotkeyGroup(int new_group)
+void Command_SaveHotkeyGroup(int group_id, bool shift_add)
 {
-    REG_EAX(int, group_id);
-    group_id &= 0xff;
     Unit **group = &bw::selection_hotkeys[Limits::Selection * (0x12 * *bw::select_command_user + group_id)];
     Unit **selection = &bw::selection_groups[Limits::Selection * *bw::select_command_user];
     unsigned int count = 0;
@@ -432,7 +428,7 @@ extern "C" void __stdcall Command_SaveHotkeyGroup(int new_group)
     if (selection[0] && selection[0]->player != *bw::select_command_user)
         return; // sc actually checks that later but this works?
 
-    if (!new_group) // it is shift add
+    if (shift_add)
     {
         Unit *unit = group[0];
         if (unit)
@@ -453,7 +449,7 @@ extern "C" void __stdcall Command_SaveHotkeyGroup(int new_group)
     for (unsigned i = 0; i < Limits::Selection && selection[i] != nullptr; i++)
     {
         Unit *unit = selection[i];
-        if (!new_group)
+        if (shift_add)
         {
             bool skip = false;
             for (unsigned j = 0; j < Limits::Selection && group[j] != nullptr; j++)
@@ -506,16 +502,6 @@ int SelectCommandLength(uint8_t *data)
     return *(uint32_t *)(data + 2) * 4 + 6;
 }
 
-void PatchSelection(Common::PatchContext *patch)
-{
-    patch->JumpHook(bw::SendChangeSelectionCommand, SendChangeSelectionCommand);
-    patch->JumpHook(bw::CenterOnSelectionGroup, CenterOnSelectionGroup);
-    patch->JumpHook(bw::SelectHotkeyGroup, SelectHotkeyGroup);
-    patch->JumpHook(bw::Command_SaveHotkeyGroup, Command_SaveHotkeyGroup);
-    patch->JumpHook(bw::Command_SelectHotkeyGroup, Command_LoadHotkeyGroup);
-    patch->JumpHook(bw::TrySelectRecentHotkeyGroup, TrySelectRecentHotkeyGroup);
-}
-
 static void RemoveFromHotkeyGroup(Unit *unit, int player, int group_id)
 {
     Unit **group = &bw::selection_hotkeys[Limits::Selection * (0x12 * player + group_id)];
@@ -539,9 +525,8 @@ void RemoveFromHotkeyGroups(Unit *unit)
     }
 }
 
-void StatusScreenButton()
+void StatusScreenButton(Control *clicked_button)
 {
-    REG_EDX(Control *, clicked_button);
     std::vector<Unit *> units;
     units.reserve(12);
     if (*bw::shift_down)

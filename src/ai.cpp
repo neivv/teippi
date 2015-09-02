@@ -1,5 +1,6 @@
 #include "ai.h"
 
+#include "offsets_hooks.h"
 #include "offsets.h"
 #include "unit.h"
 #include "order.h"

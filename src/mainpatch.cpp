@@ -3,9 +3,10 @@
 #include "console/windows_wrap.h"
 #include <time.h>
 
+#include "offsets_hooks.h"
+#include "offsets.h"
 #include "patchmanager.h"
 #include "memory.h"
-#include "offsets.h"
 #include "commands.h"
 #include "unit.h"
 #include "text.h"
@@ -170,9 +171,6 @@ void InitialPatch()
     patch.Patch(bw::WinMain, (void *)&WinMainPatch, 0, PATCH_HOOKBEFORE | PATCH_CALLHOOK);
     patch.Patch(bw::WindowCreated, (void *)&WindowCreatedPatch, 0, PATCH_HOOKBEFORE | PATCH_SAFECALLHOOK);
 
-    PatchProcessCommands(&patch);
-    PatchSelection(&patch);
-    PatchTargeting(&patch);
     RemoveLimits(&patch);
     patch.Patch(bw::RngSeedPatch, 0, 9, PATCH_NOP);
     patch.Patch(bw::RngSeedPatch, (void *)&GetRngSeed, 0, PATCH_CALLHOOK);

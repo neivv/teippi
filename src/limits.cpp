@@ -1,10 +1,11 @@
 #include "limits.h"
 
+#include "offsets_hooks.h"
+#include "offsets.h"
 #include "patchmanager.h"
 #include "image.h"
 #include "sprite.h"
 #include "unit.h"
-#include "offsets.h"
 #include "bullet.h"
 #include "triggers.h"
 #include "dialog.h"
@@ -737,6 +738,62 @@ static void __stdcall AddDamageOverlay_Hook(Sprite *sprite)
     sprite->AddDamageOverlay();
 }
 
+static void __stdcall DoTargetedCommand_Hook(int x, int y, Unit *target, int fow_unit)
+{
+    x &= 0xffff;
+    y &= 0xffff;
+    fow_unit &= 0xffff;
+    DoTargetedCommand(x, y, target, fow_unit);
+}
+
+static void __stdcall SendChangeSelectionCommand_Hook(int count, Unit **units)
+{
+    SendChangeSelectionCommand(count, units);
+}
+
+static void __stdcall CenterOnSelectionGroup_Hook()
+{
+    REG_ECX(int, group);
+    group &= 0xff;
+    CenterOnSelectionGroup(group);
+}
+
+static void __stdcall SelectHotkeyGroup_Hook(int group)
+{
+    group &= 0xff;
+    SelectHotkeyGroup(group);
+}
+
+static void __stdcall Command_SaveHotkeyGroup_Hook(int create_new)
+{
+    REG_EAX(int, group_id);
+    group_id &= 0xff;
+    Command_SaveHotkeyGroup(group_id, create_new == 0);
+}
+
+static void __stdcall Command_SelectHotkeyGroup_Hook(int group)
+{
+    group &= 0xff;
+    Command_LoadHotkeyGroup(group);
+}
+
+static int __stdcall TrySelectRecentHotkeyGroup_Hook(Unit *unit)
+{
+    return TrySelectRecentHotkeyGroup(unit);
+}
+
+static void StatusScreenButton_Hook()
+{
+    REG_EDX(Control *, clicked_button);
+    StatusScreenButton(clicked_button);
+}
+
+static void __stdcall ProcessCommands_Hook(int length, int replay_process)
+{
+    REG_EAX(uint8_t *, data);
+    ProcessCommands(data, length, replay_process);
+}
+
 void RemoveLimits(Common::PatchContext *patch)
 {
     Ai::RemoveLimits(patch);
@@ -876,7 +933,7 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->JumpHook(bw::CreateSimplePath, CreateSimplePath_Hook);
     patch->Patch(bw::InitPathArray, (void *)0xc3, 1, PATCH_REPLACE_DWORD);
 
-    patch->JumpHook(bw::StatusScreenButton, StatusScreenButton);
+    patch->JumpHook(bw::StatusScreenButton, StatusScreenButton_Hook);
 
     patch->JumpHook(bw::LoadReplayMapDirEntry, LoadReplayMapDirEntry);
     patch->JumpHook(bw::LoadReplayData, LoadReplayData_Hook);
@@ -921,4 +978,20 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->JumpHook(bw::MakeDetected, MakeDetected_Hook);
 
     patch->JumpHook(bw::AddDamageOverlay, AddDamageOverlay_Hook);
+
+    patch->JumpHook(bw::GameScreenRClickEvent, GameScreenRClickEvent);
+    patch->JumpHook(bw::GameScreenLClickEvent_Targeting, GameScreenLClickEvent_Targeting);
+    patch->JumpHook(bw::DoTargetedCommand, DoTargetedCommand_Hook);
+
+    patch->JumpHook(bw::SendChangeSelectionCommand, SendChangeSelectionCommand_Hook);
+    patch->JumpHook(bw::CenterOnSelectionGroup, CenterOnSelectionGroup_Hook);
+    patch->JumpHook(bw::SelectHotkeyGroup, SelectHotkeyGroup_Hook);
+    patch->JumpHook(bw::Command_SaveHotkeyGroup, Command_SaveHotkeyGroup_Hook);
+    patch->JumpHook(bw::Command_SelectHotkeyGroup, Command_SelectHotkeyGroup_Hook);
+    patch->JumpHook(bw::TrySelectRecentHotkeyGroup, TrySelectRecentHotkeyGroup_Hook);
+
+    patch->JumpHook(bw::ProcessCommands, ProcessCommands_Hook);
+
+    char retn = 0xc3;
+    patch->Patch(bw::ReplayCommands_Nothing, &retn, 1, PATCH_REPLACE);
 }

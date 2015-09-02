@@ -472,7 +472,7 @@ void LoneSpriteSystem::ProgressFrames()
 void DrawMinimapUnits()
 {
     Surface *previous_canvas = *bw::current_canvas;
-    *bw::current_canvas = (Surface *)bw::minimap_canvas.v();
+    *bw::current_canvas = &*bw::minimap_surface;
     *bw::minimap_dot_count = 0;
     *bw::minimap_dot_checksum = 0;
     int local_player = *bw::local_player_id;

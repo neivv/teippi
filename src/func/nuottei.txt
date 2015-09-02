@@ -22,7 +22,6 @@
 0049EFA0 = int GiveUnit(), ecx Unit *, arg 1 int, arg 2 int
 
 00467340 = void SetHp(), eax Unit *, ecx int
-004653D0 = int GetHangarCapacity(), ecx Unit *
 004765B0 = int GetMissChance(), ecx const Unit *attacker, eax const Unit *target
 00476210 = int GetBaseMissChance(), eax const Unit *
 00431730 = int GetCurrentStrength(), ecx const Unit *, eax int

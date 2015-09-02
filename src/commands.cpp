@@ -392,9 +392,8 @@ int CommandLength(uint8_t *data, int max_length)
     }
 }
 
-void __stdcall ProcessCommands(int data_length, int replay_process)
+void ProcessCommands(uint8_t *data, int data_length, int replay_process)
 {
-    REG_EAX(uint8_t *, data);
     while (data_length > 0)
     {
         uint8_t command = *data;
@@ -554,14 +553,6 @@ void ProcessLobbyCommands()
             ProcessPlayerLobbyCommands(player, bw::player_turns[player], bw::player_turn_size[player]);
     }
     *bw::lobby_command_user = 8;
-}
-
-void PatchProcessCommands(Common::PatchContext *patch)
-{
-    patch->JumpHook(bw::ProcessCommands, ProcessCommands);
-
-    char retn = 0xc3;
-    patch->Patch(bw::ReplayCommands_Nothing, &retn, 1, PATCH_REPLACE);
 }
 
 void ResetSelectionIter()

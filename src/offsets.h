@@ -4,7 +4,6 @@
 #include "types.h"
 #include <type_traits>
 
-#define Offset offset<uint32_t>
 template <typename type>
 class offset
 {
@@ -28,23 +27,9 @@ class offset
 
 namespace bw
 {
-    const Offset WinMain = 0x004E0AE0;
-    const Offset WindowCreated = 0x004E0842;
-    const Offset WndProc = 0x004D1D70;
     const offset<void *> main_window_hwnd = 0x0051BFB0;
     const offset<uint32_t> window_active = 0x0051BFA8;
 
-    const Offset Sc_fwrite = 0x00411931;
-    const Offset Sc_fread = 0x004117DE;
-    const Offset Sc_fseek = 0x00411B6E;
-    const Offset Sc_fclose = 0x0040D483;
-    const Offset Sc_fopen = 0x0040D424;
-    const Offset Sc_fgetc = 0x00411BB7;
-    const Offset Sc_setvbuf = 0x00411619;
-
-    const Offset Wm_KeyDownHook = 0x004D2197;
-    const Offset Wm_CharHook = 0x004D1F5B;
-    const Offset DrawScreen = 0x0041E280;
     const offset<Surface> game_screen = 0x006CEFF0;
     const offset<uint32_t> needs_full_redraw = 0x006D5E1C;
     const offset<DrawLayer> draw_layers = 0x006CEF50;
@@ -53,8 +38,6 @@ namespace bw
     const offset<uint8_t> no_draw = 0x0051A0E9;
     const offset<uint8_t> screen_redraw_tiles = 0x006CEFF8;
 
-    const Offset ProgressObjects = 0x004D94B0;
-    const Offset GameFunc = 0x004D9670;
     const offset<uint32_t> unk_frame_state = 0x006D11F0;
     const offset<uint32_t> frames_progressed_at_once = 0x005124D4;
     const offset<uint8_t> draw_sprites = 0x006D11EC;
@@ -72,28 +55,12 @@ namespace bw
     const offset<Ai::Region *> player_ai_regions = 0x0069A604;
     const offset<Ai::PlayerData> player_ai = 0x0068FEE8;
 
-    const Offset KillSingleUnit = 0x00475710;
-    const Offset Unit_Die = 0x004A0740;
-    const Offset Order_Die = 0x00479480;
-
     const offset<uint8_t *> aiscript_bin = 0x0068C104;
     const offset<uint8_t *> bwscript_bin = 0x0068C108;
-    const Offset AiScript_InvalidOpcode = 0x0045C9B3;
-    const Offset AiScript_Stop = 0x00403380;
-    const Offset AiScript_MoveDt = 0x004A2380;
-    const Offset AddMilitaryAi = 0x0043DA20;
 
     const offset<Ai::DataList<Ai::Script>> first_active_ai_script = 0x0068C0FC;
     const offset<Ai::DataList<Ai::Town>> active_ai_towns = 0x006AA050;
 
-    const Offset CreateAiScript = 0x0045AEF0;
-    const Offset RemoveAiTownGasReferences = 0x00432760;
-    const Offset DeleteGuardAi = 0x00403030;
-    const Offset DeleteWorkerAi = 0x00404470;
-    const Offset DeleteBuildingAi = 0x00404500;
-    const Offset DeleteMilitaryAi = 0x004371D0;
-    const Offset CreateAiTown = 0x00432020;
-    const Offset AddUnitAi = 0x00433DD0;
     const offset<Ai::ResourceAreaArray> resource_areas = 0x00692688;
 
     const offset<uint32_t> elapsed_seconds = 0x0058D6F8;
@@ -109,17 +76,6 @@ namespace bw
     const offset<uint32_t> sync_hash = 0x0063FD28;
 
     const offset<Ai::DataList<Ai::GuardAi>> first_guard_ai = 0x00685108;
-    const Offset PreCreateGuardAi = 0x00462670;
-    const Offset AddGuardAiToUnit = 0x00462960;
-    const Offset RemoveUnitAi = 0x004A1E50;
-    const Offset Ai_UpdateGuardNeeds = 0x004630C0;
-    const Offset Ai_DeleteGuardNeeds = 0x004626E0;
-    const Offset Ai_SuicideMission = 0x0043E050;
-    const Offset Ai_SetFinishedUnitAi = 0x00435DB0;
-    const Offset Ai_AddToRegionMilitary = 0x0043E2E0;
-    const Offset DoesNeedGuardAi = 0x00462880;
-    const Offset ForceGuardAiRefresh = 0x00462760;
-    const Offset AiSpendReq_TrainUnit = 0x00435F10;
 
     const offset<uint8_t> is_ingame = 0x006556E0;
     const offset<uint8_t> is_bw = 0x0058F440;
@@ -141,17 +97,6 @@ namespace bw
     const offset<uint8_t> shift_down = 0x00596A28;
     const offset<uint8_t> ctrl_down = 0x00596A29;
     const offset<uint8_t> alt_down = 0x00596A2A;
-
-    const Offset CreateBunkerShootOverlay = 0x00477FD0;
-
-    const Offset CancelZergBuilding = 0x0045DA40;
-
-    const Offset StatusScreen_DrawKills = 0x00425DD0;
-    const Offset StatusScreenButton = 0x00458220;
-
-    const Offset DrawStatusScreen_LoadedUnits = 0x00424BA0;
-    const Offset TransportStatus_DoesNeedRedraw = 0x00424F10;
-    const Offset TransportStatus_UpdateDrawnValues = 0x00424FC0;
 
     const offset<uint8_t> redraw_transport_ui = 0x006CA9F0;
     const offset<int32_t> ui_transported_unit_hps = 0x006CA950;
@@ -175,10 +120,8 @@ namespace bw
     const offset<uint32_t> scenario_chk_STR_size = 0x005994D8;
 
     const offset<Surface *> current_canvas = 0x006CF4A8;
-    const Offset minimap_canvas = 0x0059C194;
     const offset<uint32_t> minimap_dot_count = 0x0059C2B8;
     const offset<uint32_t> minimap_dot_checksum = 0x0059C1A8;
-    const Offset DrawAllMinimapUnits = 0x004A4AC0;
     const offset<uint8_t> minimap_resource_color = 0x006CEB39;
     const offset<uint8_t> minimap_color_mode = 0x06D5BBE;
     const offset<uint8_t> player_minimap_color = 0x00581DD6;
@@ -203,32 +146,11 @@ namespace bw
 
     const offset<int (__fastcall *)(TriggerAction *)> trigger_actions = 0x00512800;
 
-    const Offset TriggerPortraitFinished = 0x0045E610;
-
     const offset<Location> locations = 0x0058DC60;
 
     const offset<uint32_t> trig_kill_unit_count = 0x005971E0;
     const offset<uint32_t> trig_remove_unit_active = 0x005971DC;
-    const Offset Trig_KillUnitGeneric = 0x004C7E20;
 
-    const Offset FindUnitInLocation_Check = 0x004C6F70;
-    const Offset ChangeInvincibility = 0x004C6B00;
-    const Offset TransportDeath = 0x0049FDD0;
-    const Offset CanLoadUnit = 0x004E6E00;
-    const Offset LoadUnit = 0x004E78E0;
-    const Offset UnloadUnit = 0x004E7F70;
-    const Offset SendUnloadCommand = 0x004BFDB0;
-    const Offset HasLoadedUnits = 0x004E7110;
-    const Offset GetFirstLoadedUnit = 0x004E6C90;
-    const Offset IsCarryingFlag = 0x004F3A80;
-    const Offset ForEachLoadedUnit = 0x004E6D00;
-    const Offset AddLoadedUnitsToCompletedUnitLbScore = 0x0045F870;
-    const Offset GetUsedSpace = 0x004E7170;
-
-    const Offset CmdBtnEvtHandlerSwitch = 0x004598E5;
-    const Offset CmdBtnActionHook = 0x00459912;
-
-    const Offset Action_HangarTrain = 0x00423390;
     const offset<Unit *> client_selection_group = 0x00597208;
     const offset<Unit *> client_selection_group2 = 0x0059724C;
     const offset<Unit *> client_selection_group3 = 0x006284B8;
@@ -244,13 +166,7 @@ namespace bw
     const offset<uint8_t> alliances = 0x0058D634;
     const offset<uint32_t> frame_counter = 0x0057EEBC;
 
-    const Offset SendChangeSelectionCommand = 0x004C0860;
     const offset<void *> SelectHotkeySwitch = 0x00484B64;
-    const Offset CenterOnSelectionGroup = 0x004967E0;
-    const Offset SelectHotkeyGroup = 0x00496B40;
-    const Offset TrySelectRecentHotkeyGroup = 0x00496D30;
-    const Offset Command_SaveHotkeyGroup = 0x004965D0;
-    const Offset Command_SelectHotkeyGroup = 0x00496940;
 
     const offset<uint8_t> is_targeting = 0x00641694;
     const offset<uint8_t> is_queuing_command = 0x00596A28;
@@ -273,8 +189,6 @@ namespace bw
     const offset<uint8_t> net_players_watched_briefing = 0x006556D8;
     const offset<uint32_t> player_objectives_string_id = 0x0058D6C4;
     const offset<uint8_t> briefing_state = 0x006554B0;
-    const Offset BriefingOk = 0x0046D090;
-    const Offset ProcessLobbyCommands = 0x00486530;
 
     const offset<uint8_t> force_button_refresh = 0x0068C1B0;
     const offset<uint8_t> force_portrait_refresh = 0x0068AC74;
@@ -284,28 +198,15 @@ namespace bw
 
     const offset<Dialog *> load_screen = 0x0057F0DC;
 
-    const Offset GameScreenRClickEvent = 0x004564E0;
-    const Offset GameScreenLClickEvent_Targeting = 0x004BD500;
-
-    const Offset SendRightClickCommand = 0x004C0380;
-    const Offset DoTargetedCommand = 0x0046F5B0;
-
     const offset<uint8_t> ground_order_id = 0x00641691;
     const offset<uint8_t> unit_order_id = 0x00641692;
     const offset<uint8_t> obscured_unit_order_id = 0x00641693;
-
-    const Offset CreateOrder = 0x0048C510;
-    const Offset DeleteOrder = 0x004742D0;
-    const Offset DeleteSpecificOrder = 0x00474400;
-    const Offset DoNextQueuedOrder = 0x00475000;
 
     const offset<x16u> map_width = 0x00628450;
     const offset<y16u> map_height = 0x006284B4;
     const offset<x16u> map_width_tiles = 0x0057F1D4;
     const offset<y16u> map_height_tiles = 0x0057F1D6;
     const offset<uint32_t *> map_tile_flags = 0x006D1260;
-
-    const Offset GetHangarCapacity = 0x004653D0;
 
     const offset<uint8_t> upgrade_level_sc = 0x0058D2B0;
     const offset<uint8_t> upgrade_level_bw = 0x0058F2FE;
@@ -316,26 +217,6 @@ namespace bw
 
     const offset<uint32_t> cheat_flags = 0x006D5A6C;
 
-    const Offset GetEmptyImage = 0x004D4E30;
-    const Offset DeleteImage = 0x004D4CE0;
-    const Offset IscriptEndRetn = 0x004D7BD2;
-    const Offset CreateSprite = 0x004990F0;
-    const Offset ProgressSpriteFrame = 0x00497920;
-    const Offset ProgressLoneSpriteDeleteHook = 0x0048805C;
-    const Offset DeleteSprite = 0x00497B40;
-    const Offset SpawnSprite = 0x004D7120;
-
-    const Offset InitSprites_JmpSrc = 0x00499940;
-    const Offset InitSprites_JmpDest = 0x00499A05;
-
-    const Offset AddMultipleOverlaySprites = 0x00499660;
-
-    const Offset GetEmptyUnitHook = 0x004A06F5;
-    const Offset GetEmptyUnitNop = 0x004A071B;
-    const Offset UnitLimitJump = 0x004A06CD;
-    const Offset InitUnitSystem = 0x0049F380;
-    const Offset InitSpriteSystem = 0x00499900;
-
     const offset<uint8_t> image_flags = 0x006CEFB5;
 
     const offset<ImgRenderFuncs> image_renderfuncs = 0x005125A0;
@@ -345,11 +226,6 @@ namespace bw
     const offset<Unit *> active_iscript_unit = 0x006D11FC;
     const offset<void *> active_iscript_flingy = 0x006D11F4;
     const offset<Bullet *> active_iscript_bullet = 0x006D11F8;
-
-    const Offset SetIscriptAnimation = 0x004D8470;
-
-    const Offset Order_AttackMove_ReactToAttack = 0x00478370;
-    const Offset Order_AttackMove_TryPickTarget = 0x00477820;
 
     const offset<RevListHead<Unit, 0x0>> first_active_unit = 0x00628430;
     const offset<RevListHead<Unit, 0x0>> first_hidden_unit = 0x006283EC;
@@ -370,9 +246,6 @@ namespace bw
     const offset<x16u> old_flingy_x = 0x0063FEC4;
     const offset<y16u> old_flingy_y = 0x0063FED0;
 
-    const Offset ProgressFlingyTurning = 0x00494FE0;
-    const Offset SetMovementDirectionToTarget = 0x00496140;
-
     const offset<uint8_t> new_flingy_flags = 0x0063FEC0;
     const offset<x32> new_exact_x = 0x0063FED8;
     const offset<y32> new_exact_y = 0x0063FF40;
@@ -386,39 +259,7 @@ namespace bw
     const offset<Unit *> last_revealer = 0x00628434;
     const offset<Unit *> last_dying_unit = 0x0059CC98;
 
-    const Offset SinglePlayerSpeed = 0x004D9A26;
-    const Offset GameEnd = 0x004EE8C0;
-
-    const Offset ZeroOldPosSearch = 0x0049F46B;
-    const Offset AddToPositionSearch = 0x0046A3A0;
-    const Offset FindUnitPosition = 0x00469B00;
-    const Offset unit_positions_x = 0x0066FF78;
-    const Offset unit_positions_y = 0x006769B8;
-    const Offset FindNearbyUnits = 0x00430190;
-    const Offset ClearPosSearchResults_Patch = 0x0046AC1E;
-    const Offset FindUnitsRect = 0x004308A0;
-    const Offset DoUnitsCollide = 0x00469B60;
-    const Offset CheckMovementCollision = 0x004304D0;
-    const Offset FindUnitBordersRect = 0x0042FF80;
-    const Offset ClearPositionSearch = 0x0042FEE0;
-    const Offset ChangeUnitPosition = 0x0046A000;
-    const Offset FindNearestUnit = 0x004E8320;
-    const Offset GetNearbyBlockingUnits = 0x00422160;
-    const Offset RemoveFromPosSearch = 0x0046A300;
-    const Offset GetDodgingDirection = 0x004F2A70;
-    const Offset DoesBlockArea = 0x0042E0E0;
-    const Offset FindUnitsPoint = 0x004300E0;
-    const Offset IsTileBlockedBy = 0x00473300;
-    const Offset DoesBuildingBlock = 0x00473410;
-
-    const Offset UnitToIndex = 0x0047B1D0;
-    const Offset IndexToUnit = 0x0047B210;
-    const Offset PathingUnitIndexPatch2 = 0x0046BFDC;
-
-    const Offset PathingInited = 0x0048433E;
-
     const offset<Unit *> dodge_unit_from_path = 0x006BEE88;
-
     const offset<Pathing::PathingSystem *> pathing = 0x006D5BFC;
 
     const offset<int32_t> position_search_units_count = 0x006BEE64;
@@ -426,10 +267,8 @@ namespace bw
     const offset<uint32_t> position_search_results_offsets = 0x006BEE70;
     const offset<x32> unit_max_width = 0x006BEE68;
     const offset<y32> unit_max_height = 0x006BB930;
+    const offset<uint8_t> unit_positions_x = 0x0066FF78;
 
-    const Offset MakeDrawnSpriteList_Call = 0x0041CA06;
-    const Offset PrepareDrawSprites = 0x00498CB0;
-    const Offset DrawSprites = 0x00498D40;
     const offset<uint8_t> units = 0x0059CCA8; // Repurposed
     const offset<x16u> screen_pos_x_tiles = 0x0057F1D0;
     const offset<y16u> screen_pos_y_tiles = 0x0057F1D2;
@@ -439,36 +278,19 @@ namespace bw
     const offset<ListHead<Sprite, 0x0>> horizontal_sprite_lines_rev = 0x00629288;
     const offset<Sprite *> first_active_lone_sprite = 0x00654874;
     const offset<Sprite *> first_active_fow_sprite = 0x00654868;
-
-    const Offset CreateLoneSprite = 0x00488210;
-    const Offset CreateFowSprite = 0x00488410;
-    const Offset InitLoneSprites = 0x00488550;
-    const Offset ProgressLoneSpriteFrames = 0x00488510;
-    const Offset DisableVisionSync = 0x0047CDE5;
-    const Offset FullRedraw = 0x004BD595;
-    const Offset SetSpriteDirection = 0x00401140;
-    const Offset FindBlockingFowResource = 0x00487B00;
+    const offset<Surface> minimap_surface = 0x0059C194;
 
     const offset<uint8_t> fog_variance_amount = 0x00657A9C;
     const offset<uint8_t *> fog_arr1 = 0x006D5C14;
     const offset<uint8_t *> fog_arr2 = 0x006D5C0C;
-    const Offset GenerateFog = 0x0047FC50;
 
     const offset<Sprite *> cursor_marker = 0x00652918;
     const offset<uint8_t> draw_cursor_marker = 0x00652920;
-    const Offset DrawCursorMarker = 0x00488180;
-    const Offset ShowRallyTarget = 0x00468670;
-    const Offset ShowCursorMarker = 0x00488660;
 
-    const Offset CreateBullet = 0x0048C260;
     const offset<ListHead<Bullet, 0x0>> last_active_bullet = 0x0064DEAC;
     const offset<RevListHead<Bullet, 0x0>> first_active_bullet = 0x0064DEC4;
 
     const offset<uint32_t> damage_multiplier = 0x00515B88;
-
-    const Offset DamageUnit = 0x004797B0;
-
-    const Offset RemoveUnitFromBulletTargets = 0x0048AAC0;
 
     const offset<uint32_t> all_units_count = 0x00582324;
     const offset<uint32_t> player_men_deaths = 0x00581E74;
@@ -499,10 +321,6 @@ namespace bw
 
     const offset<uint16_t> tileset = 0x0057F1DC;
 
-    const Offset ProgressBulletState = 0x0048BCF0;
-
-    const Offset Order_Recall_SpritePatch = 0x00494608;
-    const Offset RecallUnit_SpritePatch = 0x00494397;
     const offset<uint8_t> current_energy_req = 0x006563AA;
 
     const offset<Tbl *> stat_txt_tbl = 0x006D1238;
@@ -512,7 +330,6 @@ namespace bw
     const offset<uint32_t> rng_calls = 0x0051C610;
     const offset<uint32_t> all_rng_calls = 0x0051CA18;
     const offset<uint32_t> rng_seed = 0x051CA14;
-    const Offset RngSeedPatch = 0x004EF192;
 
     const offset<Player> players = 0x0057EEE0;
 
@@ -520,24 +337,11 @@ namespace bw
     const offset<uint8_t> vision_updated = 0x0051CE9C;
     const offset<uint32_t> visions = 0x0057F1EC;
 
-    const Offset ProgressUnstackMovement = 0x004F2160;
-    const Offset MovementState13 = 0x0046BCC0;
-    const Offset MovementState17 = 0x0046BC30;
-    const Offset MovementState20 = 0x0046B000;
-    const Offset MovementState1c = 0x0046BF60;
-    const Offset MovementState_Flyer = 0x0046B400;
     const offset<int32_t> circle = 0x00512D28;
 
-    const Offset ChangeMovementTarget = 0x004EB820;
-    const Offset ChangeMovementTargetToUnit = 0x004EB720;
-
     const offset<int (__fastcall *) (Unit *, int, int, Unit **target, int unit_id)> GetRightClickOrder = 0x005153FC;
-    const Offset ReplayCommands_Nothing = 0x004CDCE0;
-    const Offset SDrawLockSurface = 0x00411E4E;
-    const Offset SDrawUnlockSurface = 0x00411E48;
     const offset<int (__stdcall *) (int, Rect32 *, uint8_t **, int *, int)> SDrawLockSurface_Import = 0x004FE5A0;
     const offset<int (__stdcall *) (int, uint8_t *, int, int)> SDrawUnlockSurface_Import = 0x004FE59C;
-    const Offset ProcessCommands = 0x004865D0;
 
     const offset<ReplayData *> replay_data = 0x00596BBC;
 
@@ -551,7 +355,6 @@ namespace bw
     const offset<uint8_t> load_succeeded = 0x006D121C;
     const offset<uint32_t> unk_51CA1C = 0x0051CA1C;
     const offset<uint8_t> unk_57F1E3 = 0x0057F1E3;
-    const Offset LoadGameObjects = 0x004CFEF0;
 
     const offset<uint8_t> unk_6CEF8C = 0x006CEF8C;
     const offset<uint8_t *> pylon_power_mask = 0x006D5BD8;
@@ -577,51 +380,19 @@ namespace bw
     const offset<GrpSprite *> image_grps = 0x0051CED0;
     const offset<BlendPalette> blend_palettes = 0x005128F8;
 
-    const Offset AiScript_SwitchRescue = 0x004A2130;
-
-    const Offset AllocatePath = 0x004E42F0;
-    const Offset DeletePath = 0x004E42A0;
-    const Offset DeletePath2 = 0x0042F740;
-    const Offset CreateSimplePath = 0x0042F830;
-    const Offset InitPathArray = 0x0042F4F0;
-
-    const Offset LoadReplayMapDirEntry = 0x004A7C30;
-    const Offset LoadReplayData = 0x004DF570;
-    const Offset ExtractNextReplayFrame = 0x004CDFF0;
-
     const offset<uint32_t> scenario_chk_length = 0x006D0F20;
     const offset<void *> scenario_chk = 0x006D0F24;
     const offset<ReplayHeader> replay_header = 0x006D0F30;
     const offset<char *> campaign_map_names = 0x0059C080;
-
-    const Offset UpdateBuildingPlacementState = 0x00473FB0;
 
     const offset<Unit *> ai_building_placement_hack = 0x006D5DCC;
     const offset<uint8_t> building_placement_state = 0x006408F8;
 
     const offset<Unit *> last_bullet_spawner = 0x0064DEB0;
 
-    const Offset MedicRemove = 0x004477C0;
-    const Offset RemoveWorkerOrBuildingAi = 0x00434C90;
-
     const offset<uint32_t> player_build_minecost = 0x006CA51C;
     const offset<uint32_t> player_build_gascost = 0x006CA4EC;
     const offset<uint8_t> player_race = 0x0057F1E2;
-
-    const Offset LoadGrp = 0x0047ABE0;
-    const Offset IsDrawnPixel = 0x004D4DB0;
-    const Offset LoadBlendPalettes = 0x004BDE60;
-    const Offset FindUnitAtPoint = 0x0046F3A0;
-    const Offset DrawImage_Detected = 0x0040B596;
-    const Offset DrawImage_Detected_Flipped = 0x0040BCA3;
-    const Offset DrawUncloakedPart = 0x0040AFD5;
-    const Offset DrawUncloakedPart_Flipped = 0x0040B824;
-    const Offset DrawImage_Cloaked = 0x0040B155;
-    const Offset DrawImage_Cloaked_Flipped = 0x0040B9A9;
-    const Offset MaskWarpTexture = 0x0040AD04;
-    const Offset MaskWarpTexture_Flipped = 0x0040AE63;
-    const Offset DrawGrp = 0x0040ABBE;
-    const Offset DrawGrp_Flipped = 0x0040BF60;
 
     const offset<uint8_t> cloak_distortion = 0x005993D8;
     const offset<uint8_t> cloak_remap_palette = 0x005993D8;
@@ -647,24 +418,13 @@ namespace bw
     const offset<uint8_t> player_types_unused = 0x0066FF3C;
     const offset<Player> temp_players = 0x0059BDB0;
 
-    const Offset MakeJoinedGameCommand = 0x00471FB0;
-    const Offset Command_GameData = 0x00470840;
-
-    const Offset InitGame = 0x004EEE00;
-    const Offset InitStartingRacesAndTypes = 0x0049CC40;
-    const Offset FindClosestIndex = 0x004BDB30;
-
     const offset<uint32_t> current_palette_rgba = 0x005994E0;
+    const offset<void *> FindClosestIndex = 0x004BDB30; // Actually a function
     const offset<uint16_t> next_scmain_state = 0x0051CE90;
     const offset<uint8_t> error_happened = 0x006D5A10;
     const offset<uint32_t> nooks_and_crannies_error = 0x006D5BF8;
     const offset<char> chat_messages = 0x00640B60;
     const offset<uint8_t> starting_player_types = 0x0057F1B4;
-
-    const Offset NeutralizePlayer = 0x00489FC0;
-    const Offset MakeDetected = 0x00497ED0;
-
-    const Offset AddDamageOverlay = 0x004993C0;
 
     // Some kind of league thing, size 0xc00?
     const offset<char> validation_replay_path = 0x00628668;
@@ -778,8 +538,6 @@ using namespace bw::dat;
 using namespace bw::funcs;
 
 void SetStormOffsets(int diff);
-
-#undef Offset
 
 #endif // OFFSETS_HOO
 

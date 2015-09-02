@@ -5,7 +5,6 @@
 
 Unit *FindUnitAtPoint(int x, int y);
 
-void PatchTargeting(Common::PatchContext *patch);
 void SendRightClickCommand(Unit *unit, uint16_t x, uint16_t y, uint16_t unit_id, uint8_t queued);
 
 void ClearOrderTargetingIfNeeded();
@@ -15,6 +14,9 @@ void Command_RightClick(uint8_t *buf);
 void Command_Targeted(uint8_t *buf);
 
 void __fastcall GameScreenRClickEvent(Event *event);
+void __fastcall GameScreenLClickEvent_Targeting(Event *event);
+
+void DoTargetedCommand(int x, int y, Unit *target, int fow_unit);
 
 namespace RightClickAction
 {

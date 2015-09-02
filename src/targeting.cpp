@@ -589,18 +589,3 @@ void __fastcall GameScreenRClickEvent(Event *event)
     if (ShowRClickErrorIfNeeded(target) == 1)
         PlayYesSoundAnim(highest_ranked);
 }
-
-static void __stdcall DoTargetedCommand_Hook(int x, int y, Unit *target, int fow_unit)
-{
-    x &= 0xffff;
-    y &= 0xffff;
-    fow_unit &= 0xffff;
-    DoTargetedCommand(x, y, target, fow_unit);
-}
-
-void PatchTargeting(Common::PatchContext *patch)
-{
-    patch->JumpHook(bw::GameScreenRClickEvent, GameScreenRClickEvent);
-    patch->JumpHook(bw::GameScreenLClickEvent_Targeting, GameScreenLClickEvent_Targeting);
-    patch->JumpHook(bw::DoTargetedCommand, DoTargetedCommand_Hook);
-}

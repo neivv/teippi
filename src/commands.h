@@ -5,6 +5,7 @@
 void MakeJoinedGameCommand(int net_player_flags, int net_player_x4,
     int save_player_id, int save_player_unique_id, uint32_t save_hash, bool create);
 void Command_GameData(uint8_t *data, int net_player);
+void ProcessCommands(uint8_t *data, int data_length, int replay_process);
 
 namespace commands
 {
