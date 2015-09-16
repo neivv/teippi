@@ -329,6 +329,11 @@ int ProgressFrames()
         fps_count++;
     } while (IsInGame() && GetTickCount() - new_tick < render_wait);
 
+    // Bw has these rare cases when it should RefreshUi but doesn't
+    // (Taking scv away from building that is being constructed).
+    // But it calls RefreshUi at so many places the issue is rarely seen.
+    // So just RefreshUi every frame, it was done almost every frame anyways.
+    RefreshUi();
     return objects_progressed;
 }
 
