@@ -19,6 +19,7 @@
 #include "limits.h"
 #include "log.h"
 #include "unit_cache.h"
+#include "warn.h"
 
 using std::rotate;
 using std::max;
@@ -86,6 +87,18 @@ void MainUnitSearch::Add(Unit *unit)
     Validate();
     Rect16 box = unit->GetCollisionRect();
     Assert(box.left <= box.right && box.top <= box.bottom);
+    // Bw assumes that subunits do not get added to the unit search, and will
+    // not update unit search when subunits are moved around. This causes
+    // issues with Teippi's unit search implementation and most likely
+    // has no practical uses.
+    if (units_dat_flags[unit->unit_id] & UnitFlags::Subunit)
+    {
+        auto str = unit->DebugStr();
+        Warning("Unit %s is added to unit search, but is also marked as subunit (Building flag set?)",
+                str.c_str());
+        return;
+    }
+
     unsigned int old_size = Size();
     if (capacity == old_size)
     {
