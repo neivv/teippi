@@ -361,7 +361,10 @@ void GameEnd()
     Storm_LeaveGame(0x40000001);
     if (*bw::scmain_state == 4 && *bw::menu_screen_id == 0) // IsInMenu && ?
         ClearNetPlayerData();
-    memset(bw::unk_006CE2A0, 0, 0x80);
+    for (auto &color_cycle_data : bw::cycle_colors)
+    {
+        memset(&color_cycle_data, 0, sizeof(CycleStruct));
+    }
     if (!IsMultiplayer())
         Unpause(1);
     if (*bw::popup_dialog)
@@ -378,7 +381,7 @@ void GameEnd()
     if (*bw::has_effects_scode)
         FreeEffectsSCodeUnk();
     for(int i = 0; i < 3; i++)
-        bw::unk_6CEF8C[i * 0x14] = 0;
+        bw::unk_6CEF8C[i][0] = 0;
 
     FreeUnkSound(&*bw::unk_sound);
     for (int i = 0; i < 8; i++)

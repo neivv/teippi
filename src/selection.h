@@ -32,7 +32,7 @@ class Selection
         class iterator
         {
             public:
-                iterator(offset<Unit *> addr) : value((Unit **)addr.v()) {}
+                iterator(Unit **addr) : value(addr) {}
                 Unit *operator*() { return *value; }
                 bool operator==(const iterator &other) { return other.value == value; }
                 bool operator!=(const iterator &other) { return other.value != value; }
@@ -41,17 +41,17 @@ class Selection
         };
 
         iterator begin() { return iterator(addr); }
-        iterator end() { return iterator(addr + Count() * 4); }
+        iterator end() { return iterator(addr + Count()); }
         int Find(Unit *unit);
 
-        Selection(offset<Unit *> address) : addr(address) {}
+        Selection(array_offset<Unit *, 12> address) : addr((Unit **)address.raw_pointer()) {}
         Unit *Get(int pos);
         Unit *operator[](int pos) { return Get(pos); }
 
         int Count() { int count = Find(0); if (count < 0) return Limits::Selection; return count; }
 
     private:
-        offset<Unit *> addr;
+        Unit **addr;
 };
 
 extern Selection client_select;

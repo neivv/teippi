@@ -296,7 +296,7 @@ bool ScConsole::Death(const CmdArgs &args, bool print, bool clear)
                     if (player_mask & 1 << i)
                     {
                         char buf[16];
-                        snprintf(buf, sizeof buf, "%d ", bw::unit_deaths[unit_id * Limits::Players + i]);
+                        snprintf(buf, sizeof buf, "%d ", bw::unit_deaths[unit_id][i]);
                         msg += buf;
                     }
                 }
@@ -313,7 +313,7 @@ Unit *ScConsole::GetUnit()
 {
     if (!IsInGame())
         return 0;
-    return *bw::selection_rank_order;
+    return *bw::primary_selected;
 }
 
 bool ScConsole::SupplyMax(const CmdArgs &args)
@@ -683,8 +683,11 @@ void ScConsole::ConstructInfoLines()
     {
         char str[32];
         int unit_count = 0;
-        for (int i = 0; i < Unit::None * Limits::Players; i++)
-            unit_count += bw::all_units_count[i];
+        for (int i = 0; i < Unit::None; i++)
+        {
+            for (int j = 0; j < Limits::Players; j++)
+                unit_count += bw::all_units_count[i][j];
+        }
         snprintf(str, sizeof str, "Units: %d", unit_count);
         info_lines.emplace_back(str);
         snprintf(str, sizeof str, "Bullets: %d", bullet_system->BulletCount());
@@ -703,9 +706,9 @@ void ScConsole::DrawLocations(uint8_t *framebuf, xuint w, yuint h)
 
     Common::Surface surface(framebuf, w, h);
     Point32 screen_pos(*bw::screen_x, *bw::screen_y);
-    for (int i = 0; i < 0x100; i++)
+    for (Location &location : bw::locations)
     {
-        Rect32 &area = bw::locations[i].area;
+        Rect32 &area = location.area;
         surface.DrawLine(Point32(area.left, area.top) - screen_pos, Point32(area.right, area.top) - screen_pos, 0x7c,
                 [](int x, int y){ return !IsOutsideGameScreen(x, y); });
         surface.DrawLine(Point32(area.left, area.top) - screen_pos, Point32(area.left, area.bottom) - screen_pos, 0x7c,
@@ -1037,7 +1040,7 @@ void ScConsole::DrawDeaths(uint8_t *framebuf, xuint w, yuint h)
         {
             if (player_mask & 1)
             {
-                snprintf(buf, sizeof buf, " %d", bw::unit_deaths[unit_id * Limits::Players + player]);
+                snprintf(buf, sizeof buf, " %d", bw::unit_deaths[unit_id][player]);
                 msg += buf;
             }
             player++;

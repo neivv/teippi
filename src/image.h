@@ -28,6 +28,20 @@ void __fastcall DrawShadow_Flipped(int x, int y, GrpFrameHeader *frame_header, R
 #pragma pack(push)
 #pragma pack(1)
 
+struct CycleStruct
+{
+    uint8_t active;
+    uint8_t speed; // Frames between updates
+    uint8_t update_counter;
+    uint8_t palette_entry_low;
+    uint8_t adv_cycle_pos;
+    uint8_t palette_entry_high;
+    uint8_t _padding6[0x2];
+    void *advanced_cycle_data;
+    uint8_t adv_cycle_count;
+    uint8_t _paddingd[0x3];
+};
+
 class GrpFrameHeader
 {
     public:
@@ -240,6 +254,7 @@ class Image
 extern DummyListHead<Image, Image::offset_of_allocated> first_allocated_image;
 
 static_assert(Image::offset_of_allocated == offsetof(Image, allocated), "Image::allocated offset");
+static_assert(sizeof(CycleStruct) == 0x10, "sizeof(CycleStruct)");
 
 #pragma pack(pop)
 

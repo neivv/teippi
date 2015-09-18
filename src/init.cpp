@@ -198,7 +198,10 @@ void InitCursorMarker()
     SetVisibility(cursor_marker, 0);
 }
 
-static int GenerateStrength(int unit_id, uint8_t *weapon_arr)
+// No reason to require specific array_offset<type, size>
+// This is static function anyways
+template <class Indexable>
+static int GenerateStrength(int unit_id, Indexable weapon_arr)
 {
     switch (unit_id)
     {
@@ -229,15 +232,15 @@ static void GenerateStrengthTable()
 {
     for (int i = 0; i < Unit::None; i++)
     {
-        int ground_str = GenerateStrength(i, &*units_dat_ground_weapon);
-        int air_str = GenerateStrength(i, &*units_dat_air_weapon);
+        int ground_str = GenerateStrength(i, units_dat_ground_weapon);
+        int air_str = GenerateStrength(i, units_dat_air_weapon);
         // Dunno
         if (air_str == 1 && ground_str > air_str)
             air_str = 0;
-        bw::unit_strength[i] = air_str;
+        bw::unit_strength[0][i] = air_str;
         if (ground_str == 1 && air_str > ground_str)
             ground_str = 0;
-        bw::unit_strength[Unit::None + i] = ground_str;
+        bw::unit_strength[1][i] = ground_str;
     }
 }
 
@@ -249,7 +252,10 @@ static void InitBullets()
 
 int InitGame()
 {
-    memset(bw::chat_messages.v(), 0, 218 * 13);
+    for (auto msg : bw::chat_messages)
+    {
+        std::fill(msg.begin(), msg.end(), 0);
+    }
     InitText();
     InitAi();
     InitTerrain();
@@ -261,7 +267,7 @@ int InitGame()
     // Unlike most other init functions, this does not load any .dat files
     //InitOrders();
     InitColorCycling();
-    UpdateColorPaletteIndices(bw::current_palette_rgba.v(), bw::FindClosestIndex.v());
+    UpdateColorPaletteIndices(bw::current_palette_rgba.raw_pointer(), bw::FindClosestIndex.raw_pointer());
     InitTransparency();
     if (!*bw::loaded_save)
         InitScoreSupply(); // TODO: Breaks team game replays on single
@@ -298,7 +304,7 @@ int InitGame()
                 *bw::draw_sprites = 0;
                 *bw::next_scmain_state = 4;
                 if (!IsReplay())
-                    bw::replay_header[0].replay_end_frame = *bw::frame_count;
+                    bw::replay_header->replay_end_frame = *bw::frame_count;
             }
             CloseBnet();
         }

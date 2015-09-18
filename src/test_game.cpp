@@ -98,13 +98,13 @@ static void ResetVisions() {
 }
 
 static void SetEnemy(int player, int enemy) {
-    bw::alliances[player * Limits::Players + enemy] = 0;
+    bw::alliances[player][enemy] = 0;
 }
 
 static void AllyPlayers() {
     for (int i = 0; i < Limits::Players; i++) {
         for (int j = 0; j < Limits::Players; j++) {
-            bw::alliances[i * Limits::Players + j] = 1;
+            bw::alliances[i][j] = 1;
         }
     }
 }
@@ -1008,11 +1008,11 @@ struct Test_RightClick : public GameTest {
                 MoveScreen(296, 200);
                 int player = *bw::local_unique_player_id;
                 frames_remaining = 50;
-                bw::selection_groups[player * Limits::Selection] = building;
-                bw::selection_groups[player * Limits::Selection + 1] = nullptr;
+                bw::selection_groups[player][0] = building;
+                bw::selection_groups[player][1] = nullptr;
                 bw::client_selection_group2[0] = building;
                 bw::client_selection_group[0] = building;
-                bw::selection_rank_order[0] = building;
+                *bw::primary_selected = building;
                 for (int i = 1; i < Limits::Selection; i++) {
                     bw::client_selection_group2[i] = nullptr;
                     bw::client_selection_group[i] = nullptr;

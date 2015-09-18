@@ -15,16 +15,14 @@
 #include <string.h>
 #include "console/windows_wrap.h"
 
-using bw::selection_groups;
-
 Selection client_select(bw::client_selection_group);
 Selection client_select3(bw::client_selection_group3);
 Selection selections[8] =
 {
-    {selection_groups + Limits::Selection * 4 * 0}, {selection_groups + Limits::Selection * 4 * 1},
-    {selection_groups + Limits::Selection * 4 * 2},  {selection_groups + Limits::Selection * 4 * 3},
-    {selection_groups + Limits::Selection * 4 * 4}, {selection_groups + Limits::Selection * 4 * 5},
-    {selection_groups + Limits::Selection * 4 * 6}, {selection_groups + Limits::Selection * 4 * 7},
+    {bw::selection_groups[0]}, {bw::selection_groups[1]},
+    {bw::selection_groups[2]}, {bw::selection_groups[3]},
+    {bw::selection_groups[4]}, {bw::selection_groups[5]},
+    {bw::selection_groups[6]}, {bw::selection_groups[7]},
 };
 
 Unit *Selection::Get(int pos)
@@ -111,8 +109,11 @@ void SendChangeSelectionCommand(int count, Unit **units)
 
     }
 
-    memcpy(bw::client_selection_group2, units, count * sizeof(void *));
-    memset(bw::client_selection_group2 + count * sizeof(void *), 0, (Limits::Selection - count) * sizeof(void *));
+    std::fill(bw::client_selection_group2.begin(), bw::client_selection_group2.end(), nullptr);
+    for (int i = 0; i < count; i++)
+    {
+        bw::client_selection_group2[i] = units[i];
+    }
 
     if (removed_count + added_count < count)
     {
@@ -181,7 +182,7 @@ void Command_SelectionRemove(uint8_t *buf)
         int player = *bw::select_command_user;
         uint32_t count = *(uint32_t *)(buf + 2);
         uint32_t *unit_ids = (uint32_t *)(buf + 6);
-        Unit **selection = &bw::selection_groups[player * Limits::Selection];
+        auto selection = bw::selection_groups[player];
         int remaining = 0;
         for (uint32_t i = 0; i < count && selection[i]; i++)
         {
@@ -225,7 +226,7 @@ void Command_SelectionAdd(uint8_t *buf)
         int player = *bw::select_command_user;
         uint32_t count = *(uint32_t *)(buf + 2);
         uint32_t *unit_ids = (uint32_t *)(buf + 6);
-        Unit **selection = &bw::selection_groups[player * Limits::Selection];
+        auto selection = bw::selection_groups[player];
 
         unsigned int original_count = 0, selection_index;
         while (original_count < Limits::Selection && selection[original_count])
@@ -297,7 +298,7 @@ void Command_Select(uint8_t *buf)
 void CenterOnSelectionGroup(uint8_t group_id)
 {
     int self = *bw::local_unique_player_id;
-    Unit **group = &bw::selection_hotkeys[Limits::Selection * (0x12 * self + group_id)];
+    auto group = bw::selection_hotkeys[self][group_id];
     unsigned int count = 0;
     while (count < Limits::Selection && group[count] != nullptr)
         count++;
@@ -327,7 +328,7 @@ static char prev_group = -1;
 void SelectHotkeyGroup(uint8_t group_id)
 {
     int self = *bw::local_unique_player_id;
-    Unit **group = &bw::selection_hotkeys[Limits::Selection * (0x12 * self + group_id)];
+    auto group = bw::selection_hotkeys[self][group_id];
     Unit *valid_units[Limits::Selection];
     unsigned int count = 0;
     while (count < Limits::Selection && group[count] != nullptr)
@@ -370,8 +371,12 @@ void SelectHotkeyGroup(uint8_t group_id)
 
     uint8_t cmdbuf[3] = { commands::Hotkey, 1, group_id };
     SendCommand(cmdbuf, 3);
-    memcpy(bw::client_selection_group2, valid_units, valid_units_count * 4);
-    memset(bw::client_selection_group2 + valid_units_count * 4, 0, (Limits::Selection - valid_units_count) * 4);
+
+    std::fill(bw::client_selection_group2.begin(), bw::client_selection_group2.end(), nullptr);
+    for (int i = 0; i < valid_units_count; i++)
+    {
+        bw::client_selection_group2[i] = valid_units[i];
+    }
 
     uint32_t tick = GetTickCount();
     if (tick - hotkey_select_tick < 500 && group_id == prev_group)
@@ -383,8 +388,8 @@ void SelectHotkeyGroup(uint8_t group_id)
 void Command_LoadHotkeyGroup(int group_id)
 {
     int player = *bw::select_command_user;
-    Unit **group = &bw::selection_hotkeys[Limits::Selection * (0x12 * player + group_id)];
-    Unit **selection = &bw::selection_groups[player * Limits::Selection];
+    auto group = bw::selection_hotkeys[player][group_id];
+    auto selection = bw::selection_groups[player];
     unsigned int count = 0;
     while (count < Limits::Selection && group[count] != nullptr)
         count++;
@@ -414,15 +419,15 @@ void Command_LoadHotkeyGroup(int group_id)
     if (valid_units_count < Limits::Selection)
         selection[valid_units_count] = nullptr;
     if (group_id >= 10)
-        bw::recent_selection_times[player * 8 + (group_id - 10)] = *bw::frame_counter;
+        bw::recent_selection_times[player][(group_id - 10)] = *bw::frame_counter;
     else
         AddToRecentSelections();
 }
 
 void Command_SaveHotkeyGroup(int group_id, bool shift_add)
 {
-    Unit **group = &bw::selection_hotkeys[Limits::Selection * (0x12 * *bw::select_command_user + group_id)];
-    Unit **selection = &bw::selection_groups[Limits::Selection * *bw::select_command_user];
+    auto group = bw::selection_hotkeys[*bw::select_command_user][group_id];
+    auto selection = bw::selection_groups[*bw::select_command_user];
     unsigned int count = 0;
 
     if (selection[0] && selection[0]->player != *bw::select_command_user)
@@ -476,12 +481,12 @@ int TrySelectRecentHotkeyGroup(Unit *unit)
     int player = *bw::local_unique_player_id;
     for (int group_id = 10; group_id < 18; group_id++)
     {
-        Unit **group = &bw::selection_hotkeys[Limits::Selection * (0x12 * player + group_id)];
+        auto group = bw::selection_hotkeys[player][group_id];
         for (unsigned entry = 0; entry < Limits::Selection && group[entry] != nullptr; entry++)
         {
             if (group[entry] == unit)
             {
-                if (result_group == -1 || bw::recent_selection_times[player * 0x8 + group_id - 10] > bw::recent_selection_times[player * 0x8 + result_group - 10])
+                if (result_group == -1 || bw::recent_selection_times[player][group_id - 10] > bw::recent_selection_times[player][result_group - 10])
                 {
                     result_group = group_id;
                     break;
@@ -504,12 +509,12 @@ int SelectCommandLength(uint8_t *data)
 
 static void RemoveFromHotkeyGroup(Unit *unit, int player, int group_id)
 {
-    Unit **group = &bw::selection_hotkeys[Limits::Selection * (0x12 * player + group_id)];
+    auto group = bw::selection_hotkeys[player][group_id];
     for (unsigned i = 0; i < Limits::Selection; i++)
     {
         if (group[i] == unit)
         {
-            memmove(group + i, group + i + 1, (Limits::Selection - i - 1) * sizeof(void *));
+            std::move(group.begin() + i + 1, group.end(), group.begin() + i);
             group[Limits::Selection - 1] = nullptr;
             return;
         }

@@ -559,7 +559,6 @@ class Unit
         bool IsInvisibleTo(const Unit *unit) const;
         bool CanSeeUnit(const Unit *other) const;
         bool IsInAttackRange(const Unit *target) const;
-        bool IsInAttackRange_Fast(const Unit *target) const; // If CanAttackUnit has already been checked
         bool WillBeInAreaAtStop(const Unit *other, int range) const;
         int GetDistanceToUnit(const Unit *other) const;
 

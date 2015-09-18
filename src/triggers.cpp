@@ -48,8 +48,8 @@ void ProgressTriggers()
     if (trigger_check_rate == 0 || (*bw::trigger_cycle_count)-- == 0)
     {
         *bw::trigger_cycle_count = trigger_check_rate;
-        memset(bw::player_unk_650974, 0, 8);
         *bw::leaderboard_needs_update = 0;
+        std::fill(bw::player_victory_status.begin(), bw::player_victory_status.end(), 0);
         for (int player : ActivePlayers())
         {
             TriggerList *triggers = &bw::triggers[player];

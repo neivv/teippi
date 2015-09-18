@@ -145,8 +145,8 @@ int Unit::MovementState20()
             break;
     }
     new_direction = movement_direction = original_movement_direction;
-    speed[0] = bw::circle[original_movement_direction * 0x2 + 0] * original_speed / 256;
-    speed[1] = bw::circle[original_movement_direction * 0x2 + 1] * original_speed / 256;
+    speed[0] = bw::circle[original_movement_direction][0] * original_speed / 256;
+    speed[1] = bw::circle[original_movement_direction][1] * original_speed / 256;
     if (new_movement_state != 0x20)
     {
         movement_state = new_movement_state;

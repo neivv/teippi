@@ -41,7 +41,7 @@ using std::min;
 EnemyUnitCache *enemy_unit_cache;
 
 // Unused static var abuse D:
-Unit ** const Unit::id_lookup = (Unit **)bw::unit_positions_x.v();
+Unit ** const Unit::id_lookup = (Unit **)bw::unit_positions_x.raw_pointer();
 uint32_t Unit::next_id = 1;
 DummyListHead<Unit, Unit::offset_of_allocated> first_allocated_unit;
 DummyListHead<Unit, Unit::offset_of_allocated> first_movementstate_flyer;
@@ -166,8 +166,8 @@ void Unit::DeleteAll()
         bw::client_selection_group[i] = nullptr;
         bw::client_selection_group2[i] = nullptr;
         bw::client_selection_group3[i] = nullptr;
-        memset(bw::validation_replay_path.v(), 0, 0xc00);
     }
+    std::fill(bw::validation_replay_path.begin(), bw::validation_replay_path.end(), 0);
 }
 
 void Unit::DeletePath()
@@ -1152,7 +1152,11 @@ ProgressUnitResults Unit::ProgressFrames()
     UpdatePoweredStates();
 
     *bw::lurker_hits_pos = (*bw::lurker_hits_pos + 1) & 0x1f;
-    memset(bw::lurker_hits + *bw::lurker_hits_pos * 0x80, 0, 0x80);
+    for (auto pair_ref : bw::lurker_hits[*bw::lurker_hits_pos])
+    {
+        pair_ref[0] = nullptr;
+        pair_ref[1] = nullptr;
+    }
     *bw::lurker_hits_used = 0;
 
     for (Unit *next = *bw::first_revealer; next;)
@@ -1280,7 +1284,7 @@ int Unit::GetOriginalPlayer() const
 
 bool Unit::IsEnemy(const Unit *other) const
 {
-    return bw::alliances[other->GetOriginalPlayer() + player * Limits::Players] == 0;
+    return bw::alliances[player][other->GetOriginalPlayer()] == 0;
 }
 
 bool Unit::IsOnBurningHealth() const
@@ -1294,9 +1298,9 @@ int Unit::GetWeaponRange(bool ground) const
 {
     int range;
     if (ground)
-        range = weapons_dat_max_range[GetGroundWeapon()];
+        range = weapons_dat_max_range[GetTurret()->GetGroundWeapon()];
     else
-        range = weapons_dat_max_range[GetAirWeapon()];
+        range = weapons_dat_max_range[GetTurret()->GetAirWeapon()];
 
     if (flags & UnitStatus::InBuilding)
         range += 0x40;
@@ -1422,7 +1426,7 @@ bool Unit::CanCollideWith(const Unit *other) const
 {
     if (other->flags & UnitStatus::NoEnemyCollide)
     {
-        if (bw::alliances[player * Limits::Players + other->GetOriginalPlayer()] == 0)
+        if (IsEnemy(other))
             return false;
     }
     if (unit_id == Larva)
@@ -1738,7 +1742,7 @@ bool Unit::IsTriggerUnitId(int trig_unit_id) const
 
 int Unit::CalculateStrength(bool ground) const
 {
-    int multiplier = bw::unit_strength[unit_id + ground * 0xe4];
+    int multiplier = bw::unit_strength[ground ? 1 : 0][unit_id];
     if (unit_id == Unit::Bunker)
         multiplier *= GetUsedSpace();
     if ((~flags & UnitStatus::Hallucination) && (units_dat_flags[unit_id] & UnitFlags::Spellcaster))
@@ -2117,14 +2121,13 @@ bool Unit::IsBetterTarget(const Unit *other) const
     if ((hotkey_groups & 0x01000000) == 0)
     {
         hotkey_groups |= 0x01000000;
+        hotkey_groups &= ~(0x00400000 | 0x00800000);
         if (CanAttackUnit(previous_attacker))
+        {
             hotkey_groups |= 0x00400000;
-        else
-            hotkey_groups &= ~0x00400000;
-        if (IsInAttackRange_Fast(previous_attacker))
-            hotkey_groups |= 0x00800000;
-        else
-            hotkey_groups &= ~0x00800000;
+            if (IsInAttackRange(previous_attacker))
+                hotkey_groups |= 0x00800000;
+        }
     }
 
     if (~hotkey_groups & 0x00400000)
@@ -2676,7 +2679,7 @@ void Unit::Die(ProgressUnitResults *results)
 
     if ((*bw::is_placing_building) && !IsReplay() && (*bw::local_player_id == player))
     {
-        if (!CanPlaceBuilding(bw::selection_rank_order[0], *bw::placement_unit_id, *bw::placement_order))
+        if (!CanPlaceBuilding(*bw::primary_selected, *bw::placement_unit_id, *bw::placement_order))
         {
             MarkPlacementBoxAreaDirty();
             EndBuildingPlacement();
@@ -2945,9 +2948,7 @@ bool Unit::CanAttackUnit(const Unit *enemy, bool check_detection) const
         break;
     }
 
-    const Unit *turret = this;
-    if (HasSubunit())
-        turret = subunit;
+    const Unit *turret = GetTurret();
 
     if (enemy->IsFlying())
         return turret->GetAirWeapon() != Weapon::None;
@@ -3064,7 +3065,7 @@ Unit *Unit::ChooseTarget(UnitSearchRegionCache::Entry units, int region_id, bool
     Unit *ret = nullptr;
     for (auto i = 0; i < Limits::ActivePlayers; i++)
     {
-        if (bw::alliances[i + player * Limits::Players] != 0)
+        if (bw::alliances[player][i] != 0)
             continue;
         auto tp = ChooseTarget_Player(false, units.PlayerUnits(i), region_id, ground);
         if (get<int>(tp) > ret_strength)
@@ -3249,6 +3250,7 @@ bool Unit::WillBeInAreaAtStop(const Unit *other, int range) const
     return IsInArea(this, range, other);
 }
 
+// Returns always false for reavers/carriers, but that's how bw works
 bool Unit::IsInAttackRange(const Unit *other) const
 {
     //STATIC_PERF_CLOCK(Unit_IsInAttackRange);
@@ -3262,34 +3264,14 @@ bool Unit::IsInAttackRange(const Unit *other) const
         return false;
 
     int weapon;
-    if (other->IsFlying())
-        weapon = GetTurret()->GetAirWeapon();
-    else
-        weapon = GetTurret()->GetGroundWeapon();
-
-    if (weapon == Weapon::None)
-        return false;
-
-    int min_range = weapons_dat_min_range[weapon];
-    if (min_range && IsInArea(this, min_range, other))
-        return false;
-
-    return WillBeInAreaAtStop(other, GetWeaponRange(!other->IsFlying()));
-}
-
-// If CanAttackUnit has already been checked
-bool Unit::IsInAttackRange_Fast(const Unit *other) const
-{
-    //STATIC_PERF_CLOCK(Unit_IsInAttackRange_Fast);
-    const Unit *turret = this;
-    if (HasSubunit())
-        turret = subunit;
-
-    int weapon;
+    const Unit *turret = GetTurret();
     if (other->IsFlying())
         weapon = turret->GetAirWeapon();
     else
         weapon = turret->GetGroundWeapon();
+
+    if (weapon == Weapon::None)
+        return false;
 
     int min_range = weapons_dat_min_range[weapon];
     if (min_range && IsInArea(this, min_range, other))
@@ -4150,8 +4132,8 @@ void Unit::Order_DroneMutate(ProgressUnitResults *results)
     if (sprite->position == order_target_pos)
     {
         int building = build_queue[current_build_slot];
-        int x_tile = (sprite->position.x - (units_dat_placement_box[building * 2] / 2)) / 32;
-        int y_tile = (sprite->position.y - (units_dat_placement_box[building * 2 + 1] / 2)) / 32;
+        int x_tile = (sprite->position.x - (units_dat_placement_box[building][0] / 2)) / 32;
+        int y_tile = (sprite->position.y - (units_dat_placement_box[building][1] / 2)) / 32;
         if (UpdateBuildingPlacementState(this, player, x_tile, y_tile, building, 0, false, true, true) == 0)
         {
             bw::player_build_minecost[player] = units_dat_mine_cost[building];
@@ -4223,8 +4205,8 @@ void Unit::Order_HarvestMinerals(ProgressUnitResults *results)
                 if (!IsFacingMoveTarget((Flingy *)this))
                     return;
 
-                auto x = bw::circle[facing_direction * 2] * 20 / 256;
-                auto y = bw::circle[facing_direction * 2 + 1] * 20 / 256;
+                auto x = bw::circle[facing_direction][0] * 20 / 256;
+                auto y = bw::circle[facing_direction][1] * 20 / 256;
                 order_target_pos = sprite->position + Point(x, y); // To get iscript useweapon spawn the bullet properly
                 order_state = 4;
             } // Fall through
@@ -4996,8 +4978,8 @@ void Unit::Order_Land(ProgressUnitResults *results)
         {
             if (IsStandingStill() == 0)
                 return;
-            xuint x_tile = (order_target_pos.x - units_dat_placement_box[unit_id * 2] / 2) / 32;
-            yuint y_tile = (order_target_pos.y - units_dat_placement_box[unit_id * 2 + 1] / 2) / 32;
+            xuint x_tile = (order_target_pos.x - units_dat_placement_box[unit_id][0] / 2) / 32;
+            yuint y_tile = (order_target_pos.y - units_dat_placement_box[unit_id][1] / 2) / 32;
             int result = UpdateBuildingPlacementState(this, player, x_tile, y_tile, unit_id, 0, false, true, false);
             if (result != 0)
             {
@@ -5083,7 +5065,7 @@ void Unit::Order_Land(ProgressUnitResults *results)
             if (*bw::is_placing_building)
             {
                 EndAddonPlacement();
-                if (!CanPlaceBuilding(bw::selection_rank_order[0], *bw::placement_unit_id, *bw::placement_order))
+                if (!CanPlaceBuilding(*bw::primary_selected, *bw::placement_unit_id, *bw::placement_order))
                 {
                     MarkPlacementBoxAreaDirty();
                     EndBuildingPlacement();

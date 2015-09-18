@@ -9,8 +9,8 @@ using std::max;
 
 static int GetBuildingPlacementError(Unit *builder, int player, x32 x_tile, y32 y_tile, int unit_id, bool check_vision)
 {
-    int width = units_dat_placement_box[unit_id * 2] / 32;
-    int height = units_dat_placement_box[unit_id * 2 + 1] / 32;
+    int width = units_dat_placement_box[unit_id][0] / 32;
+    int height = units_dat_placement_box[unit_id][1] / 32;
     // If units.dat placement box < 32, bw allows to place the unit anywhere
     // However, ai code calls this function with past-limit x/y, so we need to check both
     // x_tile < width && x_tile + w_tiles <= width
@@ -47,8 +47,8 @@ int __stdcall UpdateBuildingPlacementState(Unit *builder, int player, x32 x_tile
         memset(placement_data, error, 0x30);
         return error;
     }
-    int width = units_dat_placement_box[unit_id * 2] / 32;
-    int height = units_dat_placement_box[unit_id * 2 + 1] / 32;
+    int width = units_dat_placement_box[unit_id][0] / 32;
+    int height = units_dat_placement_box[unit_id][1] / 32;
     unsigned int size_wh = height << 16 | width;
     int specific_state;
     if (builder && builder->unit_id == Unit::NydusCanal)

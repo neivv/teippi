@@ -80,7 +80,7 @@ class EnemyUnitCache
 
             for (int i = 0; i < Limits::ActivePlayers; i++)
             {
-                if (bw::alliances[i + own->player * Limits::Players] == 0)
+                if (bw::alliances[own->player][i] == 0)
                 {
                     bool stop = ForAttackableEnemiesInArea(area, own, i, ground, air, callback);
                     if (stop)

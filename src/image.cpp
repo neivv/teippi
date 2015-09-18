@@ -199,8 +199,7 @@ Image::ProgressFrame_C Image::ProgressFrame()
     ctx.unit = *bw::active_iscript_unit;
     ctx.bullet = *bw::active_iscript_bullet;
     ctx.iscript = *bw::iscript;
-    Rng *rng = (Rng *)bw::rng_seed.v();
-    return ProgressFrame(&ctx, rng, false, nullptr);
+    return ProgressFrame(&ctx, main_rng, false, nullptr);
 }
 
 void Image::UpdateFrameToDirection()
@@ -452,7 +451,7 @@ void __fastcall DrawBlended_Flipped(int x, int y, GrpFrameHeader *frame_header, 
 void __fastcall DrawNormal_NonFlipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *unused)
 {
     STATIC_PERF_CLOCK(Dn2);
-    uint8_t *remap = (uint8_t *)bw::default_grp_remap.v();
+    uint8_t *remap = (uint8_t *)bw::default_grp_remap.raw_pointer();
     Render_NonFlipped(x, y, frame_header, rect, [&](uint8_t *in, uint8_t *out) {
         *out = *in ? remap[*in] : *out;
     });
@@ -461,7 +460,7 @@ void __fastcall DrawNormal_NonFlipped(int x, int y, GrpFrameHeader *frame_header
 void __fastcall DrawNormal_Flipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *unused)
 {
     STATIC_PERF_CLOCK(Dn2);
-    uint8_t *remap = (uint8_t *)bw::default_grp_remap.v();
+    uint8_t *remap = (uint8_t *)bw::default_grp_remap.raw_pointer();
     Render_Flipped(x, y, frame_header, rect, [&](uint8_t *in, uint8_t *out) {
         *out = *in ? remap[*in] : *out;
     });
@@ -469,7 +468,7 @@ void __fastcall DrawNormal_Flipped(int x, int y, GrpFrameHeader *frame_header, R
 
 void __fastcall DrawUncloakedPart_NonFlipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, int state)
 {
-    uint8_t *remap = (uint8_t *)bw::default_grp_remap.v();
+    uint8_t *remap = (uint8_t *)bw::default_grp_remap.raw_pointer();
     Render_NonFlipped(x, y, frame_header, rect, [&](uint8_t *in, uint8_t *out) {
         uint8_t color = remap[*in];
         if (bw::cloak_distortion[color] > state)
@@ -479,7 +478,7 @@ void __fastcall DrawUncloakedPart_NonFlipped(int x, int y, GrpFrameHeader *frame
 
 void __fastcall DrawUncloakedPart_Flipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, int state)
 {
-    uint8_t *remap = (uint8_t *)bw::default_grp_remap.v();
+    uint8_t *remap = (uint8_t *)bw::default_grp_remap.raw_pointer();
     Render_Flipped(x, y, frame_header, rect, [&](uint8_t *in, uint8_t *out) {
         uint8_t color = remap[*in];
         if (bw::cloak_distortion[color] > state)
@@ -489,7 +488,7 @@ void __fastcall DrawUncloakedPart_Flipped(int x, int y, GrpFrameHeader *frame_he
 
 void __fastcall DrawCloaked_NonFlipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *unused)
 {
-    uint8_t *remap = (uint8_t *)bw::cloak_remap_palette.v();
+    uint8_t *remap = (uint8_t *)bw::cloak_remap_palette.raw_pointer();
     uint8_t *surface = (*bw::current_canvas)->image;
     uint8_t *surface_end = surface + resolution::screen_width * resolution::screen_height;
     Render_NonFlipped(x, y, frame_header, rect, [&](uint8_t *in, uint8_t *out) {
@@ -503,7 +502,7 @@ void __fastcall DrawCloaked_NonFlipped(int x, int y, GrpFrameHeader *frame_heade
 
 void __fastcall DrawCloaked_Flipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *unused)
 {
-    uint8_t *remap = (uint8_t *)bw::cloak_remap_palette.v();
+    uint8_t *remap = (uint8_t *)bw::cloak_remap_palette.raw_pointer();
     uint8_t *surface = (*bw::current_canvas)->image;
     uint8_t *surface_end = surface + resolution::screen_width * resolution::screen_height;
     Render_Flipped(x, y, frame_header, rect, [&](uint8_t *in, uint8_t *out) {
@@ -554,7 +553,7 @@ void __fastcall DrawShadow_NonFlipped(int x, int y, GrpFrameHeader *frame_header
 {
     STATIC_PERF_CLOCK(Ds1);
     // Dark.pcx
-    uint8_t *remap = (uint8_t *)bw::shadow_remap.v();
+    uint8_t *remap = (uint8_t *)bw::shadow_remap.raw_pointer();
     Render_NonFlipped(x, y, frame_header, rect, [&](uint8_t *in, uint8_t *out) {
         *out = *in ? remap[*out] : *out;
     });
@@ -563,7 +562,7 @@ void __fastcall DrawShadow_NonFlipped(int x, int y, GrpFrameHeader *frame_header
 void __fastcall DrawShadow_Flipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *unused)
 {
     STATIC_PERF_CLOCK(Ds2);
-    uint8_t *remap = (uint8_t *)bw::shadow_remap.v();
+    uint8_t *remap = (uint8_t *)bw::shadow_remap.raw_pointer();
     Render_Flipped(x, y, frame_header, rect, [&](uint8_t *in, uint8_t *out) {
         *out = *in ? remap[*out] : *out;
     });

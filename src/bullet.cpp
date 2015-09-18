@@ -127,7 +127,7 @@ void DamagedUnit::AddHit(uint32_t dmg, int weapon_id, int player, int direction,
             dmg = 0;
     }
 
-    dmg = (dmg * bw::damage_multiplier[dmg_type * 5 + armor_type]) / 256;
+    dmg = (dmg * bw::damage_multiplier[dmg_type][armor_type]) / 256;
     if (!damaged_shields && !dmg)
         dmg = 128;
 
@@ -306,8 +306,8 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
         {
             if (main_rng->Rand(0x100) < GetMissChance(parent, target))
             {
-                int x = sprite->position.x - bw::circle[direction * 2] * 30 / 256;
-                int y = sprite->position.y - bw::circle[direction * 2 + 1] * 30 / 256;
+                int x = sprite->position.x - bw::circle[direction][0] * 30 / 256;
+                int y = sprite->position.y - bw::circle[direction][1] * 30 / 256;
                 x = max(0, min((int)*bw::map_width - 1, (int)x));
                 y = max(0, min((int)*bw::map_height - 1, (int)y));
                 Move(Point(x, y));
@@ -329,8 +329,8 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
         case 0x9: // Go to max range
         {
             auto max_range = (weapons_dat_max_range[weapon_id] + 20) * 256;
-            auto x = bw::circle[facing_direction * 2] * max_range / 65536;
-            auto y = bw::circle[facing_direction * 2 + 1] * max_range / 65536;
+            auto x = bw::circle[facing_direction][0] * max_range / 65536;
+            auto y = bw::circle[facing_direction][1] * max_range / 65536;
             order_target_pos = spawner->sprite->position + Point(x, y);
             UpdateMoveTarget(order_target_pos);
         }
@@ -341,8 +341,8 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
             {
                 if (main_rng->Rand(0x100) < GetMissChance(parent, target))
                 {
-                    int x = order_target_pos.x - bw::circle[direction * 2] * 30 / 256;
-                    int y = order_target_pos.y - bw::circle[direction * 2 + 1] * 30 / 256;
+                    int x = order_target_pos.x - bw::circle[direction][0] * 30 / 256;
+                    int y = order_target_pos.y - bw::circle[direction][1] * 30 / 256;
                     x = max(0, min((int)*bw::map_width - 1, (int)x));
                     y = max(0, min((int)*bw::map_height - 1, (int)y));
                     order_target_pos = Point(x, y);
@@ -548,7 +548,7 @@ void IncrementKillScores(Unit *target, int attacking_player)
         if (group & 0x20)
             bw::player_factory_deaths[target_player]++;
     }
-    bw::unit_deaths[target_id * Limits::Players + target_player]++;
+    bw::unit_deaths[target_id][target_player]++;
     if (target_player != attacking_player && IsActivePlayer(attacking_player) && !IsPlayerUnk(attacking_player))
     {
         if ((~group & 0x8) && (target_id != Unit::Larva) && (target_id != Unit::Egg))
@@ -566,7 +566,7 @@ void IncrementKillScores(Unit *target, int attacking_player)
             bw::player_men_kills[attacking_player]++;
             bw::player_men_kill_score[attacking_player] += units_dat_kill_score[target_id];
         }
-        bw::unit_kills[target_id * Limits::Players + attacking_player]++;
+        bw::unit_kills[target_id][attacking_player]++;
     }
 }
 
@@ -1102,16 +1102,19 @@ void Bullet::Splash_Lurker(ProgressBulletBufs *bufs)
 
         if (parent)
         {
-            for (int i = 0; i < 0x200; i++)
+            for (auto hits : bw::lurker_hits)
             {
-                if (bw::lurker_hits[i * 2] == parent && bw::lurker_hits[i * 2 + 1] == unit)
+                for (auto hit : hits)
+                {
+                    if (hit[0] == parent && hit[1] == unit)
                     return false;
+                }
             }
             int pos = *bw::lurker_hits_used;
             if (pos != 0x10)
             {
-                bw::lurker_hits[*bw::lurker_hits_pos * 0x20 + pos * 2] = parent;
-                bw::lurker_hits[*bw::lurker_hits_pos * 0x20 + pos * 2 + 1] = unit;
+                bw::lurker_hits[*bw::lurker_hits_pos][pos][0] = parent;
+                bw::lurker_hits[*bw::lurker_hits_pos][pos][1] = unit;
                 *bw::lurker_hits_used = pos + 1;
             }
         }

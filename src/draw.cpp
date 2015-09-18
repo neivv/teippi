@@ -89,9 +89,9 @@ void DrawScreen()
     {
         // Äh..
         STransBind(*bw::game_screen_redraw_trans);
-        STrans437(*bw::trans_list, &*bw::screen_redraw_tiles, 3, &*bw::game_screen_redraw_trans);
+        STrans437(*bw::trans_list, &bw::screen_redraw_tiles[0], 3, &*bw::game_screen_redraw_trans);
         CopyGameScreenToFramebuf();
-        memset(bw::screen_redraw_tiles, 0, resolution::screen_width * resolution::screen_height / 16 / 16);
+        std::fill(bw::screen_redraw_tiles.begin(), bw::screen_redraw_tiles.end(), 0);
     }
 
     memcpy(fake_screenbuf_2, fake_screenbuf, resolution::screen_width * resolution::screen_height);

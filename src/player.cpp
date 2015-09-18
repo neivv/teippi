@@ -28,7 +28,7 @@ bool HasEnemies(int player)
     Assert(player >= 0 && player < Limits::Players);
     for (int i = 0; i < Limits::ActivePlayers; i++)
     {
-        if (bw::alliances[i + player * Limits::Players] == 0)
+        if (bw::alliances[player][i] == 0)
             return true;
     }
     return false;

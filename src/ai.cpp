@@ -37,6 +37,8 @@ Region *GetRegion(int player, int region)
 
 static void MedicRemove(Unit *medic)
 {
+    if (!IsActivePlayer(medic->player))
+        return;
     if (medic->unit_id == Unit::Medic && medic == bw::player_ai[medic->player].free_medic)
     {
         bw::player_ai[medic->player].free_medic = 0;
@@ -161,6 +163,12 @@ static bool AskForHelp_IsGood(Unit *unit, Unit *enemy, bool attacking_units)
         {
             if (!unit->CanAttackUnit(enemy, true))
                 return false;
+            // At least have to do this for carrier/reaver
+            if (enemy->IsFlying() && unit->GetAirWeapon() == Weapon::None )
+                return false;
+            if (!enemy->IsFlying() && unit->GetGroundWeapon() == Weapon::None )
+                return false;
+
             int dist = Distance(enemy->sprite->position, ((Ai::GuardAi *)unit->ai)->home);
             if (dist > unit->GetWeaponRange(!enemy->IsFlying()) + 0xc0)
                 return false;
@@ -1166,9 +1174,9 @@ void SetSuicideTarget(Unit *unit)
     }
     else
     {
-        for (int i = 0; i < 12; i++)
+        for (int i = 0; i < Limits::Players; i++)
         {
-            if (bw::alliances[unit->player * 12 + i] == 0 && bw::first_player_unit[i])
+            if (bw::alliances[unit->player][i] == 0 && bw::first_player_unit[i])
             {
                 target_players[target_player_count++] = i;
             }
@@ -1485,9 +1493,9 @@ static bool IsAtBuildLimit(int player, int unit_id)
         return false;
     if (limit == 255)
         return true;
-    int count = bw::all_units_count[unit_id * Limits::Players + player];
+    int count = bw::all_units_count[unit_id][player];
     if (unit_id == Unit::SiegeTankTankMode)
-        count += bw::all_units_count[Unit::SiegeTank_Sieged * Limits::Players + player];
+        count += bw::all_units_count[Unit::SiegeTank_Sieged][player];
     return count >= limit;
 }
 
@@ -1651,8 +1659,8 @@ void AiScript_SwitchRescue()
     bw::players[player].type = 3;
     for (unsigned i = 0; i < Limits::Players; i++)
     {
-        bw::alliances[player * Limits::Players + i] = 1;
-        bw::alliances[i * Limits::Players + player] = 1;
+        bw::alliances[player][i] = 1;
+        bw::alliances[i][player] = 1;
     }
     for (Unit *unit : bw::first_player_unit[player])
     {
@@ -1779,9 +1787,9 @@ void RemoveLimits(Common::PatchContext *patch)
     unsigned char patch1[] = { 0x56 };
     unsigned char patch2[] = { 0xeb, 0xef };
     patch->Patch(bw::AiScript_InvalidOpcode, patch1, 1, PATCH_REPLACE);
-    patch->Patch(bw::AiScript_InvalidOpcode + 1, patch2, 5, PATCH_NOP);
-    patch->Patch(bw::AiScript_InvalidOpcode + 1, (void *)&AiScript_InvalidOpcode, 5, PATCH_CALLHOOK);
-    patch->Patch(bw::AiScript_InvalidOpcode + 6, patch2, 2, PATCH_REPLACE);
+    patch->Patch((uint8_t *)(bw::AiScript_InvalidOpcode.raw_pointer()) + 1, patch2, 5, PATCH_NOP);
+    patch->Patch((uint8_t *)(bw::AiScript_InvalidOpcode.raw_pointer()) + 1, (void *)&AiScript_InvalidOpcode, 5, PATCH_CALLHOOK);
+    patch->Patch((uint8_t *)(bw::AiScript_InvalidOpcode.raw_pointer()) + 6, patch2, 2, PATCH_REPLACE);
 }
 
 bool ShouldCancelDamaged(const Unit *unit)

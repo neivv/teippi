@@ -6,7 +6,7 @@
 
 LoFile LoFile::GetOverlay(int image_id, int type)
 {
-    return LoFile(images_dat_attack_overlay[image_id + type * 0x3e7]);
+    return LoFile(images_dat_overlays[type][image_id]);
 }
 
 Point32 LoFile::GetValues(Image *img, int index)

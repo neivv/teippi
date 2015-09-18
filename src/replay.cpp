@@ -20,12 +20,12 @@ static bool WriteReplay(File *replay)
     uint32_t magic = ReplayMagic;
     if (WriteCompressed(replay, &magic, 4) == 0)
         return false;
-    if (WriteCompressed(replay, bw::replay_header.v(), sizeof(ReplayHeader)) == 0)
+    if (WriteCompressed(replay, bw::replay_header.raw_pointer(), sizeof(ReplayHeader)) == 0)
         return false;
     // For team game replays
-    if (WriteCompressed(replay, bw::save_races.v(), Limits::Players) == 0)
+    if (WriteCompressed(replay, bw::save_races.raw_pointer(), Limits::Players) == 0)
         return false;
-    if (WriteCompressed(replay, bw::team_game_main_player.v(), Limits::Teams) == 0)
+    if (WriteCompressed(replay, bw::team_game_main_player.raw_pointer(), Limits::Teams) == 0)
         return false;
     if (WriteReplayData(*bw::replay_data, replay) == 0)
         return false;
@@ -78,22 +78,22 @@ bool LoadReplayData(File *filu, uint32_t *error)
     }
     else if (magic != ReplayMagic)
         return false;
-    if (!ReadCompressed(filu, bw::replay_header.v(), sizeof(ReplayHeader)))
+    if (!ReadCompressed(filu, bw::replay_header.raw_pointer(), sizeof(ReplayHeader)))
         return false;
-    if (!ReadCompressed(filu, bw::save_races.v(), Limits::Players))
+    if (!ReadCompressed(filu, bw::save_races.raw_pointer(), Limits::Players))
         return false;
-    if (!ReadCompressed(filu, bw::team_game_main_player.v(), Limits::Teams))
+    if (!ReadCompressed(filu, bw::team_game_main_player.raw_pointer(), Limits::Teams))
         return false;
-    if (bw::replay_header[0].unk46 == 0)
+    if (bw::replay_header->unk46 == 0)
         return false;
-    *error = bw::replay_header[0].is_bw;
+    *error = bw::replay_header->is_bw;
     if (*error && !*bw::is_bw)
         return false;
-    *bw::campaign_mission = bw::replay_header[0].campaign_mission;
+    *bw::campaign_mission = bw::replay_header->campaign_mission;
     AllocateReplayCommands();
     if (!LoadReplayCommands(filu))
         return false;
-    if (!ReadCompressed(filu, bw::scenario_chk_length.v(), 4))
+    if (!ReadCompressed(filu, bw::scenario_chk_length.raw_pointer(), 4))
         return false;
     if (*bw::scenario_chk)
         SMemFree(*bw::scenario_chk, __FILE__, __LINE__, 0);
@@ -160,7 +160,7 @@ void LoadReplayMapDirEntry()
     mde->map_width_tiles = mde->game_data.statstring_data.map_width_tiles;
     mde->map_height_tiles = mde->game_data.statstring_data.map_height_tiles;
     mde->unk478 = 1;
-    mde->campaign_mission = bw::replay_header[0].campaign_mission;
+    mde->campaign_mission = bw::replay_header->campaign_mission;
     uint8_t tmp[0x28];
     bool success;
     if (mde->campaign_mission)

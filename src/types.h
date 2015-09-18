@@ -105,6 +105,7 @@ struct Location;
 struct MapDirEntry;
 struct MapDl;
 struct Event;
+struct CycleStruct;
 
 template <class Type, unsigned size = 15> class UnitList;
 template <class C, unsigned offset> class RevListHead;

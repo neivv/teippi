@@ -807,7 +807,7 @@ void RemoveLimits(Common::PatchContext *patch)
 
     patch->JumpHook(bw::GetEmptyImage, AllocateImage);
     patch->JumpHook(bw::DeleteImage, DeleteImage);
-    patch->Patch(bw::IscriptEndRetn, bw::IscriptEndRetn + 0xe, 0, PATCH_JMPHOOK);
+    patch->Patch(bw::IscriptEndRetn, (uint8_t *)bw::IscriptEndRetn.raw_pointer() + 0xe, 0, PATCH_JMPHOOK);
 
     patch->JumpHook(bw::CreateSprite, CreateSprite);
     patch->JumpHook(bw::ProgressSpriteFrame, ProgressSpriteFrame);
@@ -827,7 +827,7 @@ void RemoveLimits(Common::PatchContext *patch)
 
     uint8_t unithook_asm[6] = { 0x52, 0x89, 0xc1, 0x5a, 0x90, 0x90 };
     patch->Patch(bw::GetEmptyUnitHook, unithook_asm, 6, PATCH_REPLACE);
-    patch->Patch(bw::GetEmptyUnitHook + 1, (void *)&AllocateUnit, 0, PATCH_CALLHOOK | PATCH_HOOKBEFORE);
+    patch->Patch((uint8_t *)bw::GetEmptyUnitHook.raw_pointer() + 1, (void *)&AllocateUnit, 0, PATCH_CALLHOOK | PATCH_HOOKBEFORE);
     patch->Patch(bw::GetEmptyUnitNop, 0, 5, PATCH_NOP);
     uint8_t jmp = 0xeb;
     patch->Patch(bw::UnitLimitJump, &jmp, 1, PATCH_REPLACE);
@@ -855,7 +855,7 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->JumpHook(bw::FindUnitsPoint, FindUnitsPoint);
     uint8_t zero_unitsearch_asm[] = { 0x31, 0xc0, 0x90 };
     patch->Patch(bw::ZeroOldPosSearch, &zero_unitsearch_asm, 3, PATCH_REPLACE);
-    patch->Patch(bw::ZeroOldPosSearch + 0xf, &zero_unitsearch_asm, 3, PATCH_NOP);
+    patch->Patch((uint8_t *)bw::ZeroOldPosSearch.raw_pointer() + 0xf, &zero_unitsearch_asm, 3, PATCH_NOP);
     patch->JumpHook(bw::GetDodgingDirection, GetDodgingDirection);
     patch->JumpHook(bw::DoesBlockArea, DoesBlockArea);
     patch->JumpHook(bw::IsTileBlockedBy, IsTileBlockedBy);
@@ -868,7 +868,7 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->Patch(bw::PrepareDrawSprites, (void *)&Sprite::CreateDrawSpriteList, 0, PATCH_JMPHOOK);
     patch->Patch(bw::FullRedraw, (void *)&Sprite::CreateDrawSpriteListFullRedraw, 0, PATCH_CALLHOOK);
     patch->Patch(bw::DrawSprites, (void *)&Sprite::DrawSprites, 0, PATCH_JMPHOOK);
-    patch->Patch(bw::DisableVisionSync, bw::DisableVisionSync + 12, 0, PATCH_JMPHOOK);
+    patch->Patch(bw::DisableVisionSync, (uint8_t *)bw::DisableVisionSync.raw_pointer() + 12, 0, PATCH_JMPHOOK);
 
     patch->JumpHook(bw::RemoveUnitFromBulletTargets, RemoveFromBulletTargets);
     patch->JumpHook(bw::DamageUnit, DamageUnit_Hook);

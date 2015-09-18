@@ -10,7 +10,7 @@ Unit *ui_transported_units[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 void TransportStatus_UpdateDrawnValues()
 {
-    Unit *transport = *bw::selection_rank_order;
+    Unit *transport = *bw::primary_selected;
     int i = 0;
     for (Unit *unit = transport->first_loaded; unit; unit = unit->next_loaded, i++)
     {
@@ -25,7 +25,7 @@ void TransportStatus_UpdateDrawnValues()
 
 int TransportStatus_DoesNeedRedraw()
 {
-    Unit *transport = *bw::selection_rank_order;
+    Unit *transport = *bw::primary_selected;
     if (*bw::redraw_transport_ui)
         return true;
     if (!*bw::is_replay && transport->player != *bw::local_player_id)
@@ -47,7 +47,7 @@ void DrawStatusScreen_LoadedUnits()
 {
     REG_EAX(Dialog *, dlg);
 
-    Unit *transport = *bw::selection_rank_order;
+    Unit *transport = *bw::primary_selected;
     Control *first_button = dlg->FindChild(StatusScreen::TransportLargeUnit);
     Control *large_unit_button, *medium_unit_button, *small_unit_button;
     int remaining_space = units_dat_space_provided[transport->unit_id];
@@ -125,7 +125,7 @@ static char ss_kills[0x20];
 void StatusScreen_DrawKills()
 {
     REG_EBX(Dialog *, dlg);
-    Unit *unit = *bw::selection_rank_order;
+    Unit *unit = *bw::primary_selected;
     int unit_id = unit->unit_id;
     if (unit_id == Unit::Scourge || unit_id == Unit::InfestedTerran || unit->IsKnownHallucination() || (!unit->HasWayOfAttacking() && !unit->kills))
     {

@@ -13,18 +13,18 @@ int GetUpgradeLevel(int upgrade, int player)
 {
     Assert(upgrade >= 0 && upgrade < Upgrade::None);
     if (upgrade < 0x2e)
-        return bw::upgrade_level_sc[player * 0x2e + upgrade];
+        return bw::upgrade_level_sc[player][upgrade];
     else
-        return bw::upgrade_level_bw[player * 0xf + upgrade]; // no - 0x2e, upgrade_level_bw is intentionally misaligned
+        return bw::upgrade_level_bw[player][upgrade - 0x2e];
 }
 
 void SetUpgradeLevel(int upgrade, int player, int amount)
 {
     Assert(upgrade >= 0 && upgrade < Upgrade::None);
     if (upgrade < 0x2e)
-        bw::upgrade_level_sc[player * 0x2e + upgrade] = amount;
+        bw::upgrade_level_sc[player][upgrade] = amount;
     else
-        bw::upgrade_level_bw[player * 0xf + upgrade] = amount;
+        bw::upgrade_level_bw[player][upgrade - 0x2e] = amount;
 }
 
 int MovementSpeedUpgradeUnit(int upgrade)

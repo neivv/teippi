@@ -42,14 +42,14 @@ Unit *FindUnitAtPoint(int x, int y)
                     picked_z = new_z;
                     picked = unit;
                     // Bw uses sprite w/h here <.<
-                    area = units_dat_placement_box[unit->unit_id * 2] * units_dat_placement_box[unit->unit_id * 2 + 1];
+                    area = units_dat_placement_box[unit->unit_id][0] * units_dat_placement_box[unit->unit_id][1];
                 }
             }
             else
             {
                 if (!IsClickablePixel(picked, x, y) && (!picked->subunit || !IsClickablePixel(picked->subunit, x, y)))
                 {
-                    int new_area = units_dat_placement_box[unit->unit_id * 2] * units_dat_placement_box[unit->unit_id * 2 + 1];
+                    int new_area = units_dat_placement_box[unit->unit_id][0] * units_dat_placement_box[unit->unit_id][1];
                     if (new_area < area)
                     {
                         picked_z = new_z;
@@ -63,7 +63,7 @@ Unit *FindUnitAtPoint(int x, int y)
         {
             picked_z = unit->sprite->GetZCoord();
             picked = unit;
-            area = units_dat_placement_box[unit->unit_id * 2] * units_dat_placement_box[unit->unit_id * 2 + 1];
+            area = units_dat_placement_box[unit->unit_id][0] * units_dat_placement_box[unit->unit_id][1];
         }
     }
     unit_search->PopResult();
@@ -432,7 +432,7 @@ void DoTargetedCommand(int x, int y, Unit *target, int fow_unit)
             }
             else
             {
-                if (!CanHitUnit(target, unit, targeting_weapon) && (fow_unit != Unit::None || units_dat_flags[fow_unit] & UnitFlags::Invincible))
+                if (!CanHitUnit(target, unit, targeting_weapon) && (fow_unit >= Unit::None || units_dat_flags[fow_unit] & UnitFlags::Invincible))
                 {
                     continue;
                 }
@@ -461,7 +461,7 @@ void DoTargetedCommand(int x, int y, Unit *target, int fow_unit)
         }
     }
 
-    Unit *unit = *bw::selection_rank_order;
+    Unit *unit = *bw::primary_selected;
 
     if (weapon_targeting)
     {
@@ -502,7 +502,7 @@ void DoTargetedCommand(int x, int y, Unit *target, int fow_unit)
     }
     else
     {
-        PlayYesSoundAnim(bw::selection_rank_order[0]);
+        PlayYesSoundAnim(*bw::primary_selected);
         SendTargetedOrderCommand(order, x, y, target, fow_unit, *bw::is_queuing_command);
     }
 }
@@ -533,7 +533,7 @@ void __fastcall GameScreenRClickEvent(Event *event)
 {
     if (IsOutsideGameScreen(event->x, event->y) || bw::client_selection_group2[0] == nullptr)
         return;
-    Unit *highest_ranked = bw::selection_rank_order[0];
+    Unit *highest_ranked = *bw::primary_selected;
     if (highest_ranked == nullptr || !CanControlUnit(highest_ranked))
         return;
 

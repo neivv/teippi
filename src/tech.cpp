@@ -18,18 +18,18 @@ int GetTechLevel(int tech, int player)
 {
     Assert(tech >= 0 && tech < Tech::None);
     if (tech < 0x18)
-        return bw::tech_level_sc[player * 0x18 + tech];
+        return bw::tech_level_sc[player][tech];
     else
-        return bw::tech_level_bw[player * 0x14 + (tech - 0x18)];
+        return bw::tech_level_bw[player][(tech - 0x18)];
 }
 
 void SetTechLevel(int tech, int player, int amount)
 {
     Assert(tech >= 0 && tech < Tech::None);
     if (tech < 0x18)
-        bw::tech_level_sc[player * 0x18 + tech] = amount;
+        bw::tech_level_sc[player][tech] = amount;
     else
-        bw::tech_level_bw[player * 0x14 + (tech - 0x18)] = amount;
+        bw::tech_level_bw[player][(tech - 0x18)] = amount;
 }
 
 const char *GetTechName(int tech)
@@ -114,7 +114,7 @@ void UpdateDwebStatuses()
             child->flags &= ~UnitStatus::UnderDweb;
         }
     }
-    if (bw::completed_units_count[Unit::DisruptionWeb * 0xe4 + NeutralPlayer])
+    if (bw::completed_units_count[Unit::DisruptionWeb][NeutralPlayer])
     {
         for (Unit *dweb : bw::first_player_unit[NeutralPlayer])
         {

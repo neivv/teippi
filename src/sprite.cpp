@@ -23,7 +23,7 @@ LoneSpriteSystem *lone_sprites;
 uint32_t Sprite::next_id = 1;
 uint32_t Sprite::count = 0;
 uint32_t Sprite::draw_order_limit = 0x22DD0; // 0x150 * 0x6a4 / 0x4 (that is whole unit array)
-Sprite **Sprite::draw_order = (Sprite **)bw::units.v();
+Sprite **Sprite::draw_order = (Sprite **)bw::units.raw_pointer();
 int Sprite::draw_order_amount;
 
 #ifdef SYNC
@@ -95,7 +95,7 @@ Sprite *Sprite::RawAlloc()
     if (count > draw_order_limit)
     {
         draw_order_limit *= 2;
-        if (draw_order == (Sprite **)bw::units.v())
+        if (draw_order == (Sprite **)bw::units.raw_pointer())
             draw_order = (Sprite **)malloc(draw_order_limit * sizeof(Sprite *));
         else
             draw_order = (Sprite **)realloc(draw_order, draw_order_limit * sizeof(Sprite *));
@@ -235,10 +235,10 @@ void Sprite::DeleteAll()
     count = 0;
 
     // Might as well free
-    if (draw_order != (Sprite **)bw::units.v())
+    if (draw_order != (Sprite **)bw::units.raw_pointer())
     {
         free(draw_order);
-        draw_order = (Sprite **)bw::units.v();
+        draw_order = (Sprite **)bw::units.raw_pointer();
         draw_order_limit = 0x22DD0;
     }
     draw_order_amount = 0;
@@ -427,8 +427,8 @@ Sprite::ProgressFrame_C ProgressLoneSpriteFrame(Sprite *sprite)
 bool ProgressLoneSprite2Frame(Sprite *sprite)
 {
     DrawTransmissionSelectionCircle(sprite, bw::self_alliance_colors[sprite->player]);
-    int place_width = units_dat_placement_box[2 * sprite->index];
-    int place_height = units_dat_placement_box[2 * sprite->index + 1];
+    int place_width = units_dat_placement_box[sprite->index][0];
+    int place_height = units_dat_placement_box[sprite->index][1];
     int width = (place_width + 31) / 32;
     int height = (place_height + 31) / 32;
     int x = (sprite->position.x - place_width / 2) / 32;
@@ -498,8 +498,8 @@ void DrawMinimapUnits()
     {
         if (sprite->index < 0xcb || sprite->index > 0xd5)
         {
-            int place_width = units_dat_placement_box[2 * sprite->index];
-            int place_height = units_dat_placement_box[2 * sprite->index + 1];
+            int place_width = units_dat_placement_box[sprite->index][0];
+            int place_height = units_dat_placement_box[sprite->index][1];
             if (replay)
             {
                 int width = (place_width + 31) / 32;
@@ -516,7 +516,7 @@ void DrawMinimapUnits()
             {
                 if (*bw::minimap_color_mode)
                 {
-                    if (bw::alliances[local_player * Limits::Players + sprite->player])
+                    if (bw::alliances[local_player][sprite->player])
                         color = *bw::ally_minimap_color;
                     else
                         color = *bw::enemy_minimap_color;
@@ -537,9 +537,9 @@ Sprite *Sprite::FindFowTarget(int x, int y)
     {
         if (Unit::IsClickable(sprite->index))
         {
-            if ((unsigned int)((sprite->position.x + units_dat_placement_box[sprite->index * 2] / 2) - x) < sprite->width)
+            if ((unsigned int)((sprite->position.x + units_dat_placement_box[sprite->index][0] / 2) - x) < sprite->width)
             {
-                if ((unsigned int)((sprite->position.y + units_dat_placement_box[sprite->index * 2 + 1] / 2) - y) < sprite->height)
+                if ((unsigned int)((sprite->position.y + units_dat_placement_box[sprite->index][1] / 2) - y) < sprite->height)
                     return sprite.get();
             }
         }
@@ -720,8 +720,8 @@ Sprite *__stdcall FindBlockingFowResource(int x_tile, int y_tile, int radius)
         if (fow->index == Unit::MineralPatch1 || fow->index == Unit::MineralPatch2
              || fow->index == Unit::MineralPatch3 || fow->index == Unit::VespeneGeyser)
         {
-            int w = units_dat_placement_box[2 * fow->index] / 32;
-            int h = units_dat_placement_box[2 * fow->index + 1] / 32;
+            int w = units_dat_placement_box[fow->index][0] / 32;
+            int h = units_dat_placement_box[fow->index][1] / 32;
             int x = fow->position.x / 32 - w / 2;
             int y = fow->position.y / 32 - h / 2;
             if (x - radius <= x_tile && x + w + radius > x_tile)

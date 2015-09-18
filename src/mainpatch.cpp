@@ -83,7 +83,7 @@ static void SavePanickedReplay()
     if (!IsInGame())
         return;
     // Add some frames (1 should be enough) to make crash surely reproductable
-    bw::replay_header[0].replay_end_frame = *bw::frame_count + 50;
+    bw::replay_header->replay_end_frame = *bw::frame_count + 50;
     SaveReplay("crash", 1);
 }
 

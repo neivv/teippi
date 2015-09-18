@@ -51,10 +51,10 @@ void Command_GameData(uint8_t *data, int net_player)
     *bw::tileset = *(uint16_t *)(data + 0x1);
     *bw::map_width_tiles = *(uint16_t *)(data + 0x3);
     *bw::map_height_tiles = *(uint16_t *)(data + 0x5);
-    memset(bw::temp_players.v(), 0, sizeof(Player) * Limits::Players);
     for (int i = 0; i < Limits::Players; i++)
     {
         Player *player = &bw::temp_players[i];
+        memset(player, 0, sizeof(Player));
         player->id = i;
         player->storm_id = -1;
         player->type = data[0x7 + i];
@@ -66,7 +66,7 @@ void Command_GameData(uint8_t *data, int net_player)
         int player_id = 0;
         int players_per_team = GetTeamGameTeamSize();
         int team_count = 2;
-        if (bw::game_data[0].got.game_type_id != 0xf) // Tvb
+        if (bw::game_data->got.game_type_id != 0xf) // Tvb
             team_count = *bw::team_game;
         for (int i = 0; i < team_count; i++)
         {
@@ -80,11 +80,11 @@ void Command_GameData(uint8_t *data, int net_player)
             }
         }
     }
-    memcpy(bw::player_types_unused.v(), data + 0x1f, 0xc);
-    memcpy(bw::force_layout.v(), data + 0x2b, 0xc);
-    memcpy(bw::user_select_slots.v(), data + 0x37, 0x8);
+    memcpy(bw::player_types_unused.raw_pointer(), data + 0x1f, 0xc);
+    memcpy(bw::force_layout.raw_pointer(), data + 0x2b, 0xc);
+    memcpy(bw::user_select_slots.raw_pointer(), data + 0x37, 0x8);
     if (!IsReplay())
-        memcpy(bw::replay_user_select_slots.v(), data + 0x37, 0x8);
+        memcpy(bw::replay_user_select_slots.raw_pointer(), data + 0x37, 0x8);
     int save_player_id = *bw::loaded_save ? *bw::loaded_local_player_id : 0;
     int save_unique_player_id = *bw::loaded_save ? *bw::loaded_local_unique_player_id : 0;
     int flags = *bw::own_net_player_flags;
@@ -120,10 +120,10 @@ static void Command_JoinedGame(uint8_t *data, int net_player, bool creator)
         }
     }
     int game_player = NetPlayerToGame(net_player);
-    Player *player = &bw::players[game_player];
+    Player *player;
     if (game_player == -1)
     {
-        Got &got = bw::game_data[0].got;
+        Got &got = bw::game_data->got;
         // Ums-like?
         bool basic_got = got.victory_conditions == 0 && got.starting_units == 0 && got.unk_tournament == 0;
         if (basic_got && *bw::loaded_save == nullptr)
@@ -141,6 +141,7 @@ static void Command_JoinedGame(uint8_t *data, int net_player, bool creator)
     }
     else
     {
+        player = &bw::players[game_player];
         player->type = 6;
         bw::save_player_to_original[game_player] = Limits::ActivePlayers;
     }
