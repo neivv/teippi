@@ -1308,6 +1308,94 @@ struct Test_AttackMove : public GameTest {
     }
 };
 
+struct Test_Detection : public GameTest {
+    Unit *cloaked;
+    Unit *detector;
+    int wait;
+    void Init() override {
+        ResetVisions();
+        wait = 0;
+    }
+    void NextFrame() override {
+        if (wait != 0) {
+            wait -= 1;
+            return;
+        }
+
+        // In Unit::ProgressFrames for invisible units
+        const int cloak_wait = 30;
+
+        switch (state) {
+            case 0: {
+                cloaked = CreateUnitForTestAt(Unit::Observer, 0, Point(100, 100));
+                detector = CreateUnitForTestAt(Unit::Marine, 1, Point(100, 100));
+                state++;
+                wait = cloak_wait;
+            } break; case 1: {
+                TestAssert(cloaked->IsInvisibleTo(detector));
+                detector->Kill(nullptr);
+                detector = CreateUnitForTestAt(Unit::Overlord, 1, Point(100, 100));
+                wait = cloak_wait;
+                state++;
+            } break; case 2: {
+                TestAssert(!cloaked->IsInvisibleTo(detector));
+                detector->Kill(nullptr);
+                detector = CreateUnitForTestAt(Unit::Queen, 1, Point(100, 100));
+                IssueOrderTargetingGround(detector, Order::Ensnare, 100, 100);
+                state++;
+            } break; case 3: {
+                if (cloaked->ensnare_timer != 0) {
+                    wait = cloak_wait;
+                    state++;
+                }
+            } break; case 4: {
+                TestAssert(!cloaked->IsInvisibleTo(detector));
+                state++;
+            } break; case 5: {
+                if (cloaked->ensnare_timer == 0) {
+                    wait = cloak_wait;
+                    state++;
+                }
+            } break; case 6: {
+                TestAssert(cloaked->IsInvisibleTo(detector));
+                detector->Kill(nullptr);
+                detector = CreateUnitForTestAt(Unit::Defiler, 1, Point(100, 100));
+                IssueOrderTargetingGround(detector, Order::Plague, 100, 100);
+                state++;
+            } break; case 7: {
+                if (cloaked->plague_timer != 0) {
+                    wait = cloak_wait;
+                    state++;
+                }
+            } break; case 8: {
+                TestAssert(!cloaked->IsInvisibleTo(detector));
+                state++;
+            } break; case 9: {
+                if (cloaked->plague_timer == 0) {
+                    wait = cloak_wait;
+                    state++;
+                }
+            } break; case 10: {
+                TestAssert(cloaked->IsInvisibleTo(detector));
+                detector->Kill(nullptr);
+                detector = CreateUnitForTestAt(Unit::Devourer, 1, Point(100, 100));
+                Unit *secondary = CreateUnitForTestAt(Unit::Devourer, 1, Point(100, 100));
+                IssueOrderTargetingUnit_Simple(secondary, Order::AttackUnit, detector);
+                state++;
+            } break; case 11: {
+                if (detector->GetHealth() != detector->GetMaxHealth()) {
+                    wait = cloak_wait;
+                    state++;
+                }
+            } break; case 12: {
+                // Acid spores should only apply to already detected units
+                TestAssert(cloaked->IsInvisibleTo(detector));
+                Pass();
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -1339,6 +1427,7 @@ GameTests::GameTests()
     AddTest("Pos search", new Test_PosSearch);
     AddTest("Ai targeting", new Test_AiTarget);
     AddTest("Attack move", new Test_AttackMove);
+    AddTest("Detection", new Test_Detection);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)
