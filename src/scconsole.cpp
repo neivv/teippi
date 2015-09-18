@@ -667,19 +667,19 @@ bool ScConsole::Pause(const CmdArgs &args)
 void ScConsole::ConstructInfoLines()
 {
     info_lines.clear();
-    if (show_fps && IsInGame())
+    if (show_fps)
     {
         char fps_str[32];
         sprintf(fps_str, "Fps: %.1f", fps);
         info_lines.emplace_back(fps_str);
     }
-    if (show_frame && IsInGame())
+    if (show_frame)
     {
         char str[32];
         sprintf(str, "Frame: %d", *bw::frame_count);
         info_lines.emplace_back(str);
     }
-    if (draw_info && IsInGame())
+    if (draw_info)
     {
         char str[32];
         int unit_count = 0;
@@ -722,7 +722,7 @@ void ScConsole::DrawLocations(uint8_t *framebuf, xuint w, yuint h)
 
 void ScConsole::DrawCrects(uint8_t *framebuf, xuint w, yuint h)
 {
-    if (!draw_crects || !IsInGame())
+    if (!draw_crects)
         return;
 
     Common::Surface surface(framebuf, w, h);
@@ -836,7 +836,7 @@ void ScConsole::DrawAiRegions(int player, Common::Surface *text_surf, const Poin
 
 void ScConsole::DrawAiInfo(uint8_t *textbuf, uint8_t *framebuf, xuint w, yuint h)
 {
-    if (!draw_ai_towns || !IsInGame())
+    if (!draw_ai_towns)
         return;
     Common::Surface surface(framebuf, w, h);
     Common::Surface text_surface(textbuf, w, h);
@@ -948,7 +948,7 @@ void ScConsole::DrawAiInfo(uint8_t *textbuf, uint8_t *framebuf, xuint w, yuint h
 
 void ScConsole::DrawResourceAreas(uint8_t *textbuf, uint8_t *framebuf, xuint w, yuint h)
 {
-    if (!draw_resource_areas || !IsInGame())
+    if (!draw_resource_areas)
         return;
 
     Common::Surface surface(framebuf, w, h);
@@ -983,7 +983,7 @@ void ScConsole::DrawResourceAreas(uint8_t *textbuf, uint8_t *framebuf, xuint w, 
 
 void ScConsole::DrawOrders(uint8_t *framebuf, xuint w, yuint h)
 {
-    if (draw_orders == DrawOrders::None || !IsInGame())
+    if (draw_orders == DrawOrders::None)
         return;
 
     Common::Surface surface(framebuf, w, h);
@@ -1008,7 +1008,7 @@ void ScConsole::DrawOrders(uint8_t *framebuf, xuint w, yuint h)
 
 void ScConsole::DrawCoords(uint8_t *framebuf, xuint w, yuint h)
 {
-    if (!draw_coords || !IsInGame())
+    if (!draw_coords)
         return;
 
     char buf[32];
@@ -1023,9 +1023,6 @@ void ScConsole::DrawCoords(uint8_t *framebuf, xuint w, yuint h)
 
 void ScConsole::DrawDeaths(uint8_t *framebuf, xuint w, yuint h)
 {
-    if (!IsInGame())
-        return;
-
     Common::Surface surface(framebuf, w, h);
     Point32 draw_pos = Point32(20, 50);
     for (const auto &tp : death_counters)
@@ -1053,7 +1050,7 @@ void ScConsole::DrawDeaths(uint8_t *framebuf, xuint w, yuint h)
 
 void ScConsole::DrawRange(uint8_t *framebuf, xuint w, yuint h)
 {
-    if (!IsInGame() || !draw_range)
+    if (!draw_range)
         return;
 
     Common::Surface surface(framebuf, w, resolution::game_height);
@@ -1076,7 +1073,7 @@ void ScConsole::DrawRange(uint8_t *framebuf, xuint w, yuint h)
 
 void ScConsole::DrawGrids(uint8_t *framebuf, xuint w, yuint h)
 {
-    if (!IsInGame() || grids.empty())
+    if (grids.empty())
         return;
 
     Common::Surface surface(framebuf, w, resolution::game_height);
@@ -1295,7 +1292,8 @@ static void DrawHook(uint8_t *framebuf, xuint w, yuint h)
 {
     if (console)
     {
-        ((ScConsole *)console)->DrawDebugInfo(framebuf, w, h);
+        if (IsInGame())
+            ((ScConsole *)console)->DrawDebugInfo(framebuf, w, h);
         console->Draw(framebuf, w, h);
     }
 }
