@@ -75,7 +75,7 @@ def build(bld):
     except_cxxflags = []
     noexcept_cxxflags = []
     linkflags = []
-    defines = []
+    defines = ['NOMINMAX']
     noexcept_defines = []
     includes = []
     libs = []
