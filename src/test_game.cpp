@@ -1396,6 +1396,58 @@ struct Test_Detection : public GameTest {
     }
 };
 
+struct Test_Death : public GameTest {
+    int player;
+    int next_unit_id;
+    void Init() override {
+        // Do some fighting as well
+        SetEnemy(0, 1);
+        SetEnemy(1, 1);
+        AiPlayer(1);
+        next_unit_id = 0;
+        player = 0;
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0:
+                NextUnitId();
+                if (next_unit_id == Unit::None) {
+                    next_unit_id = 0;
+                    player += 1;
+                    if (player == 2)
+                        player = NeutralPlayer;
+                    if (player == Limits::Players) {
+                        for (Unit *unit : *bw::first_active_unit)
+                            unit->Kill(nullptr);
+                        state++;
+                    }
+                    return;
+                }
+                CreateUnitForTestAt(next_unit_id, player, Point(300, 300));
+                next_unit_id += 1;
+            break; case 1: {
+                // Kill vespene geysers
+                for (Unit *unit : *bw::first_active_unit)
+                    unit->Kill(nullptr);
+                if (NoUnits())
+                    Pass();
+            }
+        }
+    }
+    void NextUnitId() {
+        while (next_unit_id != Unit::None) {
+            if (~units_dat_flags[next_unit_id] & UnitFlags::Subunit &&
+                    units_dat_hitpoints[next_unit_id] > 1 &&
+                    units_dat_armor_type[next_unit_id] != 0) // Skip independent
+            {
+                return;
+            }
+            next_unit_id++;
+        }
+    }
+};
+
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -1428,6 +1480,7 @@ GameTests::GameTests()
     AddTest("Ai targeting", new Test_AiTarget);
     AddTest("Attack move", new Test_AttackMove);
     AddTest("Detection", new Test_Detection);
+    AddTest("Death", new Test_Death);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)
