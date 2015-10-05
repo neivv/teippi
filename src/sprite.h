@@ -96,11 +96,13 @@ class Sprite
 #endif
         Sprite();
 
+        /// Initializes the sprite, returns false if unable and nothing was changed.
+        /// Static to emphasize the fact it manipulates global state.
+        static bool Initialize(Sprite *sprite, int sprite_id, const Point &pos, int player);
+
         void AddToHlines();
-        static Sprite *RawAlloc();
 
         static void PackIds();
-        static Sprite *AllocateBase(int sprite_id, const Point &pos, int player);
 
         static uint32_t next_id;
         static uint32_t count;

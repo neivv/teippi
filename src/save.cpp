@@ -1372,7 +1372,7 @@ std::pair<int, Sprite *> Sprite::SaveAllocate(uint8_t *in, uint32_t size)
     if (size < sizeof(Image) * count)
         throw SaveReadFail_("Sprite/image");
 
-    Sprite *out = RawAlloc();
+    Sprite *out = new Sprite;
     memcpy(out, in, sizeof(Sprite));
     in += sizeof(Sprite);
     out->first_overlay = 0;
