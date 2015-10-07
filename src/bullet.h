@@ -5,7 +5,7 @@
 #include "list.h"
 #include "sprite.h"
 #include "game.h"
-#include "common/unsorted_vector.h"
+#include "unsorted_list.h"
 #include "common/claimable.h"
 #include <tuple>
 #include <array>
@@ -151,6 +151,20 @@ struct ProgressBulletBufs
     vector<DamagedUnit> *DamagedUnits() { return damaged_units; }
 };
 
+/// Results from Bullet::State_XYZ() that need to be handled later
+struct BulletStateResults
+{
+    // Needed as DoMissileDmg should be done with old target
+    // There is previous_target as well which could have been used
+    UnsortedList<tuple<Bullet *, Unit *>> new_bounce_targets;
+    UnsortedList<Bullet *> do_missile_dmgs;
+
+    void clear() {
+        new_bounce_targets.clear_keep_capacity();
+        do_missile_dmgs.clear_keep_capacity();
+    }
+};
+
 
 #pragma pack(push)
 #pragma pack(1)
@@ -212,29 +226,28 @@ class Bullet
 
         ListEntry<Bullet, 0x70> targeting; // 0x70
         ListEntry<Bullet, 0x78> spawned; // 0x78
-        uintptr_t bulletsystem_entry;
 
         void SingleDelete();
 
         void SetTarget(Unit *new_target);
 
         void ProgressFrame();
-        // Int is how many DoMissileDmg:s happened
-        tuple<BulletState, int> State_Init();
-        tuple<BulletState, int> State_GroundDamage();
-        // Unit * is possible new target
-        tuple<BulletState, int, Unit *> State_Bounce();
-        tuple<BulletState, int> State_MoveToPoint();
-        tuple<BulletState, int> State_MoveToUnit();
-        tuple<BulletState, int> State_MoveNearUnit();
+        // Retuns the new state, or old if no switch
+        BulletState State_Init(BulletStateResults *results);
+        BulletState State_GroundDamage(BulletStateResults *results);
+        BulletState State_Bounce(BulletStateResults *results);
+        BulletState State_MoveToPoint(BulletStateResults *results);
+        BulletState State_MoveToUnit(BulletStateResults *results);
+        BulletState State_MoveNearUnit(BulletStateResults *results);
         Optional<SpellCast> DoMissileDmg(ProgressBulletBufs *bufs);
 
         void UpdateMoveTarget(const Point &target);
         void Move(const Point &where);
 
         void Serialize(Save *save, const BulletSystem *parent);
-        template <bool saving> void SaveConvert(const BulletSystem *parent);
+        template <bool saving, class T> void SaveConvert(SaveBase<T> *save, const BulletSystem *parent);
         ~Bullet() {}
+        Bullet(Bullet &&other) = default;
 
     private:
         Bullet() {}
@@ -260,135 +273,141 @@ class Bullet
 /// if that is ever desired
 class BulletSystem
 {
-    typedef UnsortedPtrVector<Bullet> BulletVector;
+    typedef UnsortedList<ptr<Bullet>, 128> BulletContainer;
     public:
         BulletSystem() {}
         void Deserialize(Load *load);
         void Serialize(Save *save);
-        template <bool saving> Bullet *SaveConvertBulletPtr(const Bullet *in) const;
-        void FinishLoad();
+        void FinishLoad(Load *load);
+        template <class Cb>
+        void MakeSaveIdMapping(Cb callback) const;
 
         /// May only be called once per frame, see ProgressBulletBufs::GetDamagedUnit
         void ProgressFrames(BulletFramesInput in);
         void DeleteAll();
         Bullet *AllocateBullet(Unit *parent, int player, int direction, int weapon, const Point &pos);
-        uintptr_t BulletCount()
+        uintptr_t BulletCount() const
         {
             uintptr_t count = 0;
-            for (auto vec : Vectors())
+            for (auto vec : Containers())
                 count += vec->size();
             return count;
         }
 
     private:
-        Claimed<vector<Bullet *>> ProgressStates(vector<tuple<Bullet *, Unit *>> *new_bounce_targets);
+        Claimed<BulletStateResults> ProgressStates();
         void ProcessHits(ProgressBulletBufs *bufs);
         vector<Unit *> ProcessUnitWasHit(vector<tuple<Unit *, Unit *>> hits, ProgressBulletBufs *bufs);
         vector<Ai::HitUnit> ProcessAiReactToHit(vector<tuple<Unit *, Unit *, bool>> input, Ai::HelpingUnitVec *helping_units);
 
-        void DeleteBullet(Bullet *bullet);
-        std::array<BulletVector *, 7> Vectors()
+        void DeleteBullet(BulletContainer::entry *bullet);
+        std::array<BulletContainer *, 7> Containers()
         {
             return { { &initstate, &moving_to_point, &moving_to_unit, &bouncing, &damage_ground, &moving_near, &dying } };
         }
-        std::array<const BulletVector *, 7> Vectors() const
+        std::array<const BulletContainer *, 7> Containers() const
         {
             return { { &initstate, &moving_to_point, &moving_to_unit, &bouncing, &damage_ground, &moving_near, &dying } };
         }
 
-        void SwitchBulletState(ptr<Bullet> &bullet, BulletState old_state, BulletState new_state);
-        BulletVector *GetOwningVector(const Bullet *bullet);
-        const BulletVector *GetOwningVector(const Bullet *bullet) const;
-        BulletVector *GetStateVector(BulletState state);
+        void SwitchBulletState(BulletContainer::entry *bullet, BulletState new_state);
+        BulletContainer *GetStateContainer(BulletState state);
 
-        BulletVector initstate;
-        BulletVector moving_to_point;
-        BulletVector moving_to_unit;
-        BulletVector bouncing;
-        BulletVector damage_ground;
-        BulletVector moving_near;
-        BulletVector dying;
+        void ProgressBulletsForState(BulletContainer *container, BulletStateResults *results,
+            BulletState state, BulletState (Bullet::*state_function)(BulletStateResults *));
+
+        BulletContainer initstate;
+        BulletContainer moving_to_point;
+        BulletContainer moving_to_unit;
+        BulletContainer bouncing;
+        BulletContainer damage_ground;
+        BulletContainer moving_near;
+        BulletContainer dying;
         Claimable<vector<DamagedUnit>> dmg_unit_buf;
-        Claimable<vector<Bullet *>> bullet_buf;
         Claimable<vector<SpellCast>> spell_buf;
         // target, attacker
         Claimable<vector<tuple<Unit *, Unit *>>> unit_was_hit_buf;
         // target, attacker, main_target_reactions
         Claimable<vector<tuple<Unit *, Unit *, bool>>> ai_react_buf;
         Claimable<vector<Unit *>> killed_units_buf;
-        // Needed as DoMissileDmg should be done with old target
-        // There is previous_target as well which could have been used
-        Claimable<vector<tuple<Bullet *, Unit *>>> bounce_target_buf;
+
+        /// Filled by and returned from ProgressStates(),
+        Claimable<BulletStateResults> state_results_buf;
 
     public:
-        class ActiveBullets_
-        {
+        class ActiveBullets_ : public Common::Iterator<ActiveBullets_, Bullet *> {
             public:
-                ActiveBullets_(BulletSystem *p) : parent(p) {}
-
-                class iterator
-                {
-                    public:
-                        typedef BulletVector::safe_iterator internal_iterator;
-                        iterator(BulletSystem *p, bool end) : parent(p),
-                                                              pos(p->Vectors().front()->safe_begin())
-                        {
-                            if (end)
-                            {
-                                vector_pos = parent->Vectors().size() - 1;
-                                pos = parent->Vectors().back()->safe_end();
-                            }
-                            else
-                            {
-                                vector_pos = 0;
-                                CheckEndOfVec();
-                            }
-                        }
-
-                        iterator operator++()
-                        {
-                            if (pos != parent->Vectors()[vector_pos]->safe_end())
-                                ++pos;
-                            CheckEndOfVec();
-                            return *this;
-                        }
-
-                        Bullet *operator*() { return (*pos).get(); }
-                        bool operator==(const iterator &other) const
-                        {
-                            return vector_pos == other.vector_pos && pos == other.pos;
-                        }
-                        bool operator!=(const iterator &other) const { return !(*this == other); }
-
-                    private:
-
-                        void CheckEndOfVec()
-                        {
-                            while (pos == parent->Vectors()[vector_pos]->safe_end() &&
-                                    vector_pos < parent->Vectors().size() - 1)
-                            {
-                                pos = parent->Vectors()[++vector_pos]->safe_begin();
-                            }
-                        }
-
-                        BulletSystem *parent;
-                        internal_iterator pos;
-                        int vector_pos;
-                };
-                iterator begin() { return iterator(parent, false); }
-                iterator end() { return iterator(parent, true); }
-
+                ActiveBullets_(BulletSystem *p) : parent(p), container_index(0),
+                    pos(parent->Containers().front()->begin()), first(true) {
+                    CheckEndOfVec();
+                }
+                Optional<Bullet *> next() {
+                    if (!first) {
+                        if (pos != parent->Containers()[container_index]->end())
+                            ++pos;
+                        CheckEndOfVec();
+                    }
+                    if (pos == parent->Containers().back()->end())
+                        return Optional<Bullet *>();
+                    first = false;
+                    return pos->get();
+                }
             private:
+                void CheckEndOfVec() {
+                    while (pos == parent->Containers()[container_index]->end() &&
+                            container_index < parent->Containers().size() - 1) {
+                        container_index += 1;
+                        pos = parent->Containers()[container_index]->begin();
+                    }
+                }
+
                 BulletSystem *parent;
+                unsigned container_index;
+                BulletContainer::iterator pos;
+                bool first;
         };
         ActiveBullets_ ActiveBullets() { return ActiveBullets_(this); }
         friend class ActiveBullets_;
-        friend class ActiveBullets_::iterator;
+
+    private:
+        class ActiveBullets_Entries_ : public Common::Iterator<ActiveBullets_Entries_, BulletContainer::entry> {
+            public:
+                ActiveBullets_Entries_(BulletSystem *p) : parent(p), container_index(0),
+                    pos(parent->Containers().front()->entries_begin()), first(true) {
+                    CheckEndOfVec();
+                }
+                Optional<BulletContainer::entry> next() {
+                    if (!first) {
+                        if (pos != parent->Containers()[container_index]->entries_end())
+                            ++pos;
+                        CheckEndOfVec();
+                    }
+                    if (pos == parent->Containers().back()->entries_end())
+                        return Optional<BulletContainer::entry>();
+                    first = false;
+                    return *pos;
+                }
+            private:
+                void CheckEndOfVec() {
+                    while (pos == parent->Containers()[container_index]->entries_end() &&
+                            container_index < parent->Containers().size() - 1) {
+                        container_index += 1;
+                        pos = parent->Containers()[container_index]->entries_begin();
+                    }
+                }
+
+                BulletSystem *parent;
+                unsigned container_index;
+                BulletContainer::entry_iterator pos;
+                bool first;
+        };
+        ActiveBullets_Entries_ ActiveBullets_Entries() { return ActiveBullets_Entries_(this); }
+        friend class ActiveBullets_Entries_;
 };
 
 extern BulletSystem *bullet_system;
 
-static_assert(sizeof(Bullet) == 0x84, "Sizeof bullet");
+static_assert(sizeof(Bullet) == 0x80, "Sizeof bullet");
 
 #pragma pack(pop)
 

@@ -131,10 +131,8 @@ Sprite *LoneSpriteSystem::AllocateLone(int sprite_id, const Point &pos, int play
     if (!Sprite::Initialize(sprite_ptr.get(), sprite_id, pos, player))
         return nullptr;
 
-    Sprite *sprite = sprite_ptr.release();
-    sprite->container_index = lone_sprites.size();
-    lone_sprites.emplace_back(sprite);
-    return sprite;
+    lone_sprites.emplace(move(sprite_ptr));
+    return lone_sprites.back().get();
 }
 
 Sprite *LoneSpriteSystem::AllocateFow(Sprite *base, int unit_id)
@@ -143,10 +141,9 @@ Sprite *LoneSpriteSystem::AllocateFow(Sprite *base, int unit_id)
     if (!Sprite::Initialize(sprite_ptr.get(), base->sprite_id, base->position, base->player))
         return nullptr;
 
-    Sprite *sprite = sprite_ptr.release();
+    fow_sprites.emplace(move(sprite_ptr));
+    Sprite *sprite = fow_sprites.back().get();
     sprite->index = unit_id;
-    sprite->container_index = fow_sprites.size();
-    fow_sprites.emplace_back(sprite);
 
     for (Image *img = sprite->first_overlay, *next; img; img = next)
     {
@@ -434,28 +431,26 @@ bool ProgressFowSpriteFrame(Sprite *sprite)
 
 void LoneSpriteSystem::ProgressFrames()
 {
-    for (ptr<Sprite> &sprite : lone_sprites.SafeIter())
+    for (auto entry : lone_sprites.Entries())
     {
-        for (auto &cmd : ProgressLoneSpriteFrame(sprite.get()))
+        for (auto &cmd : ProgressLoneSpriteFrame(entry->get()))
         {
             if (cmd.opcode == IscriptOpcode::End)
             {
-                sprite->Remove();
-                lone_sprites.back()->container_index = sprite->container_index;
-                lone_sprites.erase_at(sprite->container_index);
+                entry->get()->Remove();
+                entry.swap_erase();
             }
             else
                 Warning("LoneSpriteSystem::ProgressFrames did not handle iscript command %x for sprite %x",
-                       cmd.opcode, sprite->sprite_id);
+                       cmd.opcode, entry->get()->sprite_id);
         }
     }
-    for (ptr<Sprite> &sprite : fow_sprites.SafeIter())
+    for (auto entry : fow_sprites.Entries())
     {
-        if (ProgressFowSpriteFrame(sprite.get()) == false)
+        if (ProgressFowSpriteFrame(entry->get()) == false)
         {
-            sprite->Remove();
-            fow_sprites.back()->container_index = sprite->container_index;
-            fow_sprites.erase_at(sprite->container_index);
+            entry->get()->Remove();
+            entry.swap_erase();
         }
     }
 }
