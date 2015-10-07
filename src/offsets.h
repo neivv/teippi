@@ -70,6 +70,11 @@ class array_offset<Type, Size> : public offset_base
         constexpr Type &operator[](uintptr_t pos) const
         {
             Assert(pos < Size);
+            return index_overflowing(pos);
+        }
+
+        constexpr Type &index_overflowing(uintptr_t pos) const
+        {
             return ((Type *)(address))[pos];
         }
 
@@ -100,6 +105,11 @@ class array_offset<Type, Size, More...> : public offset_base
         const array_offset<Type, More...> operator[](uintptr_t pos) const
         {
             Assert(pos < Size);
+            return index_overflowing(pos);
+        }
+
+        const array_offset<Type, More...> index_overflowing(uintptr_t pos) const
+        {
             uintptr_t offset = array_offset<Type, More...>::size() * pos;
             return array_offset<Type, More...>(address + offset * sizeof(Type));
         }

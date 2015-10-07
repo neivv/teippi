@@ -750,6 +750,8 @@ void __stdcall PreCreateGuardAi(int unit_id, int x)
 
 void __stdcall AddGuardAiToUnit(Unit *unit)
 {
+    if (!IsActivePlayer(unit->player))
+        return;
     if (bw::players[unit->player].type != 1)
         return;
     if (units_dat_ai_flags[unit->unit_id] & 0x2)

@@ -426,7 +426,8 @@ Sprite::ProgressFrame_C ProgressLoneSpriteFrame(Sprite *sprite)
 
 bool ProgressLoneSprite2Frame(Sprite *sprite)
 {
-    DrawTransmissionSelectionCircle(sprite, bw::self_alliance_colors[sprite->player]);
+    if (sprite->player < Limits::Players)
+        DrawTransmissionSelectionCircle(sprite, bw::self_alliance_colors[sprite->player]);
     int place_width = units_dat_placement_box[sprite->index][0];
     int place_height = units_dat_placement_box[sprite->index][1];
     int width = (place_width + 31) / 32;
@@ -514,7 +515,7 @@ void DrawMinimapUnits()
                 color = *bw::minimap_resource_color;
             else
             {
-                if (*bw::minimap_color_mode)
+                if (*bw::minimap_color_mode && sprite->player < Limits::Players)
                 {
                     if (bw::alliances[local_player][sprite->player])
                         color = *bw::ally_minimap_color;
@@ -522,7 +523,7 @@ void DrawMinimapUnits()
                         color = *bw::enemy_minimap_color;
                 }
                 else
-                    color = bw::player_minimap_color[sprite->player];
+                    color = bw::player_minimap_color.index_overflowing(sprite->player);
             }
             DrawMinimapDot(color, sprite->position.x, sprite->position.y, place_width, place_height, 1);
             (*bw::minimap_dot_count)--;

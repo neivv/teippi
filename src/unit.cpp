@@ -749,7 +749,8 @@ void Unit::ProgressFrame(ProgressUnitResults *results)
 {
     if (~units_dat_flags[unit_id] & UnitFlags::Subunit && !sprite->IsHidden())
     {
-        DrawTransmissionSelectionCircle(sprite, bw::self_alliance_colors[player]);
+        if (player < Limits::Players)
+            DrawTransmissionSelectionCircle(sprite, bw::self_alliance_colors[player]);
     }
     ProgressTimers(results);
     //debug_log->Log("Order %x\n", order);
@@ -1058,7 +1059,7 @@ ProgressUnitResults Unit::ProgressFrames()
         // If unit has disappearing creep it will not be deleted even if sprite has been
         if (!deleted && unit->sprite)
         {
-            if (vision_updated && bw::players[unit->player].type == 2) // Human
+            if (vision_updated && IsHumanPlayer(unit->player))
                 ShowArea(1, bw::visions[unit->player], unit->sprite->position.x, unit->sprite->position.y, unit->IsFlying());
 
             UpdateVisibility(unit);
@@ -1284,6 +1285,8 @@ int Unit::GetOriginalPlayer() const
 
 bool Unit::IsEnemy(const Unit *other) const
 {
+    if (player >= Limits::Players || other->player >= Limits::Players)
+        return false;
     return bw::alliances[player][other->GetOriginalPlayer()] == 0;
 }
 
@@ -2498,7 +2501,8 @@ void Unit::KillChildren(ProgressUnitResults *results)
 
 void Unit::RemoveFromLists()
 {
-    player_units.Remove(bw::first_player_unit[player]);
+    // Soem mapping tricks may depend on overflowing player units array
+    player_units.Remove(bw::first_player_unit.index_overflowing(player));
     player_units.next = nullptr;
     player_units.prev = nullptr;
 
@@ -2583,7 +2587,7 @@ bool Unit::RemoveSubunitOrGasContainer()
             next() = nullptr;
             prev() = nullptr;
         }
-        player_units.Remove(bw::first_player_unit[player]);
+        player_units.Remove(bw::first_player_unit.index_overflowing(player));
         player_units.next = nullptr;
         player_units.prev = nullptr;
         ModifyUnitCounters(this, -1);
@@ -5410,7 +5414,7 @@ void Unit::Trigger_GiveUnit(int new_player, ProgressUnitResults *results)
         case Scarab:
             return;
     }
-    if (IsGasBuilding(unit_id) && flags & UnitStatus::Completed)
+    if (IsGasBuilding(unit_id) && flags & UnitStatus::Completed && player < Limits::Players)
     {
         for (Unit *unit : bw::first_player_unit[player])
         {
