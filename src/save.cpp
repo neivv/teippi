@@ -1365,7 +1365,6 @@ ptr<Sprite> Sprite::Deserialize(Load *load)
             Image *img = new Image;
             load->ReadCompressed(img, sizeof(Image));
             img->SaveConvert<false>();
-            img->allocated.Add(first_allocated_image);
             img->list.next = nullptr;
             img->list.prev = sprite->last_overlay;
             if (!sprite->first_overlay)
@@ -1410,7 +1409,6 @@ std::pair<int, Sprite *> Sprite::SaveAllocate(uint8_t *in, uint32_t size)
         Image *img = new Image;
         memcpy(img, in, sizeof(Image));
         img->SaveConvert<false>();
-        img->allocated.Add(first_allocated_image);
         img->list.next = 0;
         img->list.prev = out->last_overlay;
         if (!out->first_overlay)

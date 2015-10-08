@@ -216,7 +216,7 @@ void RemoveFromPosSearch()
 
 Image *AllocateImage()
 {
-    return Image::Allocate();
+    return new Image;
 }
 
 void DeleteImage()

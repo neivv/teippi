@@ -167,7 +167,7 @@ std::string Iscript::Command::DebugStr() const
 
 Image *Image::Iscript_AddOverlay(const IscriptContext *ctx, int image_id_, int x, int y, bool above)
 {
-    Image *img = Allocate();
+    Image *img = new Image;
     if (above)
     {
         img->list.prev = nullptr;
@@ -526,7 +526,7 @@ bool Image::IscriptCmd(const Iscript::Command &cmd, IscriptContext *ctx, Rng *rn
         break;
         case CreateGasOverlays:
         {
-            Image *img = Allocate();
+            Image *img = new Image;
             if (parent->first_overlay == this)
             {
                 Assert(list.prev == nullptr);

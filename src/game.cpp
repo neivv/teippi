@@ -343,7 +343,6 @@ static void FreeAllObjects()
     Sprite::DeleteAll();
     lone_sprites->DeleteAll();
     bullet_system->DeleteAll();
-    Image::DeleteAll();
     Order::DeleteAll();
     Ai::DeleteAll();
 }

@@ -36,7 +36,6 @@ void *Sprite::operator new(size_t size)
 }
 #endif
 
-
 Sprite::Sprite()
 {
     id = next_id++;
@@ -54,6 +53,19 @@ Sprite::Sprite()
             draw_order = (Sprite **)realloc(draw_order, draw_order_limit * sizeof(Sprite *));
     }
     index = 0;
+}
+
+Sprite::~Sprite()
+{
+    // Selection overlays are still static bw arrays
+    // (Though they should have been already removed)
+    RemoveSelectionOverlays();
+    for (Image *img = first_overlay; img != nullptr;)
+    {
+        Image *next = img->list.next;
+        delete img;
+        img = next;
+    }
 }
 
 void Sprite::PackIds()

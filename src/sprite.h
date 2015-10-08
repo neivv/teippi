@@ -51,7 +51,7 @@ class Sprite
 
         void Serialize(Save *save);
         static ptr<Sprite> Deserialize(Load *load);
-        ~Sprite() {}
+        ~Sprite();
 
         static std::pair<int, Sprite *> SaveAllocate(uint8_t *in, uint32_t size);
         static Sprite *Allocate(int sprite_id, const Point &pos, int player);

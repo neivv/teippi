@@ -11,8 +11,6 @@
 #include "draw.h"
 #include "perfclock.h"
 
-DummyListHead<Image, Image::offset_of_allocated> first_allocated_image;
-
 bool GrpFrameHeader::IsDecoded() const
 {
     return ((uint16_t *)frame)[0] == 0;
@@ -76,6 +74,8 @@ uint8_t GrpFrameHeader::GetPixel(x32 x, y32 y) const
 
 Image::Image()
 {
+    list.prev = nullptr;
+    list.next = nullptr;
 }
 
 #ifdef SYNC
@@ -87,17 +87,6 @@ void *Image::operator new(size_t size)
     return ret;
 }
 #endif
-
-Image *Image::Allocate()
-{
-    Image *img;
-    img = new Image;
-    img->allocated.Add(first_allocated_image);
-    img->list.prev = nullptr;
-    img->list.next = nullptr;
-
-    return img;
-}
 
 void Image::SingleDelete()
 {
@@ -126,20 +115,7 @@ void Image::SingleDelete()
     if (parent->main_image == this)
         parent->main_image = nullptr;
 
-    allocated.Remove();
     delete this;
-}
-
-void Image::DeleteAll()
-{
-    auto it = first_allocated_image.begin();
-    while (it != first_allocated_image.end())
-    {
-        Image *img = *it;
-        ++it;
-        delete img;
-    }
-    first_allocated_image.Reset();
 }
 
 void Image::UpdateSpecialOverlayPos()
