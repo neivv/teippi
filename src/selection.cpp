@@ -451,7 +451,7 @@ void Command_SaveHotkeyGroup(int group_id, bool shift_add)
         group[i] = nullptr;
     }
 
-    for (unsigned i = 0; i < Limits::Selection && selection[i] != nullptr; i++)
+    for (unsigned i = 0; i < Limits::Selection && count < Limits::Selection && selection[i] != nullptr; i++)
     {
         Unit *unit = selection[i];
         if (shift_add)
