@@ -114,7 +114,7 @@ class Unit
         // Sc data
         RevListEntry<Unit, 0x0> list;
         int32_t hitpoints;
-        Sprite *sprite;
+        ptr<Sprite> sprite;
 
         Point move_target; // 0x10
         Unit *move_target_unit; // 0x14
@@ -311,7 +311,7 @@ class Unit
             struct { RevListEntry<Unit, 0xf8> list; } pylon_list;
         };
 
-        Path *path; // 0x100
+        ptr<Path> path; // 0x100
         uint8_t path_frame; // 0x104
         uint8_t pathing_flags;
         uint8_t _unused_0x106;
@@ -385,7 +385,6 @@ class Unit
         void *operator new(size_t size);
 #endif
         Unit();
-        ~Unit();
 
         static std::pair<int, Unit *> SaveAllocate(uint8_t *in, uint32_t size, DummyListHead<Unit, Unit::offset_of_allocated> *list_head, uint32_t *out_id);
 
@@ -617,7 +616,7 @@ class Unit
 
     private:
         static Unit *RawAlloc();
-        Unit(bool) {} // raw alloc
+        Unit(bool); // Raw alloc
 
         void AddToLookup();
 

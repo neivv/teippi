@@ -663,13 +663,13 @@ void Save::CreateUnitSave(Unit *unit_)
     if (unit->path)
     {
         Path *path;
-        BeginBufWrite(&path, unit->path);
+        BeginBufWrite(&path, unit->path.get());
         ConvertPath<true>(path);
     }
 
     // There is single frame for units that die instantly/are removed when their sprite is null
     if (unit->sprite)
-        CreateSpriteSave(unit->sprite);
+        CreateSpriteSave(unit->sprite.get());
 }
 
 template <class C, class L>
@@ -1074,8 +1074,9 @@ std::pair<int, Unit *> Unit::SaveAllocate(uint8_t *in, uint32_t size, DummyListH
     }
     if (out->path)
     {
-        out->path = new Path;
-        memcpy(out->path, in, sizeof(Path));
+        out->path.release();
+        out->path = make_unique<Path>();
+        memcpy(out->path.get(), in, sizeof(Path));
         in += sizeof(Path);
     }
 
@@ -1087,7 +1088,8 @@ std::pair<int, Unit *> Unit::SaveAllocate(uint8_t *in, uint32_t size, DummyListH
         std::tie(diff, sprite) = Sprite::SaveAllocate(in, size);
         if (diff == 0)
             return std::make_pair(0, (Unit *)0);
-        out->sprite = sprite;
+        out->sprite.release();
+        out->sprite.reset(sprite);
     }
     out->ai = nullptr;
     if (out->search_left != -1)
@@ -1798,7 +1800,7 @@ void Load::LoadGame()
         }
         if (unit->path)
         {
-            ConvertPath<false>(unit->path);
+            ConvertPath<false>(unit->path.get());
         }
     }
     fread(&Unit::next_id, 4, 1, file);

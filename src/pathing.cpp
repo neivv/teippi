@@ -84,13 +84,9 @@ Path *AllocatePath(uint16_t *region_count, uint16_t *position_count)
 
 void CreateSimplePath(Unit *unit, const Point &next_pos, const Point &end)
 {
-    if (unit->path)
+    if (!unit->path)
     {
-        // Delete path, allocate new...?
-    }
-    else
-    {
-        unit->path = new Path;
+        unit->path = make_unique<Path>();
     }
     unit->path->total_region_count = 1;
     unit->path->unk1c = 1;

@@ -46,7 +46,7 @@ static void ShowShieldHitOverlay(Unit *unit, int direction)
     direction = ((direction - 0x7c) >> 3) & 0x1f;
     int8_t *shield_los = images_dat_shield_overlay[img->image_id];
     shield_los = shield_los + *(uint32_t *)(shield_los + 8 + img->direction * 4) + direction * 2; // sigh
-    AddOverlayAboveMain(unit->sprite, Image::ShieldOverlay, shield_los[0], shield_los[1], direction);
+    AddOverlayAboveMain(unit->sprite.get(), Image::ShieldOverlay, shield_los[0], shield_los[1], direction);
 }
 
 static void UnitKilled(Unit *target, Unit *attacker, int attacking_player, vector<Unit *> *killed_units)

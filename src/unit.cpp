@@ -61,6 +61,8 @@ void *Unit::operator new(size_t size)
 }
 #endif
 
+Unit::Unit(bool) { }
+
 Unit::Unit()
 {
     prev() = nullptr;
@@ -113,11 +115,6 @@ Unit *Unit::RawAlloc()
     return new Unit(false);
 }
 
-Unit::~Unit()
-{
-    delete path;
-}
-
 void Unit::SingleDelete()
 {
     Unit *next = id_lookup[lookup_id % UNIT_ID_LOOKUP_SIZE];
@@ -146,7 +143,6 @@ void Unit::DeleteAll()
     {
         Unit *unit = *it;
         ++it;
-        delete unit->sprite;
         if (unit->ai)
             unit->ai->Delete();
         delete unit;
@@ -172,7 +168,6 @@ void Unit::DeleteAll()
 
 void Unit::DeletePath()
 {
-    delete path;
     path = nullptr;
 }
 
@@ -750,7 +745,7 @@ void Unit::ProgressFrame(ProgressUnitResults *results)
     if (~units_dat_flags[unit_id] & UnitFlags::Subunit && !sprite->IsHidden())
     {
         if (player < Limits::Players)
-            DrawTransmissionSelectionCircle(sprite, bw::self_alliance_colors[player]);
+            DrawTransmissionSelectionCircle(sprite.get(), bw::self_alliance_colors[player]);
     }
     ProgressTimers(results);
     //debug_log->Log("Order %x\n", order);
@@ -787,7 +782,7 @@ void Unit::ProgressFrame_Late(ProgressUnitResults *results)
             {
                 case IscriptOpcode::End:
                     sprite->SingleDelete();
-                    sprite = nullptr;
+                    sprite.reset(nullptr);
                 break;
                 case IscriptOpcode::AttackMelee:
                     AttackMelee(cmd.data[0], (uint16_t *)(cmd.data + 1), results);
@@ -835,7 +830,7 @@ void Unit::ProgressActiveUnitFrame()
         Point32 lo = LoFile::GetOverlay(sprite->main_image->image_id, Overlay::Special).GetValues(sprite->main_image, 0);
         subunit->exact_position = exact_position;
         subunit->position = Point(exact_position.x >> 8, exact_position.y >> 8);
-        MoveSprite(subunit->sprite, subunit->position.x, subunit->position.y);
+        MoveSprite(subunit->sprite.get(), subunit->position.x, subunit->position.y);
         Image *subunit_img = subunit->sprite->main_image;
         if (subunit_img->x_off != lo.x || subunit_img->y_off != lo.y)
         {
@@ -2676,7 +2671,7 @@ void Unit::Die(ProgressUnitResults *results)
     DropPowerup(this);
     RemoveFromSelections(this);
     RemoveFromClientSelection3(this);
-    RemoveSelectionCircle(sprite);
+    RemoveSelectionCircle(sprite.get());
     ModifyUnitCounters(this, -1);
     if (flags & UnitStatus::Completed)
         ModifyUnitCounters2(this, -1, 0);
@@ -2736,7 +2731,7 @@ void Unit::Order_Die(ProgressUnitResults *results)
         HideUnit(this);
     if (subunit)
     {
-        TransferMainImage(sprite, subunit->sprite);
+        TransferMainImage(sprite.get(), subunit->sprite.get());
         subunit->Remove(results);
         subunit = nullptr;
     }
@@ -2805,7 +2800,7 @@ void Unit::CancelConstruction(ProgressUnitResults *results)
         build_queue[current_build_slot] = None;
         remaining_build_time = 0;
         int old_image = sprites_dat_image[flingy_dat_sprite[units_dat_flingy[previous_unit_id]]];
-        ReplaceSprite(old_image, 0, sprite);
+        ReplaceSprite(old_image, 0, sprite.get());
         order_signal &= ~0x4;
         SetIscriptAnimation_NoHandling(IscriptAnim::Special2, true, "CancelConstruction", results);
         IssueOrderTargetingNothing(this, Order::Birth);
@@ -2869,7 +2864,7 @@ void Unit::CancelZergBuilding(ProgressUnitResults *results)
                 lowest->y_off = 7;
                 lowest->flags |= 0x1;
             }
-            PrepareDrawSprite(sprite);
+            PrepareDrawSprite(sprite.get());
             IssueOrderTargetingNothing(this, Order::ResetCollision1);
             AppendOrder(this, units_dat_return_to_idle_order[unit_id], 0, 0, None, 0);
             SetHp(this, prev_hp);
@@ -4168,7 +4163,7 @@ void Unit::Order_DroneMutate(ProgressUnitResults *results)
     // Any kind of error happened
     if (sprite->last_overlay->drawfunc == Image::Shadow)
         sprite->last_overlay->SetOffset(sprite->last_overlay->x_off, 7);
-    PrepareDrawSprite(sprite); // ?
+    PrepareDrawSprite(sprite.get()); // ?
     PrependOrderTargetingNothing(this, Order::ResetCollision1);
     DoNextQueuedOrder();
 }
@@ -4182,7 +4177,7 @@ void Unit::MutateExtractor(ProgressUnitResults *results)
         order_flags |= 0x4; // Remove death
         Kill(results);
         StartZergBuilding(extractor);
-        AddOverlayBelowMain(extractor->sprite, Image::VespeneGeyserUnderlay, 0, 0, 0);
+        AddOverlayBelowMain(extractor->sprite.get(), Image::VespeneGeyserUnderlay, 0, 0, 0);
     }
     else
     {
