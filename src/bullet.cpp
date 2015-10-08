@@ -1329,7 +1329,7 @@ vector<Ai::HitUnit> BulletSystem::ProcessAiReactToHit(vector<tuple<Unit *, Unit 
 
 // input should be sorted so the iteration order is consistent across all players' computers
 // It should also not have duplicates
-// And it yields objects which have functions Own() -> Unit * and Enemies -> Iterator<ref<Unit>>
+// And it yields objects which have functions Own() -> Unit * and Enemies -> Iterator<reference<Unit>>
 template<class Iterable>
 void ProcessAiUpdateAttackTarget(Iterable input)
 {
@@ -1339,7 +1339,7 @@ void ProcessAiUpdateAttackTarget(Iterable input)
         bool must_reach = own->order == Order::Pickup4;
 
         Unit *picked = nullptr;
-        for (const ref<Unit> &other_ : first.Enemies())
+        for (const reference<Unit> &other_ : first.Enemies())
         {
             Unit *other = &other_.get();
             if (other->hitpoints == 0)
@@ -1371,33 +1371,33 @@ class IterateUatValue
 {
     friend class enemies;
     public:
-        class enemies : public Common::Iterator<enemies, ref<Unit>> {
+        class enemies : public Common::Iterator<enemies, reference<Unit>> {
             public:
                 enemies(Unit *f, Unit *s) : first(f) {
                     if (s == nullptr) {
-                        second = Optional<ref<Unit>>();
+                        second = Optional<reference<Unit>>();
                     } else {
-                        second = Optional<ref<Unit>>(ref<Unit>(*s));
+                        second = Optional<reference<Unit>>(reference<Unit>(*s));
                     }
                 }
-                Optional<ref<Unit>> next() {
+                Optional<reference<Unit>> next() {
                     if (first != nullptr)
                     {
                         auto ret = first;
                         first = nullptr;
-                        return Optional<ref<Unit>>(*ret);
+                        return Optional<reference<Unit>>(*ret);
                     }
                     else
                     {
                         auto ret = move(second);
-                        second = Optional<ref<Unit>>();
+                        second = Optional<reference<Unit>>();
                         return ret;
                     }
                 }
 
             private:
                 Unit *first;
-                Optional<ref<Unit>> second;
+                Optional<reference<Unit>> second;
         };
 
         IterateUatValue(Ai::HitUnit *f, Unit *s) : first(f), second(s) {}

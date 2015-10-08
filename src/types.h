@@ -19,7 +19,7 @@ using xuint = Common::xint<unsigned int>;
 using yuint = Common::yint<unsigned int>;
 using Common::Array;
 
-using Common::ref;
+using Common::reference;
 using Common::ptr;
 using Common::vector;
 using Common::Iterator;
@@ -29,7 +29,8 @@ using std::tuple;
 using std::make_tuple;
 using std::move;
 using std::make_unique;
-
+using std::ref;
+using std::cref;
 
 #ifdef CONSOLE
 const bool UseConsole = true;

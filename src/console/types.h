@@ -18,7 +18,7 @@ template <typename C>
 using ptr = std::unique_ptr<C>;
 
 template <typename C>
-using ref = std::reference_wrapper<C>;
+using reference = std::reference_wrapper<C>;
 
 #pragma pack(push)
 #pragma pack(1)
