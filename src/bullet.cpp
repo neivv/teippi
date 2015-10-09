@@ -578,7 +578,6 @@ bool UnitWasHit_Actual(Unit *target, Unit *attacker, ProgressBulletBufs *bufs)
     target->last_attacking_player = attacker->player;
     if (target->ai && !target->previous_attacker)
     {
-        debug_log->Log("Setting previous attacker for ai unit %08X to %08X as there was not one\n", target->lookup_id, attacker->lookup_id);
         target->SetPreviousAttacker(attacker);
         if (target->HasSubunit())
         {
@@ -1637,7 +1636,6 @@ void BulletSystem::ProgressFrames(BulletFramesInput input)
     }
     for (Unit *unit : *bufs.killed_units)
     {
-        debug_log->Log("Killed %08X\n", unit->lookup_id);
         unit->Kill(nullptr);
     }
 

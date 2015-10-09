@@ -1024,7 +1024,6 @@ Unit **MainUnitSearch::FindHelpingUnits(Unit *own, const Rect16 &rect, TempMemor
     out = result_beg;
 
     unsigned int beg, end;
-    debug_log->Log("Fhu %08X @ %04hx.%04hx.%04hx.%04hx\n", own->lookup_id, rect.left, rect.top, rect.right, rect.bottom);
     beg = NewFind(rect.left - max_width);
     end = NewFind(rect.right);
 
@@ -1053,7 +1052,6 @@ Unit **MainUnitSearch::FindHelpingUnits(Unit *own, const Rect16 &rect, TempMemor
             }
         }
     }
-    debug_log->Log("Fhu %08X @ %04hx.%04hx.%04hx.%04hx found %x\n", own->lookup_id, rect.left, rect.top, rect.right, rect.bottom, count);
     *out++ = nullptr;
     allocation_pool->SetPos(out);
     return result_beg;
