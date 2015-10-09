@@ -284,9 +284,9 @@ void Console::Render()
     }
     draw_pos = Point(5, surface.height - 5);
     if (new_time & 1)
-        surface.DrawText(&font, current_cmd , Point(5, surface.height - 5), colors[Color::own]);
+        surface.DrawText(&font, current_cmd , draw_pos, colors[Color::own]);
     else
-        surface.DrawText(&font, current_cmd + '_', Point(5, surface.height - 5), colors[Color::own]);
+        surface.DrawText(&font, current_cmd + '_', draw_pos, colors[Color::own]);
 
     dirty = false;
 }

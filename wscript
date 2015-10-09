@@ -83,9 +83,12 @@ def build(bld):
     libpath = []
     stlibpath = []
     if not msvc:
-        cflags += ['-Wno-sign-compare', '-Wno-format']
+        cflags += ['-Wno-format']
+        if bld.env.CXX_NAME == 'gcc':
+            cflags += ['-Wno-strict-overflow', '-Wno-sign-compare']
         cxxflags += ['--std=c++14']
         noexcept_cxxflags += ['-fno-exceptions']
+        linkflags += ['-m32']
         if debug:
             linkflags += ['-Wl,--image-base=0x42300000']
         else:

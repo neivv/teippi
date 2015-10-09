@@ -23,13 +23,26 @@ namespace Common
 
 class PatchManager;
 
-#ifdef __GNUC__
+#if defined __clang__
 #define REG_EAX(type, var) type var; asm volatile("" : "=ea"(var))
 #define REG_ECX(type, var) type var; asm volatile("" : "=ec"(var))
 #define REG_EDX(type, var) type var; asm volatile("" : "=ed"(var))
 #define REG_EBX(type, var) type var; asm volatile("" : "=eb"(var))
 #define REG_ESI(type, var) type var; asm volatile("" : "=eS"(var))
 #define REG_EDI(type, var) type var; asm volatile("" : "=eD"(var))
+#elif defined __GNUC__
+// Otherwise gcc 5.1 thinks that UnitToIndex can share assembly with IndexToUnit <.<
+#define REG_EAX(type, var) type var; asm volatile("" : "=ea"(var));
+#define REG_ECX(type, var) type var; asm volatile("" : "=ec"(var));\
+{ volatile uint8_t _tmp __attribute__ ((unused)) = 1; }
+#define REG_EDX(type, var) type var; asm volatile("" : "=ed"(var));\
+{ volatile uint8_t _tmp __attribute__ ((unused)) = 2; }
+#define REG_EBX(type, var) type var; asm volatile("" : "=eb"(var));\
+{ volatile uint8_t _tmp __attribute__ ((unused)) = 3; }
+#define REG_ESI(type, var) type var; asm volatile("" : "=eS"(var));\
+{ volatile uint8_t _tmp __attribute__ ((unused)) = 4; }
+#define REG_EDI(type, var) type var; asm volatile("" : "=eD"(var));\
+{ volatile uint8_t _tmp __attribute__ ((unused)) = 5; }
 #else // Assume msvc
 #define REG_EAX(type, var) type var; __asm { mov var, eax }
 #define REG_ECX(type, var) type var; __asm { mov var, ecx }

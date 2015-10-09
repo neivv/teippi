@@ -133,7 +133,7 @@ namespace Ai
         uint8_t flags;
         uint32_t total_minerals;
         uint32_t total_gas;
-        uint8_t dc10[0x20];
+        uint32_t unk10[0x8];
     };
     struct ResourceAreaArray
     {

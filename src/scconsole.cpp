@@ -36,7 +36,7 @@ ScConsole::ScConsole()
     draw_locations = false;
     draw_crects = false;
     draw_ai_towns = false;
-    draw_orders = DrawOrders::None;
+    draw_orders = OrderDrawMode::None;
     draw_ai_data = false;
     draw_ai_full = false;
     draw_ai_named = false;
@@ -968,12 +968,10 @@ void ScConsole::DrawResourceAreas(uint8_t *textbuf, uint8_t *framebuf, xuint w, 
                     area.total_gas, area.geyser_count, area.flags);
             text_surface.DrawText(&font, buf, Point32(x - 50, y + 20), 0x55);
             snprintf(buf, sizeof buf, "Unk: %02x %08x %08x %08x %08x", area.dc6,
-                    *(uint32_t *)(&area.dc10[0x0]), *(uint32_t *)(&area.dc10[0x4]),
-                    *(uint32_t *)(&area.dc10[0x8]), *(uint32_t *)(&area.dc10[0xc]));
+                    area.unk10[0], area.unk10[1], area.unk10[2], area.unk10[3]);
             text_surface.DrawText(&font, buf, Point32(x - 50, y + 30), 0x55);
-            snprintf(buf, sizeof buf, "%08x %08x %08x %08x", area.dc6,
-                    *(uint32_t *)(&area.dc10[0x10]), *(uint32_t *)(&area.dc10[0x14]),
-                    *(uint32_t *)(&area.dc10[0x18]), *(uint32_t *)(&area.dc10[0x1c]));
+            snprintf(buf, sizeof buf, "%08x %08x %08x %08x",
+                    area.unk10[4], area.unk10[5], area.unk10[6], area.unk10[7]);
             text_surface.DrawText(&font, buf, Point32(x - 50, y + 40), 0x55);
             Rect32 rect = Rect32(Point32(area.position), 15).OffsetBy(screen_pos.Negate());
             surface.DrawRect(rect, 0xb9);
@@ -983,12 +981,12 @@ void ScConsole::DrawResourceAreas(uint8_t *textbuf, uint8_t *framebuf, xuint w, 
 
 void ScConsole::DrawOrders(uint8_t *framebuf, xuint w, yuint h)
 {
-    if (draw_orders == DrawOrders::None)
+    if (draw_orders == OrderDrawMode::None)
         return;
 
     Common::Surface surface(framebuf, w, h);
     Point32 screen_pos(*bw::screen_x, *bw::screen_y);
-    if (draw_orders == DrawOrders::All)
+    if (draw_orders == OrderDrawMode::All)
     {
         for (Unit *unit : *bw::first_active_unit)
         {
@@ -996,7 +994,7 @@ void ScConsole::DrawOrders(uint8_t *framebuf, xuint w, yuint h)
                 surface.DrawLine(unit->target->sprite->position - screen_pos, unit->sprite->position - screen_pos, 0xa4);
         }
     }
-    else if (draw_orders == DrawOrders::Selected)
+    else if (draw_orders == OrderDrawMode::Selected)
     {
         for (Unit *unit : client_select)
         {
@@ -1190,7 +1188,7 @@ bool ScConsole::Show(const CmdArgs &args)
         draw_locations = draw_paths = draw_crects = draw_coords = draw_info =
             draw_range = draw_region_borders = draw_region_data = draw_ai_data = draw_ai_towns =
             show_fps = show_frame = draw_bullets = draw_resource_areas = false;
-        draw_orders = DrawOrders::None;
+        draw_orders = OrderDrawMode::None;
     }
     else if (what == "fps")
         show_fps = !show_fps;
@@ -1221,17 +1219,17 @@ bool ScConsole::Show(const CmdArgs &args)
     {
         std::string more(args[2]);
         if (more == "selected")
-            draw_orders = DrawOrders::Selected;
+            draw_orders = OrderDrawMode::Selected;
         else if (more == "all")
-            draw_orders = DrawOrders::All;
+            draw_orders = OrderDrawMode::All;
         else if (more != "")
             return false;
         else
         {
-            if (draw_orders == DrawOrders::None)
-                draw_orders = DrawOrders::All;
+            if (draw_orders == OrderDrawMode::None)
+                draw_orders = OrderDrawMode::All;
             else
-                draw_orders = DrawOrders::None;
+                draw_orders = OrderDrawMode::None;
         }
     }
     else if (what == "ai")

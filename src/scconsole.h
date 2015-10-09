@@ -75,7 +75,7 @@ class ScConsole : public Common::GenericConsole
         bool draw_locations;
         bool draw_crects;
         bool draw_ai_towns;
-        enum class DrawOrders {
+        enum class OrderDrawMode {
             None,
             All,
             Selected,
