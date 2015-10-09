@@ -781,7 +781,7 @@ void Unit::ProgressFrame_Late(ProgressUnitResults *results)
             switch (cmd.opcode)
             {
                 case IscriptOpcode::End:
-                    sprite->SingleDelete();
+                    sprite->Remove();
                     sprite.reset(nullptr);
                 break;
                 case IscriptOpcode::AttackMelee:
@@ -877,7 +877,7 @@ void Unit::ProgressFrame_Hidden(ProgressUnitResults *results)
         {
             if (cmd.opcode == IscriptOpcode::End)
             {
-                sprite->SingleDelete();
+                sprite->Remove();
                 sprite = nullptr;
             }
             else
@@ -892,7 +892,7 @@ bool Unit::ProgressFrame_Dying()
     {
         if (sprite->IsHidden())
         {
-            sprite->SingleDelete();
+            sprite->Remove();
             sprite = nullptr;
         }
         else
@@ -901,7 +901,7 @@ bool Unit::ProgressFrame_Dying()
             {
                 if (cmd.opcode == IscriptOpcode::End)
                 {
-                    sprite->SingleDelete();
+                    sprite->Remove();
                     sprite = nullptr;
                 }
                 else
@@ -2311,7 +2311,7 @@ void Unit::Remove(ProgressUnitResults *results)
         subunit = nullptr;
     }
     Die(results);
-    sprite->SingleDelete();
+    sprite->Remove();
     sprite = nullptr;
 }
 
@@ -2457,7 +2457,7 @@ void Unit::KillChildren(ProgressUnitResults *results)
         case Unit::Pylon:
             if (pylon.aura)
             {
-                pylon.aura->SingleDelete();
+                pylon.aura->Remove();
                 pylon.aura = nullptr;
             }
             // Incompleted pylons are not in list, but maybe it can die as well before being added to the list (Order_InitPylon adds them)

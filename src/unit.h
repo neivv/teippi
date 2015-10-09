@@ -8,6 +8,7 @@
 #include "sprite.h"
 #include "unitsearch_cache.h" // For UnitSearchRegionCache::Entry
 #include "game.h"
+#include "pathing.h"
 
 #include <atomic>
 
@@ -274,8 +275,11 @@ class Unit
             } harvester;
 
             struct { Unit *exit; } nydus;
+            /// Owned and animated by LoneSpriteSystem
             struct { Sprite *nukedot; } ghost;
-            struct { Sprite *aura; } pylon;
+            /// Owned by this unit, not animated.
+            /// Really messy as this is inside union.
+            struct { ptr<Sprite> aura; } pylon;
 
             struct {
                 Unit *nuke; // d0
@@ -385,6 +389,7 @@ class Unit
         void *operator new(size_t size);
 #endif
         Unit();
+        ~Unit() { if (unit_id == Pylon) { pylon.aura.~unique_ptr<Sprite>(); } }
 
         static std::pair<int, Unit *> SaveAllocate(uint8_t *in, uint32_t size, DummyListHead<Unit, Unit::offset_of_allocated> *list_head, uint32_t *out_id);
 

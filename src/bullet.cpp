@@ -409,7 +409,7 @@ Bullet *BulletSystem::AllocateBullet(Unit *parent, int player, int direction, in
     else
     {
         debug_log->Log("Bullet creation failed %x %x.%x\n", weapon, pos.x, pos.y);
-        bullet_ptr->sprite->SingleDelete();
+        bullet_ptr->sprite->Remove();
         return nullptr;
     }
 }

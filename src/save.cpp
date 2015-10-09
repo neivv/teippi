@@ -462,9 +462,9 @@ void SaveBase<P>::ConvertUnit(Unit *unit)
         {
             if (saving)
             {
-                unit->pylon_list.list.prev = 0;
-                unit->pylon_list.list.next = 0;
-                unit->pylon.aura = 0;
+                unit->pylon_list.list.prev = nullptr;
+                unit->pylon_list.list.next = nullptr;
+                unit->pylon.aura.release();
             }
         }
         else if (unit->HasRally())

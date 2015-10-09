@@ -61,7 +61,6 @@ class Sprite
         Sprite *SpawnLoneSpriteAbove(int sprite_id);
         static Sprite *Spawn(Image *spawner, uint16_t sprite_id, const Point &pos, int elevation_level);
 
-        void SingleDelete();
         void Remove();
         static void DeleteAll();
 

@@ -213,11 +213,6 @@ void Sprite::Remove()
     count--;
 }
 
-void Sprite::SingleDelete()
-{
-    Remove();
-}
-
 void LoneSpriteSystem::DeleteAll()
 {
     lone_sprites.clear();

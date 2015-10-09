@@ -54,7 +54,9 @@ void Flingy::ProgressFrame()
     {
         if (cmd.opcode == IscriptOpcode::End)
         {
-            sprite->SingleDelete();
+            sprite->Remove();
+            // TODO make Flingy use unique_ptr (if the limit is ever removed, lol)
+            delete sprite;
             sprite = nullptr;
         }
         else
