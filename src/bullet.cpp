@@ -1444,9 +1444,9 @@ class IterateUatValue
             public:
                 enemies(Unit *f, Unit *s) : first(f) {
                     if (s == nullptr) {
-                        second = move(Optional<ref<Unit>>());
+                        second = Optional<ref<Unit>>();
                     } else {
-                        second = move(Optional<ref<Unit>>(ref<Unit>(*s)));
+                        second = Optional<ref<Unit>>(ref<Unit>(*s));
                     }
                 }
                 Optional<ref<Unit>> next() {

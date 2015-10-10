@@ -48,7 +48,7 @@ Optional<UnitSearchRegionCache::Entry> UnitSearchRegionCache::Find(uint32_t regi
     uint8_t *ptr = cache[MakeEntry(region, ground)];
     if (!ptr)
         return Optional<Entry>();
-    return move(Entry(ptr, Limits::Players));
+    return Entry(ptr, Limits::Players);
 }
 
 void MemAllocator::Reset()
