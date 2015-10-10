@@ -125,7 +125,7 @@ class Unit
         // 0x20
         uint8_t flingy_flags;
         uint8_t facing_direction;
-        uint8_t flingyTurnRadius;
+        uint8_t flingy_turn_speed;
         uint8_t movement_direction;
         uint16_t flingy_id;
         uint8_t _unknown_0x026;
@@ -170,7 +170,7 @@ class Unit
         Unit *previous_attacker;
 
         Unit *related;
-        uint8_t hightlighted_order_count; // 0x84
+        uint8_t highlighted_order_count; // 0x84
         uint8_t order_wait; // 0x85
         uint8_t unk86;
         uint8_t attack_notify_timer;
@@ -208,80 +208,43 @@ class Unit
         // Otherwise free to modify in synced code
         DummyListEntry<Unit, offset_of_allocated> allocated; // 0xb8
 
+        /// NOTE: While some of these union fields, such as spider mines or nuke,
+        /// are easy to use with a unit which is not supposed to have them,
+        /// saving the game will have issues unless Unit::serialize is modified
+        /// to know which units use which variant. However, as a safety measure,
+        /// the serialization function saves everything for units which should not
+        /// use any variants at all. If variant uses pointers then it *must* be explicitly
+        /// fixed, otherwise it just makes things clearer/safer (and saves some bytes)
+        /// (Ideally this union would not be extended, but used less?)
         union // c0 union
         {
-            struct
-            {
+            struct {
                 uint8_t spiderMineCount; // 0
             } vulture;
 
-            struct
-            {
+            struct {
                 ListHead<Unit, 0xc4> in_child;
                 ListHead<Unit, 0xc4> out_child;
                 uint8_t in_hangar_count;
                 uint8_t out_hangar_count;
             } carrier; // also applies to reaver
 
-            struct
-            {
+            struct {
                 Unit *parent;   // 0x0
                 ListEntry<Unit, 0xc4> list;
                 uint8_t is_outside_hangar;  // 0xC
             } interceptor;
 
-            struct
-            {
-                uint32_t _unknown_00;
-                uint32_t _unknown_04;
-                uint32_t flagSpawnFrame;
-            } beacon;
-
-            struct
-            {
+            struct {
                 Unit *addon;
-                uint16_t      addonBuildType;
-                uint16_t      upgradeResearchTime;
-                uint8_t       tech;
-                uint8_t       upgrade;
-                uint8_t       larva_timer;
-                uint8_t       is_landing;
-                uint8_t       creep_timer;
-                uint8_t       upgrade_level;
-                uint16_t      _padding_0E;
-                union
-                {
-                    struct
-                    {
-                        uint16_t resource_amount;
-                        uint8_t resourceIscript;
-                        uint8_t awaiting_workers;
-                        RevListHead<Unit, 0xd4> first_awaiting_worker;
-                        uint8_t resourceGroup;
-                        uint8_t ai_unk;
-                    } resource;
-
-                    struct { Unit *exit; } nydus;
-                    struct { Sprite *nukedot; } ghost;
-                    struct { Sprite *aura; } pylon;
-
-                    struct
-                    {
-                        Unit *nuke; // d0
-                        uint32_t has_nuke; // d4
-                    } silo;
-
-                    struct
-                    {
-                        Rect16 preferred_larvaspawn;
-                    } hatchery;
-
-                    struct
-                    {
-                        Point origin_point;
-                        Unit *carrying_unit;
-                    } powerup;
-                };
+                uint16_t addonBuildType;
+                uint16_t upgradeResearchTime;
+                uint8_t tech;
+                uint8_t upgrade;
+                uint8_t larva_timer;
+                uint8_t is_landing;
+                uint8_t creep_timer;
+                uint8_t upgrade_level;
             } building;
 
             struct
@@ -292,9 +255,39 @@ class Unit
                 uint16_t repair_resource_loss_timer;
                 uint8_t is_carrying;
                 uint8_t carried_resource_count;
+            } worker;
+        };
+        union // d0 union
+        {
+            struct {
+                uint16_t resource_amount;
+                uint8_t resourceIscript;
+                uint8_t awaiting_workers;
+                RevListHead<Unit, 0xd4> first_awaiting_worker;
+                uint8_t resource_area;
+                uint8_t ai_unk;
+            } resource;
+
+            struct {
                 Unit *previous_harvested;
                 RevListEntry<Unit, 0xd4> harvesters;
-            } worker;
+            } harvester;
+
+            struct { Unit *exit; } nydus;
+            struct { Sprite *nukedot; } ghost;
+            struct { Sprite *aura; } pylon;
+
+            struct {
+                Unit *nuke; // d0
+                uint32_t has_nuke; // d4
+            } silo;
+
+            struct { Rect16 preferred_larvaspawn; } hatchery;
+
+            struct {
+                Point origin_point;
+                Unit *carrying_unit;
+            } powerup;
         };
 
         uint32_t flags; // 0xdc
@@ -310,15 +303,12 @@ class Unit
         RevListEntry<Unit, 0xf0> invisible_list; // 0xf0
         union
         {
-            struct
-            {
+            struct {
                 Point position;
                 Unit *unit;
             } rally;
-            struct
-            {
-                RevListEntry<Unit, 0xf8> list;
-            } pylon;
+
+            struct { RevListEntry<Unit, 0xf8> list; } pylon_list;
         };
 
         Path *path; // 0x100
@@ -344,7 +334,7 @@ class Unit
         uint8_t master_spell_timer;
         uint8_t blind;
         uint8_t mael_timer;
-        uint8_t unused;
+        uint8_t _unused_125;
         uint8_t acid_spore_count;
         uint8_t acid_spore_timers[9];
 

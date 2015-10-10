@@ -103,7 +103,7 @@ struct BulletFramesInput
 
 struct ProgressBulletBufs;
 
-// This class carries some extra information which is used for handling unit damage.
+// This class carries some extra information which is used for handling unit damage during bullet frames.
 // Only one DamagedUnit should exist per Unit damaged in this frame.
 // AddHit() does what bw function DoWeaponDamage does, with some additions which allow
 // simpler code in Ai::UnitWasHit. Ideally UnitWasHit should be called only once per unit,

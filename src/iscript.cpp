@@ -544,12 +544,12 @@ bool Image::IscriptCmd(const Iscript::Command &cmd, IscriptContext *ctx, Rng *rn
             // But with dynamic allocation, that is not the case
             if (units_dat_flags[ctx->unit->unit_id] & UnitFlags::ResourceContainer)
             {
-                if (ctx->unit->building.resource.resource_amount == 0)
+                if (ctx->unit->resource.resource_amount == 0)
                     smoke_img = VespeneSmallSmoke1 + cmd.val;
             }
             else
             {
-                if (ctx->unit->building.silo.nuke == nullptr)
+                if (ctx->unit->silo.nuke == nullptr)
                     smoke_img = VespeneSmallSmoke1 + cmd.val;
             }
             Point pos = LoFile::GetOverlay(image_id, Overlay::Special).GetValues(this, cmd.val).ToPoint16();

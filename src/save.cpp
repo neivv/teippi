@@ -429,19 +429,19 @@ void SaveBase<P>::ConvertUnit(Unit *unit)
         {
             ConvertUnitPtr<saving>(&unit->building.addon);
             if (unit->unit_id == Unit::NuclearSilo)
-                ConvertUnitPtr<saving>(&unit->building.silo.nuke);
+                ConvertUnitPtr<saving>(&unit->silo.nuke);
         }
         if (unit->IsWorker())
         {
             ConvertUnitPtr<saving>(&unit->worker.powerup);
             ConvertUnitPtr<saving>(&unit->worker.current_harvest_target);
-            ConvertUnitPtr<saving>(&unit->worker.previous_harvested);
-            ConvertUnitPtr<saving>(&unit->worker.harvesters.prev);
-            ConvertUnitPtr<saving>(&unit->worker.harvesters.next);
+            ConvertUnitPtr<saving>(&unit->harvester.previous_harvested);
+            ConvertUnitPtr<saving>(&unit->harvester.harvesters.prev);
+            ConvertUnitPtr<saving>(&unit->harvester.harvesters.next);
         }
         else if (units_dat_flags[unit->unit_id] & (UnitFlags::SingleEntity | UnitFlags::ResourceContainer))
         {
-            ConvertUnitPtr<saving>(&unit->building.powerup.carrying_unit);
+            ConvertUnitPtr<saving>(&unit->powerup.carrying_unit);
         }
         else if (unit->IsCarrier() || unit->IsReaver())
         {
@@ -456,15 +456,15 @@ void SaveBase<P>::ConvertUnit(Unit *unit)
         }
         else if (unit->unit_id == Unit::Ghost)
         {
-            unit->building.ghost.nukedot = lone_sprites->SaveConvertSpritePtr<saving>(unit->building.ghost.nukedot);
+            unit->ghost.nukedot = lone_sprites->SaveConvertSpritePtr<saving>(unit->ghost.nukedot);
         }
         if (unit->unit_id == Unit::Pylon)
         {
             if (saving)
             {
-                unit->pylon.list.prev = 0;
-                unit->pylon.list.next = 0;
-                unit->building.pylon.aura = 0;
+                unit->pylon_list.list.prev = 0;
+                unit->pylon_list.list.next = 0;
+                unit->pylon.aura = 0;
             }
         }
         else if (unit->HasRally())

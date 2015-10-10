@@ -146,9 +146,9 @@ int Trig_KillUnitGeneric(Unit *unit, KillUnitArgs *args, bool check_height, bool
 
     if (!unit->sprite || unit->order == Order::Die || !((*args->IsValid)(args->player, args->unit_id, unit)))
         return 0;
-    if (units_dat_flags[unit->unit_id] & UnitFlags::SingleEntity && unit->building.powerup.carrying_unit)
+    if (units_dat_flags[unit->unit_id] & UnitFlags::SingleEntity && unit->powerup.carrying_unit)
     {
-        Unit *worker = unit->building.powerup.carrying_unit;
+        Unit *worker = unit->powerup.carrying_unit;
         if (worker->carried_powerup_flags)
         {
             DeletePowerupImages(worker);

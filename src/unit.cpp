@@ -1938,9 +1938,9 @@ void Unit::SetButtons(int buttonset)
 void Unit::DeleteOrder(Order *order)
 {
     if (orders_dat_highlight[order->order_id] != 0xffff)
-        hightlighted_order_count--;
-    if (hightlighted_order_count == 0xff) // Pointless
-        hightlighted_order_count = 0;
+        highlighted_order_count--;
+    if (highlighted_order_count == 0xff) // Pointless
+        highlighted_order_count = 0;
 
     if (order->list.next)
         order->list.next->list.prev = order->list.prev;
@@ -2381,14 +2381,14 @@ void Unit::RemoveFromHangar()
 
 void Unit::RemoveHarvesters()
 {
-    Unit *worker = building.resource.first_awaiting_worker;
-    building.resource.awaiting_workers = 0;
+    Unit *worker = resource.first_awaiting_worker;
+    resource.awaiting_workers = 0;
     while (worker)
     {
-        Unit *next = worker->worker.harvesters.next;
-        worker->worker.harvesters.prev = nullptr;
-        worker->worker.harvesters.next = nullptr;
-        worker->worker.previous_harvested = nullptr;
+        Unit *next = worker->harvester.harvesters.next;
+        worker->harvester.harvesters.prev = nullptr;
+        worker->harvester.harvesters.next = nullptr;
+        worker->harvester.previous_harvested = nullptr;
         worker = next;
     }
 }
@@ -2438,47 +2438,47 @@ void Unit::KillChildren(ProgressUnitResults *results)
                 RemoveFromHangar();
             return;
         case Unit::Ghost:
-            if (building.ghost.nukedot)
+            if (ghost.nukedot)
             {
-                auto cmds = building.ghost.nukedot->SetIscriptAnimation(IscriptAnim::Death, true);
+                auto cmds = ghost.nukedot->SetIscriptAnimation(IscriptAnim::Death, true);
                 if (!Empty(cmds))
-                    Warning("Unit::KillChildren did not handle all iscript commands for nukedot (%x)", building.ghost.nukedot->sprite_id);
+                    Warning("Unit::KillChildren did not handle all iscript commands for nukedot (%x)", ghost.nukedot->sprite_id);
             }
             return;
         case Unit::NuclearSilo:
-            if (building.silo.nuke)
+            if (silo.nuke)
             {
-                building.silo.nuke->Kill(results);
-                building.silo.nuke = nullptr;
+                silo.nuke->Kill(results);
+                silo.nuke = nullptr;
             }
             return;
         case Unit::NuclearMissile:
             if (related && related->unit_id == Unit::NuclearSilo)
             {
-                related->building.silo.nuke = nullptr;
-                related->building.silo.has_nuke = 0;
+                related->silo.nuke = nullptr;
+                related->silo.has_nuke = 0;
             }
             return;
         case Unit::Pylon:
-            if (building.pylon.aura)
+            if (pylon.aura)
             {
-                building.pylon.aura->SingleDelete();
-                building.pylon.aura = nullptr;
+                pylon.aura->SingleDelete();
+                pylon.aura = nullptr;
             }
-            // Incompleted pylons are not in list, but maybe it can die as well before being added to the list (Order_InitPylon lisää)
-            if (pylon.list.prev == nullptr && pylon.list.next == nullptr && *bw::first_pylon != this)
+            // Incompleted pylons are not in list, but maybe it can die as well before being added to the list (Order_InitPylon adds them)
+            if (pylon_list.list.prev == nullptr && pylon_list.list.next == nullptr && *bw::first_pylon != this)
                 return;
 
-            pylon.list.Remove(*bw::first_pylon);
+            pylon_list.list.Remove(*bw::first_pylon);
             *bw::pylon_refresh = 1;
             return;
         case Unit::NydusCanal:
         {
-            Unit *exit = building.nydus.exit;
+            Unit *exit = nydus.exit;
             if (exit)
             {
-                exit->building.nydus.exit = nullptr;
-                building.nydus.exit = nullptr;
+                exit->nydus.exit = nullptr;
+                nydus.exit = nullptr;
                 exit->Kill(results);
             }
             return;
@@ -2606,7 +2606,7 @@ bool Unit::RemoveSubunitOrGasContainer()
             if (flags & UnitStatus::Completed)
                 ModifyUnitCounters2(this, -1, 0);
             flags &= ~UnitStatus::Completed;
-            building.resource.first_awaiting_worker = nullptr;
+            resource.first_awaiting_worker = nullptr;
             TransformUnit(this, VespeneGeyser);
             order = units_dat_human_idle_order[unit_id];
             order_state = 0;
@@ -2777,7 +2777,7 @@ void Unit::CancelConstruction(ProgressUnitResults *results)
         return;
     if (unit_id == Guardian || unit_id == Lurker || unit_id == Devourer || unit_id == Mutalisk || unit_id == Hydralisk)
         return;
-    if (unit_id == NydusCanal && building.nydus.exit)
+    if (unit_id == NydusCanal && nydus.exit)
         return;
     if (flags & UnitStatus::Building)
     {
@@ -2816,7 +2816,7 @@ void Unit::CancelConstruction(ProgressUnitResults *results)
         {
             if (related)
             {
-                related->building.silo.nuke = nullptr;
+                related->silo.nuke = nullptr;
                 related->order_state = 0;
             }
             RefreshUi();
@@ -4159,7 +4159,7 @@ void Unit::Order_DroneMutate(ProgressUnitResults *results)
                     else
                         MutateBuilding(this, building);
                     if (powerup)
-                        MoveUnit(powerup, powerup->building.powerup.origin_point.x, powerup->building.powerup.origin_point.y);
+                        MoveUnit(powerup, powerup->powerup.origin_point.x, powerup->powerup.origin_point.y);
                     return;
                 }
             }
@@ -4241,11 +4241,11 @@ void Unit::Order_HarvestMinerals(ProgressUnitResults *results)
         if (worker.is_carrying)
         {
             worker.is_carrying = 0;
-            Unit *previous_harvested = worker.previous_harvested;
+            Unit *previous_harvested = harvester.previous_harvested;
             if (previous_harvested)
             {
-                worker.previous_harvested = nullptr;
-                previous_harvested->building.resource.awaiting_workers--;
+                harvester.previous_harvested = nullptr;
+                previous_harvested->resource.awaiting_workers--;
                 if (LetNextUnitMine(previous_harvested) != 0)
                     BeginHarvest(this, previous_harvested);
             }
@@ -4321,25 +4321,25 @@ void Unit::AcquireResource(Unit *resource, ProgressUnitResults *results)
 
 int Unit::MineResource(ProgressUnitResults *results)
 {
-    if (building.resource.resource_amount <= 8)
+    if (resource.resource_amount <= 8)
     {
         if (IsMineralField())
         {
             Kill(results);
-            return building.resource.resource_amount;
+            return resource.resource_amount;
         }
         else
         {
-            building.resource.resource_amount = 0;
+            resource.resource_amount = 0;
             return 2;
         }
     }
     else
     {
-        building.resource.resource_amount -= 8;
+        resource.resource_amount -= 8;
         if (IsMineralField())
             UpdateMineralAmountAnimation(this);
-        else if (building.resource.resource_amount < 8)
+        else if (resource.resource_amount < 8)
             ShowInfoMessage(String::GeyserDepleted, Sound::GeyserDepleted, player);
         return 8;
     }
@@ -5440,9 +5440,9 @@ void Unit::Trigger_GiveUnit(int new_player, ProgressUnitResults *results)
         {
             currently_building->GiveTo(new_player, results);
         }
-        if (unit_id == NydusCanal && building.nydus.exit != nullptr)
+        if (unit_id == NydusCanal && nydus.exit != nullptr)
         {
-            building.nydus.exit->GiveTo(new_player, results);
+            nydus.exit->GiveTo(new_player, results);
         }
     }
 }

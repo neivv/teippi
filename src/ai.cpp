@@ -1116,7 +1116,7 @@ void DeleteTown(Town *town)
     for (Unit *unit = *bw::first_active_unit; unit; unit = unit->next())
     {
         if (units_dat_flags[unit->unit_id] & UnitFlags::ResourceContainer)
-            unit->building.resource.ai_unk = 0;
+            unit->resource.ai_unk = 0;
     }
     if (town->resource_area)
         (*bw::resource_areas).areas[town->resource_area].flags &= ~0x2;
