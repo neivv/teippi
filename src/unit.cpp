@@ -747,6 +747,8 @@ void Unit::ProgressTimers(ProgressUnitResults *results)
 
 void Unit::ProgressFrame(ProgressUnitResults *results)
 {
+    // Sanity check that the helping units search flag is cleared
+    Assert(~hotkey_groups & 0x80000000);
     if (~units_dat_flags[unit_id] & UnitFlags::Subunit && !sprite->IsHidden())
     {
         if (player < Limits::Players)

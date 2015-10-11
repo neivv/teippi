@@ -164,9 +164,9 @@ static bool AskForHelp_IsGood(Unit *unit, Unit *enemy, bool attacking_units)
             if (!unit->CanAttackUnit(enemy, true))
                 return false;
             // At least have to do this for carrier/reaver
-            if (enemy->IsFlying() && unit->GetAirWeapon() == Weapon::None )
+            if (enemy->IsFlying() && unit->GetTurret()->GetAirWeapon() == Weapon::None )
                 return false;
-            if (!enemy->IsFlying() && unit->GetGroundWeapon() == Weapon::None )
+            if (!enemy->IsFlying() && unit->GetTurret()->GetGroundWeapon() == Weapon::None )
                 return false;
 
             int dist = Distance(enemy->sprite->position, ((Ai::GuardAi *)unit->ai)->home);

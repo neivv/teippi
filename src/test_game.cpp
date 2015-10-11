@@ -1447,6 +1447,81 @@ struct Test_Death : public GameTest {
     }
 };
 
+/// More ai aggro stuff.. Parasite has barely any reactions, but if the queen's
+/// target at the moment the parasite bullet hits is same player as the unit being
+/// parasited, then the ai will attack it. (As Ai::UpdateAttackTarget() requires
+/// previous_attacker having target of same player) Additionally parasite has such a
+/// long range, that Ai::AskForHelp() may not even bother helping.
+struct Test_ParasiteAggro : public GameTest {
+    Unit *queen;
+    Unit *target;
+    Unit *other;
+    void Init() override {
+        Visions();
+        AiPlayer(1);
+        SetEnemy(1, 0);
+        SetEnemy(0, 1);
+    }
+    void SetupNext(int queen_player, int target_unit, int other_unit)
+    {
+        ClearUnits();
+        int other_player = queen_player == 0 ? 1 : 0;
+        queen = CreateUnitForTestAt(Unit::Queen, queen_player, Point(180, 100));
+        target = CreateUnitForTestAt(target_unit, other_player, Point(600, 100));
+        if (other_unit != Unit::None)
+            other = CreateUnitForTestAt(other_unit, other_player, Point(530, 100));
+            IssueOrderTargetingUnit_Simple(queen, Order::Parasite, target);
+        state++;
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                SetupNext(1, Unit::Marine, Unit::None);
+            } break; case 1: {
+                if (target->parasites == 0)
+                    return;
+                // Human owned units don't care
+                TestAssert(target->target == nullptr);
+                SetupNext(0, Unit::Marine, Unit::None);
+            } break; case 2: {
+                if (target->parasites == 0)
+                    return;
+                // Ai owned units don't care from a single parasite
+                TestAssert(target->target == nullptr);
+                SetupNext(0, Unit::Marine, Unit::Marine);
+            } break; case 3: {
+                if (queen->target == nullptr) {
+                    IssueOrderTargetingUnit_Simple(queen, Order::Parasite, target);
+                    // If it was just parasited, try again as the frames aligned just poorly
+                    // (Should maybe have random variance?)
+                    target->parasites = 0;
+                    queen->energy = 150 * 256;
+                    TestAssert(target->target == nullptr);
+                    return;
+                } else if (target->parasites != 0) {
+                    // Ai cares if queen is targeting its unit at the time of hit
+                    TestAssert(target->target == queen);
+                    // But the queen should be far away enough for the other marine
+                    TestAssert(other->target == nullptr);
+                    SetupNext(0, Unit::Goliath, Unit::Goliath);
+                }
+            } break; case 4: {
+                if (queen->target == nullptr) {
+                    IssueOrderTargetingUnit_Simple(queen, Order::Parasite, target);
+                    target->parasites = 0;
+                    queen->energy = 150 * 256;
+                    TestAssert(target->target == nullptr);
+                    return;
+                } else if (target->parasites != 0) {
+                    TestAssert(target->target == queen);
+                    // Goliaths have range long enough to aggro even from parasite range
+                    TestAssert(other->target == queen);
+                    Pass();
+                }
+            }
+        }
+    }
+};
 
 GameTests::GameTests()
 {
@@ -1481,6 +1556,7 @@ GameTests::GameTests()
     AddTest("Attack move", new Test_AttackMove);
     AddTest("Detection", new Test_Detection);
     AddTest("Death", new Test_Death);
+    AddTest("Parasite aggro", new Test_ParasiteAggro);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)

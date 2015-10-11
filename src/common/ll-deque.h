@@ -11,7 +11,7 @@ template <class C>
 class LocklessQueue
 {
     static const int ChunkSize = 16;
-    const int FreeChunkLimit = 4;
+    static const int FreeChunkLimit = 4;
     class Chunk
     {
         public:

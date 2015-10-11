@@ -1173,7 +1173,7 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
             if (target && !target->IsDying())
             {
                 target->Parasite(player);
-                if (parent)
+                if (parent && IsComputerPlayer(target->player))
                 {
                     target->StartHelperSearch();
                     bufs->AddToAiReact(target, parent, false);
@@ -1183,8 +1183,11 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
         case 0x7:
             if (parent && target && !target->IsDying())
             {
-                target->StartHelperSearch();
-                bufs->AddToAiReact(target, parent, true);
+                if (IsComputerPlayer(target->player))
+                {
+                    target->StartHelperSearch();
+                    bufs->AddToAiReact(target, parent, true);
+                }
                 SpawnBroodlingHit(bufs->killed_units);
                 if (~target->flags & UnitStatus::Hallucination)
                     return SpellCast(player, target->sprite->position, Tech::SpawnBroodlings, parent);
