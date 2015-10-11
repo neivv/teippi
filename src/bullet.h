@@ -10,7 +10,7 @@
 #include <tuple>
 #include <array>
 
-void __fastcall RemoveFromBulletTargets(Unit *unit);
+void RemoveFromBulletTargets(Unit *unit);
 // Returns true if there's need for UnitWasHit processing
 bool UnitWasHit(Unit *target, Unit *attacker, bool notify);
 

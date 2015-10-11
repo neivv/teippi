@@ -33,7 +33,7 @@
 extern bool unitframes_in_progress;
 
 void ShowRallyTarget_Hook();
-void __stdcall  DamageUnit_Hook(Unit *attacker, int attacking_player, bool show_attacker);
+void __stdcall DamageUnit_Hook(Unit *attacker, int attacking_player, bool show_attacker);
 
 void ShowCursorMarker_Hook()
 {
@@ -437,8 +437,9 @@ void AddLoadedUnitsToCompletedUnitLbScore()
     }
 }
 
-int __fastcall GetUsedSpace(Unit *transport)
+int GetUsedSpace_Hook()
 {
+    REG_ECX(Unit *, transport);
     return transport->GetUsedSpace();
 }
 
@@ -751,7 +752,7 @@ static void __stdcall SendChangeSelectionCommand_Hook(int count, Unit **units)
     SendChangeSelectionCommand(count, units);
 }
 
-static void __stdcall CenterOnSelectionGroup_Hook()
+static void CenterOnSelectionGroup_Hook()
 {
     REG_ECX(int, group);
     group &= 0xff;
@@ -792,6 +793,12 @@ static void __stdcall ProcessCommands_Hook(int length, int replay_process)
 {
     REG_EAX(uint8_t *, data);
     ProcessCommands(data, length, replay_process);
+}
+
+static void RemoveFromBulletTargets_Hook()
+{
+    REG_ECX(Unit *, unit);
+    RemoveFromBulletTargets(unit);
 }
 
 void RemoveLimits(Common::PatchContext *patch)
@@ -870,7 +877,7 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->Patch(bw::DrawSprites, (void *)&Sprite::DrawSprites, 0, PATCH_JMPHOOK);
     patch->Patch(bw::DisableVisionSync, (uint8_t *)bw::DisableVisionSync.raw_pointer() + 12, 0, PATCH_JMPHOOK);
 
-    patch->JumpHook(bw::RemoveUnitFromBulletTargets, RemoveFromBulletTargets);
+    patch->JumpHook(bw::RemoveUnitFromBulletTargets, RemoveFromBulletTargets_Hook);
     patch->JumpHook(bw::DamageUnit, DamageUnit_Hook);
 
     patch->JumpHook(bw::FindUnitInLocation_Check, FindUnitInLocation_Check);
@@ -884,7 +891,7 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->JumpHook(bw::GetFirstLoadedUnit, GetFirstLoadedUnit);
     patch->JumpHook(bw::ForEachLoadedUnit, ForEachLoadedUnit);
     patch->JumpHook(bw::AddLoadedUnitsToCompletedUnitLbScore, AddLoadedUnitsToCompletedUnitLbScore);
-    patch->JumpHook(bw::GetUsedSpace, GetUsedSpace);
+    patch->JumpHook(bw::GetUsedSpace, GetUsedSpace_Hook);
 
     patch->JumpHook(bw::DrawStatusScreen_LoadedUnits, DrawStatusScreen_LoadedUnits);
     patch->JumpHook(bw::TransportStatus_UpdateDrawnValues, TransportStatus_UpdateDrawnValues);
@@ -934,7 +941,6 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->Patch(bw::InitPathArray, (void *)0xc3, 1, PATCH_REPLACE_DWORD);
 
     patch->JumpHook(bw::StatusScreenButton, StatusScreenButton_Hook);
-
     patch->JumpHook(bw::LoadReplayMapDirEntry, LoadReplayMapDirEntry);
     patch->JumpHook(bw::LoadReplayData, LoadReplayData_Hook);
     patch->JumpHook(bw::ExtractNextReplayFrame, ExtractNextReplayFrame);

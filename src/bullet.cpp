@@ -1646,7 +1646,7 @@ void BulletSystem::ProgressFrames(BulletFramesInput input)
     perf_log->Indent(-2);
 }
 
-void __fastcall RemoveFromBulletTargets(Unit *unit)
+void RemoveFromBulletTargets(Unit *unit)
 {
     for (Bullet *bullet : unit->targeting_bullets)
     {

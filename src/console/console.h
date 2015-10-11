@@ -117,9 +117,10 @@ class Console
         void ClearScreen();
         template <class C>
         void AddCommand(std::string cmd, bool(C::*fn)(const CmdArgs &)) {
-            typedef bool(Console::*Func)(const CmdArgs &);
-            using std::placeholders::_1;
-            commands.emplace(move(cmd), std::bind((Func)fn, this, _1));
+            CmdFunc func = [this, fn](const CmdArgs &args) {
+                return (static_cast<C *>(this)->*fn)(args);
+            };
+            commands.emplace(move(cmd), func);
         }
 
         Common::Font font;

@@ -683,7 +683,7 @@ void ProgressScripts()
     }
 }
 
-void __fastcall RemoveTownGasReferences(Unit *unit)
+void RemoveTownGasReferences(Unit *unit)
 {
     if (units_dat_flags[unit->unit_id] & UnitFlags::ResourceContainer)
     {
@@ -748,7 +748,7 @@ void __stdcall PreCreateGuardAi(int unit_id, int x)
     ai->list.Add(needed_guards[player]);
 }
 
-void __stdcall AddGuardAiToUnit(Unit *unit)
+void AddGuardAiToUnit(Unit *unit)
 {
     if (!IsActivePlayer(unit->player))
         return;
@@ -1755,17 +1755,28 @@ static int __stdcall RemoveWorkerOrBuildingAi_Hook(bool only_building)
     return RemoveWorkerOrBuildingAi(unit, only_building);
 }
 
+static void __stdcall AddGuardAiToUnit_Hook(Unit *unit)
+{
+    AddGuardAiToUnit(unit);
+}
+
+static void RemoveTownGasReferences_Hook()
+{
+    REG_ECX(Unit *, unit);
+    RemoveTownGasReferences(unit);
+}
+
 void RemoveLimits(Common::PatchContext *patch)
 {
     patch->JumpHook(bw::CreateAiScript, CreateScript);
-    patch->JumpHook(bw::RemoveAiTownGasReferences, RemoveTownGasReferences);
+    patch->JumpHook(bw::RemoveAiTownGasReferences, RemoveTownGasReferences_Hook);
     patch->JumpHook(bw::DeleteWorkerAi, DeleteWorkerAi);
     patch->JumpHook(bw::DeleteBuildingAi, DeleteBuildingAi);
     patch->JumpHook(bw::AddUnitAi, AddUnitAi_Hook);
     patch->JumpHook(bw::DeleteMilitaryAi, Hook_DeleteMilitaryAi);
     patch->JumpHook(bw::CreateAiTown, CreateTown);
     patch->JumpHook(bw::PreCreateGuardAi, PreCreateGuardAi);
-    patch->JumpHook(bw::AddGuardAiToUnit, AddGuardAiToUnit);
+    patch->JumpHook(bw::AddGuardAiToUnit, AddGuardAiToUnit_Hook);
     patch->JumpHook(bw::RemoveUnitAi, RemoveUnitAi);
     patch->JumpHook(bw::RemoveWorkerOrBuildingAi, RemoveWorkerOrBuildingAi_Hook);
 

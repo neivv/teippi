@@ -2,12 +2,10 @@
 #define MEMORY_HOO
 #include <stdint.h>
 #include <vector>
+#include <stddef.h>
 
 struct _SYSTEM_INFO;
 extern _SYSTEM_INFO sysinfo;
-
-// Huom: GetModuleHandle() voi return handlen jonka toinen thread free,
-// mutta bw pitäis olla ok koska muut threadit ei (kai?) load moduleita
 
 void InitSystemInfo();
 void DumpMemory(const char *filename, uintptr_t start, uintptr_t len);
