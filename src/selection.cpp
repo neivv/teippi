@@ -349,10 +349,9 @@ void SelectHotkeyGroup(uint8_t group_id)
         }
         if (IsMultiSelectable(unit) || count == 1)
             valid_units[valid_units_count++] = unit;
-
     }
     if (valid_units_count == 1 && valid_units[0]->HasRally())
-        ShowRallyTarget(valid_units[valid_units_count]);
+        ShowRallyTarget(valid_units[0]);
 
     ClearOrderTargeting();
 
