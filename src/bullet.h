@@ -165,6 +165,7 @@ struct BulletStateResults
     }
 };
 
+namespace cereal { class acccess; }
 
 #pragma pack(push)
 #pragma pack(1)
@@ -172,6 +173,7 @@ struct BulletStateResults
 class Bullet
 {
     friend class BulletSystem; // BulletSystem is only allowed to create bullets
+    friend class cereal::access; // And cereal as well..
     public:
         RevListEntry<Bullet, 0x0> list;
         uint32_t hitpoints;
@@ -244,10 +246,11 @@ class Bullet
         void UpdateMoveTarget(const Point &target);
         void Move(const Point &where);
 
-        void Serialize(Save *save, const BulletSystem *parent);
-        template <bool saving, class T> void SaveConvert(SaveBase<T> *save, const BulletSystem *parent);
         ~Bullet() {}
         Bullet(Bullet &&other) = default;
+
+        template <class Archive>
+        void serialize(Archive &archive);
 
     private:
         Bullet() {}
@@ -276,9 +279,9 @@ class BulletSystem
     typedef UnsortedList<ptr<Bullet>, 128> BulletContainer;
     public:
         BulletSystem() {}
-        void Deserialize(Load *load);
-        void Serialize(Save *save);
-        void FinishLoad(Load *load);
+
+        template <class Archive>
+        void serialize(Archive &archive);
         template <class Cb>
         void MakeSaveIdMapping(Cb callback) const;
 

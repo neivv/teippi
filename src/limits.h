@@ -11,6 +11,7 @@ namespace Limits
     const unsigned Players = 12;
     const unsigned Selection = 12;
     const unsigned ImageTypes = 999;
+    const unsigned RemapPalettes = 8;
     const unsigned Teams = 4;
 }
 

@@ -80,7 +80,7 @@ def build(bld):
     linkflags = []
     defines = ['NOMINMAX']
     noexcept_defines = []
-    includes = []
+    includes = ['cereal']
     libs = []
     stlibs = []
     libpath = []

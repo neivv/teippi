@@ -27,12 +27,716 @@
 #include <vector>
 #include <exception>
 #include <memory>
+#include <streambuf>
+#include <unordered_map>
+#include <string>
+
+#include <cereal/cereal.hpp>
+#include <cereal/archives/binary.hpp>
+#include <cereal/types/memory.hpp>
 
 #ifndef SEEK_SET
 #define SEEK_CUR 1
 #define SEEK_END 2
 #define SEEK_SET 0
 #endif
+
+using std::get;
+
+// Bw also has its own version, but we won't use that
+const uint32_t SaveVersion = 1;
+
+/// Helper for nicely logging SaveFail info
+/// (Uses global error_log)
+static void PrintNestedExceptions(const std::exception &e)
+{
+    try {
+        std::rethrow_if_nested(e);
+    } catch (const std::exception &e) {
+        error_log->Log("    %s\n", e.what());
+        PrintNestedExceptions(e);
+    } catch (...) { }
+}
+
+/// Exception which is thrown when something fails during saving or loading
+class SaveFail : public std::exception
+{
+    public:
+        enum Type {
+            Version,
+            Unit,
+            /// Misc unit globals
+            UnitMisc,
+            UnitPointer,
+            SpritePointer,
+            BulletPointer,
+            Grp,
+            ImageRemap,
+            OwnedList,
+            // ReadCompressed had too much data
+            ExtraData,
+            // ReadCompressed didn't have expected amount of data
+            CompressedFormat
+        };
+        SaveFail(Type ty) : type(ty), index(~0), desc(type_description()) { }
+        SaveFail(Type ty, uintptr_t index) : type(ty), index(index), desc(type_description())
+        {
+            char buf[16];
+            if (type == ExtraData)
+                snprintf(buf, sizeof buf, " (%d bytes)", index);
+            else
+                snprintf(buf, sizeof buf, " #%d", index);
+            desc += buf;
+        }
+
+        const char *type_description() const
+        {
+            switch (type)
+            {
+                case Version:
+                    return "Save version";
+                case Unit:
+                    return "Unit";
+                case UnitMisc:
+                    return "Unit globals";
+                case UnitPointer:
+                    return "Unit *";
+                case SpritePointer:
+                    return "Sprite *";
+                case BulletPointer:
+                    return "Bullet *";
+                case Grp:
+                    return "Grp";
+                case ImageRemap:
+                    return "Image remap";
+                case OwnedList:
+                    return "Owned list";
+                case ExtraData:
+                    return "Too large compressed chunk";
+                case CompressedFormat:
+                    return "Invalid compressed chunk";
+                default:
+                    return "???";
+            }
+        }
+
+        Type type;
+        uintptr_t index;
+        std::string desc;
+
+        virtual const char *what() const noexcept override { return desc.c_str(); }
+};
+
+/// Output stream for cereal, writing to the same FILE * as bw functions do.
+/// Also compresses the output using bw's WriteCompressed().
+class CompressedOutputStreambuf : public std::streambuf  {
+    const int BufferSize = 0x8000;
+    public:
+        CompressedOutputStreambuf(FILE *f) : std::streambuf(), file(f),
+            buffer(make_unique<char[]>(BufferSize))
+        {
+            setp(buffer.get(), buffer.get() + BufferSize);
+        }
+
+    protected:
+        virtual int sync() override
+        {
+            if (FlushBuffer())
+                return 0;
+            return -1;
+        }
+        virtual int_type overflow(int_type ch) override
+        {
+            if (!FlushBuffer())
+                return traits_type::eof();
+            if (traits_type::eq_int_type(ch, traits_type::eof()) != true)
+            {
+                sputc(ch);
+            }
+            return traits_type::to_int_type(0);
+        }
+
+    private:
+        bool FlushBuffer()
+        {
+            uintptr_t size = pptr() - pbase();
+            fwrite(&size, 1, sizeof(uintptr_t), file);
+            WriteCompressed((File *)file, pbase(), size);
+            setp(buffer.get(), buffer.get() + BufferSize);
+            return true; // TODO check WriteCompressed return val
+        }
+
+        FILE *file;
+        ptr<char[]> buffer;
+};
+
+/// Loading counterpart for CompressedOutputStreambuf.
+class CompressedInputStreambuf : public std::streambuf  {
+    public:
+        CompressedInputStreambuf(FILE *f) : file(f), buffer(nullptr), bufsize(0)
+        {
+        }
+
+        void ConfirmEmptyBuffer() const
+        {
+            if (gptr() != egptr())
+                throw SaveFail(SaveFail::ExtraData, egptr() - gptr());
+        }
+
+    protected:
+        virtual int_type underflow() override
+        {
+            uintptr_t size;
+            auto read = fread(&size, 1, sizeof(uintptr_t), file);
+            if (read != sizeof(uintptr_t))
+                return traits_type::eof();
+
+            if (size > bufsize)
+            {
+                buffer = make_unique<char[]>(size);
+                bufsize = size;
+            }
+            if (!bw::funcs::ReadCompressed((File *)file, buffer.get(), size))
+                throw SaveFail(SaveFail::CompressedFormat);
+            setg(buffer.get(), buffer.get(), buffer.get() + size);
+            return traits_type::to_int_type(buffer[0]);
+        }
+
+    private:
+        FILE *file;
+        ptr<char[]> buffer;
+        uintptr_t bufsize;
+};
+
+/// Combines cereal's BinaryOutputArchive with CompressedOutputStreambuf
+/// and provides access to Sprite/Bullet to id mappings (and version).
+/// If saving is too slow, not using std streams would help with performance.
+class SaveArchive : public cereal::OutputArchive<SaveArchive>
+{
+    public:
+        SaveArchive(FILE *file, Save *save);
+        void Flush() { stream.flush(); }
+
+        bool IsSaving() const { return true; }
+        uint32_t Version() const { return version; }
+
+    private:
+        CompressedOutputStreambuf buffer;
+        std::ostream stream;
+
+    public:
+        cereal::BinaryOutputArchive inner;
+
+        const std::unordered_map<const Sprite *, uintptr_t> &sprites;
+        const std::unordered_map<const Bullet *, uintptr_t> &bullets;
+
+    private:
+        uint32_t version;
+};
+
+template<class T>
+typename std::enable_if<std::is_arithmetic<T>::value, void>::type
+    save(SaveArchive &ar, const T & t)
+{
+    ar.inner(t);
+}
+
+template <class T>
+void save(SaveArchive &ar, const cereal::SizeTag<T> & t)
+{
+    ar(t.size);
+}
+
+template<class T>
+void save(SaveArchive &ar, const cereal::NameValuePair<T> & t)
+{
+    ar(t.value);
+}
+
+template <class T>
+void save(SaveArchive &ar, const cereal::BinaryData<T> & bd)
+{
+    ar.inner(bd);
+}
+
+CEREAL_REGISTER_ARCHIVE(SaveArchive);
+
+/// See SaveArchive.
+/// Does not provide Pointer-id mappings, they are handled by FixupArchive
+class LoadArchive : public cereal::InputArchive<LoadArchive>
+{
+    public:
+        LoadArchive(FILE *file, Load *load);
+
+        void ConfirmEmptyBuffer() const { buffer.ConfirmEmptyBuffer(); }
+
+        bool IsSaving() const { return false; }
+        uint32_t Version() const;
+
+    private:
+        CompressedInputStreambuf buffer;
+        std::basic_istream<char> stream;
+
+    public:
+        cereal::BinaryInputArchive inner;
+
+    private:
+        const Load *load;
+};
+
+template<class T>
+typename std::enable_if<std::is_arithmetic<T>::value, void>::type
+    load(LoadArchive &ar, T & t)
+{
+    ar.inner(t);
+}
+
+template <class T>
+void load(LoadArchive &ar, cereal::SizeTag<T> & t)
+{
+    ar(t.size);
+}
+
+template<class T>
+void load(LoadArchive &ar, cereal::NameValuePair<T> & t)
+{
+    ar(t.value);
+}
+
+template <class T>
+void load(LoadArchive &ar, cereal::BinaryData<T> & bd)
+{
+    ar.inner(bd);
+}
+
+CEREAL_REGISTER_ARCHIVE(LoadArchive);
+
+/// Behaves like a cereal archive, but does not actually read from anything,
+/// just applies pointer fixups from Load and no-op for integer data types.
+/// Throws SaveFail when meeting a pointer without valid save id.
+class FixupArchive : public cereal::InputArchive<FixupArchive>
+{
+    public:
+        typedef std::unordered_map<uintptr_t, Sprite *> SpriteFixup;
+        typedef std::unordered_map<uintptr_t, Bullet *> BulletFixup;
+
+        FixupArchive(uint32_t version, const SpriteFixup &s, const BulletFixup &b) :
+            cereal::InputArchive<FixupArchive>(this), sprites(s), bullets(b), version(version) { }
+
+        bool IsSaving() const { return false; }
+        uint32_t Version() const { return version; }
+
+        const SpriteFixup &sprites;
+        const BulletFixup &bullets;
+        uint32_t version;
+};
+
+CEREAL_REGISTER_ARCHIVE(FixupArchive);
+
+template<class Parent>
+class SaveBase
+{
+    public:
+        SaveBase() {}
+        ~SaveBase();
+        void Close();
+
+    protected:
+        template <bool saving, class Ai_Type> void ConvertAiParent(Ai_Type *ai);
+        template <bool saving> void ConvertBuildingAi(Ai::BuildingAi *ai, int player);
+        template <bool saving> void ConvertGuardAiPtr(Ai::GuardAi **ai, int player);
+        template <bool saving> void ConvertAiRegion(Ai::Region *region);
+        template <bool saving> void ConvertAiTown(Ai::Town *town);
+        template <bool saving> void ConvertAiRegionPtr(Ai::Region **script, int player);
+        template <bool saving> void ConvertAiTownPtr(Ai::Town **town, int player);
+        template <bool saving> void ConvertPlayerAiData(Ai::PlayerData *player_ai, int player);
+        template <bool saving> void ConvertAiScript(Ai::Script *script);
+        template <bool saving> void ConvertAiRequestValue(int type, void **value, int player);
+
+        template <bool saving> void ConvertPathing(Pathing::PathingSystem *pathing, Pathing::PathingSystem *offset = 0);
+
+        FILE *file;
+};
+
+class Save : public SaveBase<Save>
+{
+    friend class SaveArchive;
+    public:
+        Save(FILE *file, uint32_t version);
+        ~Save() {}
+        void SaveGame(uint32_t time);
+
+        Sprite *FindSpriteById(uint32_t id) { return 0; }
+        Bullet *FindBulletById(uint32_t id) { return 0; }
+
+        bool IsOk() const { return file != nullptr; }
+
+    private:
+        void WriteCompressedChunk();
+        template <class C>
+        void BeginBufWrite(C **out, C *in = 0);
+
+        void SaveUnits();
+        void SaveUnitPtr(Unit *ptr);
+
+        void SaveAiChunk();
+        void SavePlayerAiData(int player);
+        void SaveAiTowns(int player);
+        void CreateAiTownSave(Ai::Town *ai_);
+        void CreateWorkerAiSave(Ai::WorkerAi *ai_);
+        void CreateBuildingAiSave(Ai::BuildingAi *ai_, int player);
+        void CreateMilitaryAiSave(Ai::MilitaryAi *ai_);
+        void CreateAiRegionSave(Ai::Region *region_);
+        void CreateAiScriptSave(Ai::Script *script_);
+        void SaveAiRegions(int player);
+        template <bool active_ais> void CreateGuardAiSave(Ai::GuardAi *ai_);
+        template <bool active_ais> void SaveGuardAis(const ListHead<Ai::GuardAi, 0x0> &list_head);
+
+        void SavePathingChunk();
+
+        datastream *buf;
+        std::string filename;
+        bool compressing;
+
+        // Most likely SaveVersion, but can be configured anyways
+        uint32_t version;
+
+        SaveArchive cereal_archive;
+
+        std::unordered_map<const Sprite *, uintptr_t> sprite_to_id;
+        std::unordered_map<const Bullet *, uintptr_t> bullet_to_id;
+};
+
+class Load : public SaveBase<Load>
+{
+    friend class LoadArchive;
+    public:
+        Load(FILE *file);
+        ~Load();
+        void LoadGame();
+
+        void Read(void *buf, int size);
+        void ReadCompressed(void *out, int size);
+
+    private:
+        int ReadCompressedChunk();
+        void ReadCompressed(FILE *file, void *out, int size);
+        void LoadUnitPtr(Unit **ptr);
+        void LoadAiChunk();
+        void LoadAiRegions(int player, int region_count);
+        template <bool active_ais> void LoadGuardAis(ListHead<Ai::GuardAi, 0x0> &list_head);
+        void LoadAiTowns(int player);
+        void LoadPlayerAiData(int player);
+
+        int LoadAiRegion(Ai::Region *region, uint32_t size);
+        int LoadAiTown(Ai::Town *out, uint32_t size);
+        Ai::MilitaryAi *LoadMilitaryAi();
+        Ai::Script *LoadAiScript();
+
+        void LoadPathingChunk();
+
+        void LoadUnits();
+        void FixupUnits(FixupArchive &fixup);
+
+        template <class C>
+        void BufRead(C *out);
+
+        uint8_t *buf_beg;
+        uint8_t *buf;
+        uint8_t *buf_end;
+        uint32_t buf_size;
+
+        uint32_t version;
+
+        LoadArchive cereal_archive;
+};
+
+/// Has to be after Save declaration
+SaveArchive::SaveArchive(FILE *file, Save *save) : cereal::OutputArchive<SaveArchive>(this),
+    buffer(file), stream(&buffer), inner(stream), sprites(save->sprite_to_id), bullets(save->bullet_to_id),
+    version(save->version)
+{
+}
+
+LoadArchive::LoadArchive(FILE *file, Load *load) : cereal::InputArchive<LoadArchive>(this),
+    buffer(file), stream(&buffer), inner(stream), load(load)
+{
+}
+
+uint32_t LoadArchive::Version() const { return load->version; }
+
+// FixupArchive specializations
+template<class T>
+typename std::enable_if<std::is_arithmetic<T>::value, void>::type
+    load(FixupArchive &ar, T & t)
+{
+    // nothing
+}
+
+template <class T>
+void load(FixupArchive &ar, cereal::SizeTag<T> & t)
+{
+    // nothing
+}
+
+template <class T>
+void load(FixupArchive &ar, cereal::NameValuePair<T> & t)
+{
+    ar(t.value);
+}
+
+template <class T>
+void load(FixupArchive &ar, cereal::BinaryData<T> & bd)
+{
+    // nothing
+}
+
+template <class T>
+void load(FixupArchive &ar, std::unique_ptr<T> &ptr)
+{
+    if (ptr)
+    {
+        ar(*ptr);
+    }
+}
+
+CEREAL_SPECIALIZE_FOR_ALL_ARCHIVES(Unit *, cereal::specialization::non_member_load_save);
+CEREAL_SPECIALIZE_FOR_ALL_ARCHIVES(Bullet *, cereal::specialization::non_member_load_save);
+CEREAL_SPECIALIZE_FOR_ALL_ARCHIVES(Sprite *, cereal::specialization::non_member_load_save);
+
+void save(SaveArchive &archive, Unit * const &ptr)
+{
+    if (ptr == nullptr)
+        archive((uintptr_t)0);
+    else
+        archive(ptr->lookup_id);
+}
+
+template <class Archive>
+void load(Archive &archive, Unit *&ptr)
+{
+    uintptr_t id;
+    archive(id);
+    reinterpret_cast<uintptr_t &>(ptr) = id;
+}
+
+void load(FixupArchive &ar, Unit *&ptr)
+{
+    if (ptr != nullptr)
+    {
+        Unit *unit = Unit::FindById((uintptr_t)(ptr));
+        if (unit == nullptr)
+            throw SaveFail(SaveFail::UnitPointer);
+        ptr = unit;
+    }
+}
+
+void save(SaveArchive &archive, Sprite * const &ptr)
+{
+    try {
+        uintptr_t id = ptr == nullptr ? 0 : archive.sprites.at(ptr);
+        archive(id);
+    }
+    catch (const std::out_of_range &e) {
+        throw SaveFail(SaveFail::SpritePointer);
+    }
+}
+
+template <class Archive>
+void load(Archive &archive, Sprite *&ptr)
+{
+    uintptr_t id;
+    archive(id);
+    reinterpret_cast<uintptr_t &>(ptr) = id;
+}
+
+void load(FixupArchive &ar, Sprite *&ptr)
+{
+    if (ptr != nullptr)
+    {
+        try {
+            ptr = ar.sprites.at((uintptr_t)ptr);
+        } catch (const std::out_of_range &e) {
+            throw SaveFail(SaveFail::SpritePointer);
+        }
+    }
+}
+
+void save(SaveArchive &archive, Bullet * const &ptr)
+{
+    try {
+        uintptr_t id = ptr == nullptr ? 0 : archive.bullets.at(ptr);
+        archive(id);
+    }
+    catch (const std::out_of_range &e) {
+        throw SaveFail(SaveFail::BulletPointer);
+    }
+}
+
+template <class Archive>
+void load(Archive &archive, Bullet *&ptr)
+{
+    uintptr_t id;
+    archive(id);
+    reinterpret_cast<uintptr_t &>(ptr) = id;
+}
+
+void load(FixupArchive &ar, Bullet *&ptr)
+{
+    if (ptr != nullptr)
+    {
+        try {
+            ptr = ar.bullets.at((uintptr_t)ptr);
+        } catch (const std::out_of_range &e) {
+            throw SaveFail(SaveFail::BulletPointer);
+        }
+    }
+}
+
+/// Used for handling grp and drawfunc param pointer serialization
+class ImageDrawfuncParam { };
+
+template <class Archive, class T, unsigned O>
+void serialize(Archive &archive, RevListEntry<T, O> &list_entry)
+{
+    archive(list_entry.next, list_entry.prev);
+}
+
+template <class Archive, class T, unsigned O>
+void serialize(Archive &archive, ListEntry<T, O> &list_entry)
+{
+    archive(list_entry.next, list_entry.prev);
+}
+
+namespace Common {
+    template <class Archive, class Size>
+    void serialize(Archive &archive, xint<Size> &val)
+    {
+        Size as_int = val;
+        archive(as_int);
+        val = as_int;
+    }
+
+    template <class Archive, class Size>
+    void serialize(Archive &archive, yint<Size> &val)
+    {
+        Size as_int = val;
+        archive(as_int);
+        val = as_int;
+    }
+
+    template <class Archive>
+    void serialize(Archive &archive, Point16 &point)
+    {
+        archive(point.x, point.y);
+    }
+
+    template <class Archive>
+    void serialize(Archive &archive, Point32 &point)
+    {
+        archive(point.x, point.y);
+    }
+
+    template <class Archive>
+    void serialize(Archive &archive, Rect16 &rect)
+    {
+        archive(rect.left, rect.top, rect.right, rect.bottom);
+    }
+}
+
+template <class Archive, class T, uintptr_t N, class A>
+void save(Archive &archive, const UnsortedList<T, N, A> &list)
+{
+    archive(list.size());
+    for (auto &val : list)
+        archive(val);
+}
+
+template <class Archive, class T, uintptr_t N, class A>
+void load(Archive &archive, UnsortedList<T, N, A> &list)
+{
+    uintptr_t size;
+    archive(size);
+    list.clear_keep_capacity();
+    for (uintptr_t i = 0; i < size; i++)
+    {
+        list.emplace();
+        T &val = list.back();
+        archive(val);
+    }
+}
+
+template <class T, uintptr_t N, class A>
+void load(FixupArchive &archive, UnsortedList<T, N, A> &list)
+{
+    for (auto &val : list)
+        archive(val);
+}
+
+/// Handles serialization of Order lists in Units and such
+template <class T, unsigned O>
+struct OwnedList
+{
+    OwnedList(ListHead<T, O> &head, RevListHead<T, O> &end) : head(head), end(end), main(nullptr) { }
+    OwnedList(ListHead<T, O> &head, RevListHead<T, O> &end, T *&main) : head(head), end(end), main(&main) { }
+
+    template <class Archive>
+    void save(Archive &archive) const
+    {
+        uintptr_t count = 0;
+        uintptr_t main_pos = ~0;
+        for (T *item : head)
+        {
+            if (main && item == *main)
+                main_pos = count;
+            count += 1;
+        }
+        archive(count);
+        if (main != nullptr)
+        {
+            if (main_pos == ~0)
+                throw SaveFail(SaveFail::OwnedList);
+            archive(main_pos);
+        }
+        for (T *item : head)
+        {
+            archive(*item);
+        }
+    }
+
+    template <class Archive>
+    void load(Archive &archive)
+    {
+        uintptr_t count;
+        uintptr_t main_pos;
+        archive(count);
+        if (main != nullptr)
+            archive(main_pos);
+        head = nullptr;
+        end = nullptr;
+        for (uintptr_t i = 0; i < count; i++)
+        {
+            T *value = new T;
+            archive(*value);
+            RevListEntry<T, O>::FromValue(value)->Add(end);
+            if (main != nullptr && i == main_pos)
+                *main = value;
+        }
+        for (T *item : end)
+            head = item;
+    }
+
+    void load(FixupArchive &archive)
+    {
+        for (T *item : head)
+        {
+            archive(*item);
+        }
+    }
+    ListHead<T, O> &head;
+    RevListHead<T, O> &end;
+    T **main;
+};
 
 const int buf_defaultmax = 0x110000;
 const int buf_defaultlimit = 0x100000;
@@ -139,6 +843,20 @@ class ReadCompressedFail : public SaveException
         }
 };
 
+template <bool saving>
+void ConvertUnitPtr(Unit **ptr)
+{
+    if (*ptr)
+    {
+        if (saving)
+            *ptr = (Unit *)((*ptr)->lookup_id);
+        else
+            *ptr = Unit::FindById((uint32_t)(*ptr));
+        if (!*ptr)
+            throw NewSaveConvertFail(Unit *, ptr, 0);
+    }
+}
+
 template <class List>
 void ValidateList(List &head)
 {
@@ -166,9 +884,9 @@ SaveBase<P>::~SaveBase()
     Close();
 }
 
-Save::Save(const char *fn) : filename(fn)
+Save::Save(FILE *f, uint32_t version) : version(version), cereal_archive(f, this)
 {
-    file = fopen(fn, "wb+");
+    file = f;
     buf = new datastream(true, buf_defaultmax);
     compressing = false;
 }
@@ -183,9 +901,9 @@ void SaveBase<P>::Close()
     }
 }
 
-Load::Load(File *file)
+Load::Load(FILE *file) : cereal_archive(file, this)
 {
-    this->file = (FILE *)file;
+    this->file = file;
     buf_size = buf_defaultmax;
     buf_beg = (uint8_t *)malloc(buf_size);
     buf = buf_end = buf_beg;
@@ -224,31 +942,6 @@ void Save::WriteCompressedChunk()
     buf->Clear();
 }
 
-void Save::BeginCompression(int chunk_size)
-{
-    compressed_chunk_size = chunk_size;
-    compressing = true;
-}
-
-void Save::EndCompression()
-{
-    if (buf->Length() > 0)
-        WriteCompressedChunk();
-    compressing = false;
-}
-
-void Save::AddData(const void *data, int len)
-{
-    if (compressing)
-    {
-        if (buf->Length() + len > compressed_chunk_size)
-            WriteCompressedChunk();
-        buf->Append(data, len);
-    }
-    else
-        fwrite(data, 1, len, file);
-}
-
 int Load::ReadCompressedChunk()
 {
     uint32_t size;
@@ -261,7 +954,6 @@ int Load::ReadCompressedChunk()
     }
     buf = buf_beg;
     buf_end = buf + size;
-    debug_log->Log("Reading chunk, size %x\n", size);
     ReadCompressed(file, buf, size);
     return size;
 }
@@ -288,39 +980,6 @@ void Load::ReadCompressed(FILE *file, void *out, int size)
         throw ReadCompressedFail(out);
 }
 
-template <bool saving>
-void ConvertUnitPtr(Unit **ptr)
-{
-    if (*ptr)
-    {
-        if (saving)
-            *ptr = (Unit *)((*ptr)->lookup_id);
-        else
-            *ptr = Unit::FindById((uint32_t)(*ptr));
-        if (!*ptr)
-            throw NewSaveConvertFail(Unit *, ptr, 0);
-    }
-}
-
-template <class P> template <bool saving>
-void SaveBase<P>::ConvertSpritePtr(Sprite **in, const LoneSpriteSystem *lone_sprites) const
-{
-    if (*in != nullptr)
-    {
-        try
-        {
-            if (saving)
-                *in = (Sprite *)sprite_to_id.at(*in);
-            else
-                *in = id_to_sprite.at((uintptr_t)*in);
-        }
-        catch (const std::out_of_range &e)
-        {
-            throw NewSaveConvertFail(Sprite *, in, 0);
-        }
-    }
-}
-
 template <class Cb>
 void LoneSpriteSystem::MakeSaveIdMapping(Cb callback) const
 {
@@ -329,25 +988,6 @@ void LoneSpriteSystem::MakeSaveIdMapping(Cb callback) const
     {
         callback(sprite.get(), pos);
         pos += 1;
-    }
-}
-
-template <class P> template <bool saving>
-void SaveBase<P>::ConvertBulletPtr(Bullet **in, const BulletSystem *bullets) const
-{
-    if (*in != nullptr)
-    {
-        try
-        {
-            if (saving)
-                *in = (Bullet *)bullet_to_id.at(*in);
-            else
-                *in = id_to_bullet.at((uintptr_t)*in);
-        }
-        catch (const std::out_of_range &e)
-        {
-            throw NewSaveConvertFail(Bullet *, in, 0);
-        }
     }
 }
 
@@ -363,84 +1003,6 @@ void BulletSystem::MakeSaveIdMapping(Cb callback) const
             pos += 1;
         }
     }
-}
-
-template <bool saving>
-void Image::SaveConvert()
-{
-    if (grp)
-    {
-        if (saving)
-        {
-            GrpSprite *orig_value = grp;
-            if (drawfunc == HpBar)
-            {
-                Warning("Saving image (id %x) with hp bar drawfunc\n", image_id);
-            }
-            else
-            {
-                if (grp == bw::image_grps[image_id])
-                    grp = (GrpSprite *)(image_id + 1);
-                else
-                {
-                    for (unsigned int i = 0; i < Limits::ImageTypes; i++)
-                    {
-                        if (grp == bw::image_grps[i])
-                        {
-                            grp = (GrpSprite *)(i + 1);
-                            break;
-                        }
-                    }
-                }
-                if (orig_value == grp)
-                    throw NewSaveConvertFail(Image, this, 0);
-            }
-        }
-        else
-        {
-            if ((unsigned int)grp > Limits::ImageTypes)
-                throw SaveConvertFail<Image>("Image: grp", this, 0);
-            grp = bw::image_grps[(int)grp - 1];
-            if (IsFlipped())
-                Render = bw::image_renderfuncs[drawfunc].flipped;
-            else
-                Render = bw::image_renderfuncs[drawfunc].nonflipped;
-            Update = bw::image_updatefuncs[drawfunc].func;
-        }
-    }
-    if (drawfunc == Image::HpBar)
-    {
-        ConvertUnitPtr<saving>((Unit **)&drawfunc_param);
-    }
-    else if (drawfunc == Image::Remap)
-    {
-        if (saving)
-        {
-            void *orig_value = drawfunc_param;
-            for (int i = 0; i < 0x8; i++)
-            {
-                if (drawfunc_param == bw::blend_palettes[i].data)
-                {
-                    drawfunc_param = (void *)(i);
-                    break;
-                }
-            }
-            if (drawfunc_param == orig_value)
-                throw NewSaveConvertFail(Image, this, 0);
-        }
-        else
-        {
-            if ((int)drawfunc_param > 0x7)
-                throw SaveConvertFail<Image>("Image: drawfunc param", this, 0);
-            drawfunc_param = bw::blend_palettes[(int)drawfunc_param].data;
-        }
-    }
-}
-
-template <bool saving>
-void ConvertPath(Path *path)
-{
-    ConvertUnitPtr<saving>(&path->dodge_unit);
 }
 
 template<class P> template <bool saving>
@@ -463,82 +1025,6 @@ void SaveBase<P>::ConvertPathing(Pathing::PathingSystem *pathing, Pathing::Pathi
         pathing->unk = (Pathing::SplitRegion *)((uintptr_t)(pathing->unk) - (uintptr_t)(offset));
     else
         pathing->unk = (Pathing::SplitRegion *)((uintptr_t)(pathing->unk) + (uintptr_t)(offset));
-}
-
-template<class P> template <bool saving>
-void SaveBase<P>::ConvertUnit(Unit *unit)
-{
-    try
-    {
-        ConvertUnitPtr<saving>(&unit->list.next);
-        ConvertUnitPtr<saving>(&unit->list.prev);
-        ConvertUnitPtr<saving>(&unit->move_target_unit);
-        ConvertUnitPtr<saving>(&unit->target);
-        ConvertBulletPtr<saving>(&unit->spawned_bullets.AsRawPointer(), bullet_system);
-        ConvertBulletPtr<saving>(&unit->targeting_bullets.AsRawPointer(), bullet_system);
-        ConvertUnitPtr<saving>(&unit->player_units.prev);
-        ConvertUnitPtr<saving>(&unit->player_units.next);
-        ConvertUnitPtr<saving>(&unit->subunit);
-        ConvertUnitPtr<saving>(&unit->previous_attacker);
-        ConvertUnitPtr<saving>(&unit->related);
-        ConvertUnitPtr<saving>(&unit->currently_building);
-        ConvertUnitPtr<saving>(&unit->invisible_list.prev);
-        ConvertUnitPtr<saving>(&unit->invisible_list.next);
-        ConvertUnitPtr<saving>(&unit->irradiated_by);
-        ConvertUnitPtr<saving>(&unit->first_loaded);
-        ConvertUnitPtr<saving>(&unit->next_loaded);
-
-        if (unit->flags & UnitStatus::Building)
-        {
-            ConvertUnitPtr<saving>(&unit->building.addon);
-            if (unit->unit_id == Unit::NuclearSilo)
-                ConvertUnitPtr<saving>(&unit->silo.nuke);
-        }
-        if (unit->IsWorker())
-        {
-            ConvertUnitPtr<saving>(&unit->worker.powerup);
-            ConvertUnitPtr<saving>(&unit->worker.current_harvest_target);
-            ConvertUnitPtr<saving>(&unit->harvester.previous_harvested);
-            ConvertUnitPtr<saving>(&unit->harvester.harvesters.prev);
-            ConvertUnitPtr<saving>(&unit->harvester.harvesters.next);
-        }
-        else if (units_dat_flags[unit->unit_id] & (UnitFlags::SingleEntity | UnitFlags::ResourceContainer))
-        {
-            ConvertUnitPtr<saving>(&unit->powerup.carrying_unit);
-        }
-        else if (unit->IsCarrier() || unit->IsReaver())
-        {
-            ConvertUnitPtr<saving>(&unit->carrier.in_child.AsRawPointer());
-            ConvertUnitPtr<saving>(&unit->carrier.out_child.AsRawPointer());
-        }
-        else if (unit->unit_id == Unit::Scarab || unit->unit_id == Unit::Interceptor)
-        {
-            ConvertUnitPtr<saving>(&unit->interceptor.parent);
-            ConvertUnitPtr<saving>(&unit->interceptor.list.next);
-            ConvertUnitPtr<saving>(&unit->interceptor.list.prev);
-        }
-        else if (unit->unit_id == Unit::Ghost)
-        {
-            ConvertSpritePtr<saving>(&unit->ghost.nukedot, lone_sprites);
-        }
-        if (unit->unit_id == Unit::Pylon)
-        {
-            if (saving)
-            {
-                unit->pylon_list.list.prev = nullptr;
-                unit->pylon_list.list.next = nullptr;
-                unit->pylon.aura.release();
-            }
-        }
-        else if (unit->HasRally())
-        {
-            ConvertUnitPtr<saving>(&unit->rally.unit);
-        }
-    }
-    catch (const SaveException &e)
-    {
-        throw NewSaveConvertFail(Unit, unit, &e);
-    }
 }
 
 template<class P> template <bool saving>
@@ -683,77 +1169,6 @@ template<class P> template <bool saving>
 void SaveBase<P>::ConvertAiScript(Ai::Script *script)
 {
     ConvertAiTownPtr<saving>(&script->town, script->player);
-}
-
-void Save::CreateSpriteSave(Sprite *sprite_)
-{
-    Sprite *sprite;
-    BeginBufWrite(&sprite, sprite_);
-
-    int count = 0, main_image_id = 0;
-    for (Image *img : sprite->first_overlay)
-    {
-        count++;
-        if (img == sprite->main_image)
-            main_image_id = count;
-    }
-    sprite->main_image = (Image *)main_image_id;
-
-    for (Image *img : sprite->first_overlay)
-    {
-        Image *conv;
-        BeginBufWrite(&conv, img);
-        conv->SaveConvert<true>();
-    }
-    sprite->first_overlay = (Image *)count;
-}
-
-void Save::CreateUnitSave(Unit *unit_)
-{
-    Unit *unit;
-    BeginBufWrite(&unit, unit_);
-    ConvertUnit<true>(unit);
-
-    int order_queue_size = 0;
-    for (Order *order : unit->order_queue_begin)
-    {
-        Order *order_;
-        BeginBufWrite(&order_, order);
-        ConvertUnitPtr<true>(&order_->target);
-        order_queue_size++;
-    }
-    unit->order_queue_begin = (Order *)order_queue_size;
-    if (unit->path)
-    {
-        Path *path;
-        BeginBufWrite(&path, unit->path.get());
-        ConvertPath<true>(path);
-    }
-
-    // There is single frame for units that die instantly/are removed when their sprite is null
-    if (unit->sprite)
-        CreateSpriteSave(unit->sprite.get());
-}
-
-template <class C, class L>
-void Save::SaveObjectChunk(void (Save::*CreateSave)(C *object), const L &list_head)
-{
-    int i = 0, i_pos = ftell(file);
-    fwrite(&i, 1, 4, file);
-    for (C *object : list_head)
-    {
-        (this->*CreateSave)(object);
-        if (buf->Length() > buf_defaultlimit)
-            WriteCompressedChunk();
-
-        i++;
-    }
-    if (buf->Length())
-        WriteCompressedChunk();
-
-    fseek(file, i_pos, SEEK_SET);
-    fwrite(&i, 1, 4, file);
-    fseek(file, 0, SEEK_END);
 }
 
 void Save::SaveUnitPtr(Unit *ptr)
@@ -970,9 +1385,77 @@ void Save::SavePathingChunk()
     WriteCompressed((File *)file, chunk.get(), chunk_size);
 }
 
+void Save::SaveUnits()
+{
+    for (Unit *unit : first_allocated_unit)
+    {
+        // Lazy and rather inefficent way to tell when there are no more units.
+        // Having just UnitSystem or something instead of global linked list
+        // would be enough to fix.
+        cereal_archive(true, *unit);
+    }
+    cereal_archive(false);
+    cereal_archive(Unit::next_id);
+}
+
+void Load::LoadUnits()
+{
+    uintptr_t index = 0;
+    try {
+        bool next;
+        while (true)
+        {
+            cereal_archive(next);
+            if (!next)
+                break;
+
+            Unit *unit = Unit::RawAlloc();
+            cereal_archive(*unit);
+            // Ai will be restored later - as long as loading doesn't fail before that
+            unit->ai = nullptr;
+            // Also pylon aura and list have garbage data
+            if (unit->unit_id == Unit::Pylon)
+            {
+                unit->pylon.aura.release();
+                unit->pylon_list.list.next = nullptr;
+                unit->pylon_list.list.prev = nullptr;
+            }
+            unit->allocated.Add(first_allocated_unit);
+            unit->AddToLookup();
+            if (unit->search_left != -1)
+            {
+                // Bw does that but it should only set a flag that would be already set
+                // And accessing unit search now is not safe as search indices are wrong
+                //CheckUnstack(out);
+                if (unit->flags & UnitStatus::Building)
+                    SetBuildingTileFlag(unit, unit->sprite->position.x, unit->sprite->position.y);
+                if (unit->IsFlying())
+                    IncrementAirUnitx14eValue(unit);
+                unit_search->Add(unit);
+            }
+            index += 1;
+        }
+    } catch (const std::exception &e) {
+        std::throw_with_nested(SaveFail(SaveFail::Unit, index));
+    }
+    try {
+        cereal_archive(Unit::next_id);
+    } catch (const std::exception &e) {
+        std::throw_with_nested(SaveFail(SaveFail::UnitMisc));
+    }
+}
+
+void Load::FixupUnits(FixupArchive &fixup)
+{
+    for (Unit *unit : first_allocated_unit)
+    {
+        fixup(*unit);
+        unit->sprite->AddToHlines();
+    }
+}
+
 void Save::SaveGame(uint32_t time)
 {
-    datastream buf(true, buf_defaultmax);
     Sprite::RemoveAllSelectionOverlays();
 
     WriteReadableSaveHeader((File *)file, filename.c_str());
@@ -996,11 +1479,10 @@ void Save::SaveGame(uint32_t time)
         sprite_to_id[sprite] = id;
     });
 
-    lone_sprites->Serialize(this);
-    //SaveObjectChunk(&Save::CreateFlingySave, first_allocated_flingy);
-    bullet_system->Serialize(this);
-    SaveObjectChunk(&Save::CreateUnitSave, first_allocated_unit);
-    fwrite(&Unit::next_id, 4, 1, file);
+    cereal_archive(version);
+    cereal_archive(*lone_sprites, *bullet_system);
+    SaveUnits();
+    cereal_archive.Flush();
 
     SaveUnitPtr(*bw::first_invisible_unit);
     SaveUnitPtr(*bw::first_active_unit);
@@ -1088,7 +1570,8 @@ void SaveGame(const char *filename, uint32_t time)
     *bw::command_user = orig_cmd_user;
     *bw::select_command_user = orig_select_cmd_user;
 
-    Save save(full_path);
+    FILE *file = fopen(full_path, "wb+");
+    Save save(file, SaveVersion);
     if (save.IsOk())
     {
         try
@@ -1097,368 +1580,274 @@ void SaveGame(const char *filename, uint32_t time)
         }
         catch (const SaveConvertFail<Image> &e)
         {
-            debug_log->Log("Save convert fail:");
+            error_log->Log("Save convert fail:");
             for (unsigned i = 0; i < sizeof(Image); i++)
-                debug_log->Log(" %02x", e.data[i]);
-            debug_log->Log("\n");
+                error_log->Log(" %02x", e.data[i]);
+            error_log->Log("\n");
         }
         catch (const SaveException &e)
         {
-            debug_log->Log("Save failed: %s\n", e.cause().c_str());
+            auto cause = e.cause();
+            error_log->Log("Save failed: %s\n", cause.c_str());
+        }
+        catch (const std::exception &e)
+        {
+            error_log->Log("Save failed: %s\n", e.what());
+            PrintNestedExceptions(e);
         }
         save.Close();
     }
+    else
+        fclose(file);
     // Here would be some error handling but meh ^_^
     HidePopupDialog();
 }
 
-// These don't leak memory, cause if they fail they should delete everything allocated
-std::pair<int, Unit *> Unit::SaveAllocate(uint8_t *in, uint32_t size, DummyListHead<Unit, Unit::offset_of_allocated> *list_head, uint32_t *out_id)
+template <class Archive>
+void Unit::serialize(Archive &archive)
 {
-    if (size < sizeof(Unit))
-        return std::make_pair(0, (Unit *)0);
-    Unit *in_unit = (Unit *)in;
-    Unit *out = Unit::RawAlloc();
-    memcpy(out, in_unit, sizeof(Unit));
-    out->allocated.Add(*list_head);
-    out->AddToLookup();
-    size -= sizeof(Unit);
-    in += sizeof(Unit);
-    int order_count = (int)in_unit->order_queue_begin.AsRawPointer();
-    out->order_queue_begin = 0;
-    out->order_queue_end = 0;
-    if (size < sizeof(Order) * order_count)
-        return std::make_pair(0, (Unit *)0);
+    archive(sprite, hitpoints, move_target, next_move_waypoint, unk_move_waypoint, flingy_flags);
+    archive(facing_direction, flingy_turn_speed, movement_direction, flingy_id, _unknown_0x026);
+    archive(flingy_movement_type, position, exact_position, flingy_top_speed, current_speed, next_speed);
+    archive(speed, acceleration, new_direction, target_direction, player, order, order_state);
+    // At least unused52 is used, because reasons... (TODO make clearer and avoid saving unused data)
+    archive(order_signal, order_fow_unit, unused52, unused53, order_timer, ground_cooldown, air_cooldown);
+    archive(spell_cooldown, order_target_pos, shields, unit_id, unused66, highlighted_order_count);
+    archive(order_wait, unk86, attack_notify_timer, previous_unit_id, lastEventTimer, lastEventColor);
+    archive(unused8c, rankIncrease, last_attacking_player, secondary_order_wait, ai_spell_flags, order_flags);
+    archive(buttons, invisibility_effects, movement_state, build_queue, energy, current_build_slot);
+    archive(secondary_order, buildingOverlayState, build_hp_gain, unkaa, previous_hp, lookup_id);
+    archive(flags, carried_powerup_flags, wireframe_randomizer, secondary_order_state, move_target_update_timer);
+    archive(detection_status, unke8, unkea, path_frame, pathing_flags, _unused_0x106, is_being_healed);
+    archive(contourBounds, death_timer, matrix_hp, matrix_timer, stim_timer, ensnare_timer, lockdown_timer);
+    archive(irradiate_timer, stasis_timer, plague_timer, is_under_storm, irradiate_player, parasites);
+    archive(master_spell_timer, blind, mael_timer, _unused_125, acid_spore_count, acid_spore_timers);
+    archive(bullet_spread_seed, _padding_0x132, air_strength, ground_strength, search_left);
+    archive(_repulseUnknown, repulseAngle, driftPosX, driftPosY, kills);
 
-    for (int i = 0; i < order_count; i++)
-    {
-        Order *order = Order::RawAlloc();
-        memcpy(order, in, sizeof(Order));
-        order->allocated.Add(first_allocated_order);
-        order->list.next = 0;
-        order->list.prev = out->order_queue_end;
-        if (!out->order_queue_begin)
-            out->order_queue_begin = order;
-        else
-            out->order_queue_end->list.next = order;
-        out->order_queue_end = order;
-        in += sizeof(Order);
-    }
-    if (out->path)
-    {
-        out->path.release();
-        out->path = make_unique<Path>();
-        memcpy(out->path.get(), in, sizeof(Path));
-        in += sizeof(Path);
-    }
+    // All other extended data is invalidated at end of each frame and not needed to be saved
+    archive(hotkey_groups);
 
-    int diff = 0;
-    // Instantly dead units may get saved without sprite
-    if (out->sprite)
+    archive(path);
+    archive(list, move_target_unit, target, player_units, subunit, previous_attacker, related);
+    archive(currently_building, invisible_list, irradiated_by, first_loaded, next_loaded);
+
+    archive(targeting_bullets, spawned_bullets);
+    archive(OwnedList<Order, 0x0>(order_queue_end, order_queue_begin));
+
+    // Union serialization has to be after unit_id, flags, etc it depends on obviously
+    if (IsVulture())
+        archive(vulture.spiderMineCount);
+    else if (HasHangar())
+        archive(carrier.in_child, carrier.out_child, carrier.in_hangar_count, carrier.out_hangar_count);
+    else if (unit_id == Unit::Scarab || unit_id == Unit::Interceptor)
+        archive(interceptor.parent, interceptor.list, interceptor.is_outside_hangar);
+    else if (flags & UnitStatus::Building)
     {
-        Sprite *sprite;
-        std::tie(diff, sprite) = Sprite::SaveAllocate(in, size);
-        if (diff == 0)
-            return std::make_pair(0, (Unit *)0);
-        out->sprite.release();
-        out->sprite.reset(sprite);
+        archive(building.addon, building.addonBuildType, building.upgradeResearchTime, building.tech);
+        archive(building.upgrade, building.larva_timer, building.is_landing);
+        archive(building.creep_timer, building.upgrade_level);
     }
-    out->ai = nullptr;
-    if (out->search_left != -1)
+    else if (IsWorker())
     {
-        // Bw does that but it should only set a flag that would be already set
-        // And accessing unit search now is not safe as search indices are wrong
-        //CheckUnstack(out);
-        if (out->flags & UnitStatus::Building)
-            SetBuildingTileFlag(out, out->sprite->position.x, out->sprite->position.y);
-        if (out->IsFlying())
-            IncrementAirUnitx14eValue(out);
-        unit_search->Add(out);
+        archive(worker.powerup, worker.target_resource_pos, worker.current_harvest_target);
+        archive(worker.repair_resource_loss_timer, worker.is_carrying, worker.carried_resource_count);
     }
-    if (out->path)
-        return std::make_pair(sizeof(Unit) + sizeof(Order) * order_count + diff + sizeof(Path), out);
     else
-        return std::make_pair(sizeof(Unit) + sizeof(Order) * order_count + diff, out);
+        archive(everything_c0);
+
+    if (unit_id == Hatchery || unit_id == Lair || unit_id == Hive)
+    {
+        archive(resource.resource_amount, resource.resourceIscript, resource.awaiting_workers);
+        archive(resource.first_awaiting_worker, resource.resource_area, resource.ai_unk);
+    }
+    else if (unit_id == NydusCanal)
+        archive(nydus.exit);
+    else if (unit_id == Ghost)
+        archive(ghost.nukedot);
+    // No need to save the aura or pylon list, bw recreates them
+    //else if (unit_id == Pylon)
+        //archive(pylon.aura);
+    else if (unit_id == NuclearSilo)
+        archive(silo.nuke, silo.has_nuke);
+    else if (unit_id == Hatchery || unit_id == Lair || unit_id == Hive)
+        archive(hatchery.preferred_larvaspawn);
+    else if (units_dat_flags[unit_id] & UnitFlags::SingleEntity)
+        archive(powerup.origin_point, powerup.carrying_unit);
+    else if (IsWorker())
+        archive(harvester.previous_harvested, harvester.harvesters);
+    else
+        archive(everything_d0);
+
+    if (HasRally())
+        archive(rally.position, rally.unit);
 }
 
-void BulletSystem::Serialize(Save *save)
+template <class Archive>
+void Path::serialize(Archive &archive)
 {
-    uintptr_t container_sizes[0x7];
-    auto containers = Containers();
-    std::transform(containers.begin(), containers.end(), container_sizes, [](auto *c) { return c->size(); });
-    save->AddData(container_sizes, sizeof container_sizes);
-    save->BeginCompression();
-    for (auto *c : Containers())
-    {
-        for (auto &bullet : *c)
-        {
-            bullet->Serialize(save, this);
-        }
-    }
-    save->EndCompression();
-    Bullet *first_active_bullet = *bw::first_active_bullet;
-    Bullet *last_active_bullet = *bw::last_active_bullet;
-    save->ConvertBulletPtr<true>(&first_active_bullet, this);
-    save->ConvertBulletPtr<true>(&last_active_bullet, this);
-    save->AddData(&first_active_bullet, sizeof(Bullet *));
-    save->AddData(&last_active_bullet, sizeof(Bullet *));
+    archive(start, next_pos, end, start_frame, dodge_unit, x_y_speed, flags, unk_count);
+    archive(direction, total_region_count, unk1c, unk1d, position_count, position_index, values);
 }
 
-template <bool saving, class T>
-void Bullet::SaveConvert(SaveBase<T> *save, const BulletSystem *parent_sys)
+template <class Archive>
+void Sprite::serialize(Archive &archive)
 {
-    try
-    {
-        save->template ConvertBulletPtr<saving>(&list.next, parent_sys);
-        save->template ConvertBulletPtr<saving>(&list.prev, parent_sys);
-        ConvertUnitPtr<saving>(&move_target_unit);
-        ConvertUnitPtr<saving>(&target);
-        ConvertUnitPtr<saving>(&previous_target);
-        ConvertUnitPtr<saving>(&parent);
-        if (target)
-        {
-            save->template ConvertBulletPtr<saving>(&targeting.next, parent_sys);
-            save->template ConvertBulletPtr<saving>(&targeting.prev, parent_sys);
-        }
-        if (parent)
-        {
-            save->template ConvertBulletPtr<saving>(&spawned.next, parent_sys);
-            save->template ConvertBulletPtr<saving>(&spawned.prev, parent_sys);
-        }
-    }
-    catch (const SaveException &e)
-    {
-        throw NewSaveConvertFail(Bullet, this, &e);
-    }
-}
-
-void Bullet::Serialize(Save *save, const BulletSystem *parent)
-{
-    char buf[sizeof(Bullet)];
-    Bullet *copy = (Bullet *)buf;
-    memcpy(buf, this, sizeof(Bullet));
-    copy->SaveConvert<true>(save, parent);
-    save->AddData(buf, sizeof(Bullet));
-    sprite->Serialize(save);
-}
-
-void BulletSystem::Deserialize(Load *load)
-{
-    try
-    {
-        uintptr_t container_sizes[0x7];
-        load->Read(container_sizes, sizeof container_sizes);
-
-        uintptr_t *current_remaining = container_sizes;
-        for (auto *cont : Containers())
-        {
-            while (*current_remaining != 0)
-            {
-                auto bullet = ptr<Bullet>(new Bullet);
-                load->ReadCompressed(bullet.get(), sizeof(Bullet));
-                memset(&bullet->sprite, 0, sizeof(ptr<Sprite>));
-                bullet->sprite = Sprite::Deserialize(load);
-                cont->emplace(move(bullet));
-                *current_remaining -= 1;
-            }
-            current_remaining++;
-        }
-        load->Read(&bw::first_active_bullet->AsRawPointer(), sizeof(uintptr_t));
-        load->Read(&bw::last_active_bullet->AsRawPointer(), sizeof(uintptr_t));
-    }
-    catch (const SaveException &e)
-    {
-        throw SaveReadFail_("BulletSystem", &e);
-    }
-}
-
-void BulletSystem::FinishLoad(Load *load)
-{
-    load->ConvertBulletPtr<false>(&bw::first_active_bullet->AsRawPointer(), this);
-    load->ConvertBulletPtr<false>(&bw::last_active_bullet->AsRawPointer(), this);
-    for (auto &bullet : ActiveBullets())
-        bullet->SaveConvert<false>(load, this);
-}
-
-void LoneSpriteSystem::Serialize(Save *save)
-{
-    uintptr_t lone_count = lone_sprites.size();
-    uintptr_t fow_count = fow_sprites.size();
-    save->AddData(&lone_count, sizeof(uintptr_t));
-    save->AddData(&fow_count, sizeof(uintptr_t));
-    save->BeginCompression();
-    for (ptr<Sprite> &sprite : lone_sprites)
-        sprite->Serialize(save);
-    for (ptr<Sprite> &sprite : fow_sprites)
-        sprite->Serialize(save);
-    save->EndCompression();
-}
-
-void LoneSpriteSystem::Deserialize(Load *load)
-{
-    uintptr_t lone_count, fow_count;
-    load->Read(&lone_count, sizeof(uintptr_t));
-    load->Read(&fow_count, sizeof(uintptr_t));
-    // There's the cursor marker already, however it will not be pointed by the global cursor_marker...
-    for (int i = 0; i < *bw::map_height_tiles; i++)
-    {
-        bw::horizontal_sprite_lines[i] = nullptr;
-        bw::horizontal_sprite_lines_rev[i] = nullptr;
-    }
-    lone_sprites.clear();
-    for (auto i = 0; i < lone_count; i++)
-    {
-        ptr<Sprite> sprite = Sprite::Deserialize(load);
-        lone_sprites.emplace(move(sprite));
-    }
-    for (auto i = 0; i < fow_count; i++)
-    {
-        ptr<Sprite> sprite = Sprite::Deserialize(load);
-        fow_sprites.emplace(move(sprite));
-    }
-}
-
-void Sprite::Serialize(Save *save)
-{
-    char buf[sizeof(Sprite)];
-    Sprite *copy = (Sprite *)buf;
-    memcpy(buf, this, sizeof(Sprite));
-
-    int count = 0, main_image_id = 0;
+    // id (draw ordering tiebreaker) is not saved, due to it being assigned in
+    // Sprite constructor. It is kind of messy but works for now..
+    archive(sprite_id, player, selectionIndex, visibility_mask);
+    archive(elevation, flags, selection_flash_timer, index, width, height, position);
+    archive(sort_order, OwnedList<Image, 0x0>(last_overlay, first_overlay, main_image));
+    // Doing image parent/drawfunc resetting here is simple, even though done unnecessarily when
+    // saving / fixing pointers
     for (Image *img : first_overlay)
     {
-        count++;
-        if (img == main_image)
-            main_image_id = count;
-    }
-    copy->main_image = (Image *)main_image_id;
-    copy->first_overlay = (Image *)count;
-    debug_log->Log("Ser sprite %x\n", sprite_id);
-    save->AddData(buf, sizeof(Sprite));
-
-    for (Image *img : first_overlay)
-    {
-        debug_log->Log("Ser image %x\n", img->image_id);
-        char img_buf[sizeof(Image)];
-        memcpy(img_buf, img, sizeof(Image));
-        Image *copy_img = (Image *)img_buf;
-        copy_img->SaveConvert<true>();
-        save->AddData(img_buf, sizeof(Image));
-    }
-}
-
-ptr<Sprite> Sprite::Deserialize(Load *load)
-{
-    debug_log->Log("Des sprite\n");
-    try
-    {
-        auto sprite = ptr<Sprite>(new Sprite);
-        load->ReadCompressed(sprite.get(), sizeof(Sprite));
-        uintptr_t count = (uintptr_t)sprite->first_overlay.AsRawPointer();
-        uintptr_t main_image_id = (uintptr_t)sprite->main_image - 1;
-        sprite->first_overlay = nullptr;
-        sprite->last_overlay = nullptr;
-        if (count == 0)
-            throw SaveReadFail_("Sprite: image count");
-        for (auto i = 0; i < count; i++)
-        {
-            Image *img = new Image;
-            load->ReadCompressed(img, sizeof(Image));
-            img->SaveConvert<false>();
-            img->list.next = nullptr;
-            img->list.prev = sprite->last_overlay;
-            if (!sprite->first_overlay)
-                sprite->first_overlay = img;
-            else
-                sprite->last_overlay->list.next = img;
-            sprite->last_overlay = img;
-            if (i == main_image_id)
-                sprite->main_image = img;
-            img->parent = sprite.get();
-        }
-        if ((uintptr_t)sprite->main_image == main_image_id)
-            throw SaveReadFail_("Sprite/main image");
-
-        sprite->AddToHlines();
-        return sprite;
-    }
-    catch (const SaveException &e)
-    {
-        throw SaveReadFail_("Sprite::Deserialize", &e);
-    }
-}
-
-std::pair<int, Sprite *> Sprite::SaveAllocate(uint8_t *in, uint32_t size)
-{
-    if (size < sizeof(Sprite))
-        throw SaveReadFail_("Sprite");
-    Sprite *in_sprite = (Sprite *)in;
-    int count = (int)in_sprite->first_overlay.AsRawPointer(), main_image_id = (int)in_sprite->main_image - 1;
-    size -= sizeof(Sprite);
-    if (size < sizeof(Image) * count)
-        throw SaveReadFail_("Sprite/image");
-
-    Sprite *out = new Sprite;
-    memcpy(out, in, sizeof(Sprite));
-    in += sizeof(Sprite);
-    out->first_overlay = 0;
-    out->last_overlay = 0;
-
-    for (int i = 0; i < count; i++)
-    {
-        Image *img = new Image;
-        memcpy(img, in, sizeof(Image));
-        img->SaveConvert<false>();
-        img->list.next = 0;
-        img->list.prev = out->last_overlay;
-        if (!out->first_overlay)
-            out->first_overlay = img;
+        img->parent = this;
+        if (img->IsFlipped())
+            img->Render = bw::image_renderfuncs[img->drawfunc].flipped;
         else
-            out->last_overlay->list.next = img;
-        out->last_overlay = img;
-        if (i == main_image_id)
-            out->main_image = img;
-        in += sizeof(Image);
-        img->parent = out;
+            img->Render = bw::image_renderfuncs[img->drawfunc].nonflipped;
+        img->Update = bw::image_updatefuncs[img->drawfunc].func;
     }
-    if ((int)out->main_image == main_image_id)
-        throw SaveReadFail_("Sprite/image");
-
-    out->AddToHlines();
-
-    return std::make_pair(sizeof(Sprite) + sizeof(Image) * count, out);
 }
 
-template <class C, bool uses_temp_ids, class L>
-void Load::LoadObjectChunk(std::pair<int, C*> (*LoadSave)(uint8_t *, uint32_t, L *, uint32_t *), L *list_head, std::unordered_map<uint32_t, C *> *temp_id_map)
+template <class Archive>
+void Order::serialize(Archive &archive)
 {
-    int count, size;
-    if (fread(&count, 4, 1, file) != 1)
-        throw SaveException(0, "LoadObjectChunk: eof");
-    if (uses_temp_ids && count)
-        temp_id_map->reserve(count);
-    while (count)
+    archive(order_id, dc9, fow_unit, position, target);
+}
+
+template <class Archive>
+void Image::serialize(Archive &archive)
+{
+    if (archive.IsSaving() && drawfunc == HpBar)
     {
-        size = ReadCompressedChunk();
-        while (size)
-        {
-            int diff;
-            C *out;
-            uint32_t id;
-            std::tie(diff, out) = (*LoadSave)(buf, size, list_head, &id);
-
-            if (diff == 0)
-                throw SaveException();
-            if (uses_temp_ids)
-                temp_id_map->insert(std::make_pair(id, out));
-
-            buf += diff;
-            size -= diff;
-            count -= 1;
-            if (size < 0 || (count == 0 && size != 0))
-                throw SaveReadFail(C);
-        }
+        Warning("Saving image (id %x) with hp bar drawfunc\n", image_id);
+        return;
     }
+    archive(image_id, drawfunc, direction, flags, x_off, y_off, iscript.header, iscript.pos);
+    archive(iscript.return_pos, iscript.animation, iscript.wait, frameset, frame, map_position);
+    archive(screen_position, grpBounds);
+    archive(make_tuple(image_id, ref(grp)));
+    ImageDrawfuncParam **param = (ImageDrawfuncParam **)&drawfunc_param;
+    archive(make_tuple(drawfunc, ref(*param)));
+}
+
+template <class Archive>
+void save(Archive &archive, const tuple<uint16_t, GrpSprite *&> &tuple)
+{
+    uint16_t image_id = get<uint16_t>(tuple);
+    GrpSprite *&grp = get<GrpSprite *&>(tuple);
+    if (grp == nullptr)
+        archive((uint16_t)0);
+    if (grp == bw::image_grps[image_id])
+        archive((uint16_t)(image_id + 1));
+    else
+    {
+        for (unsigned int i = 0; i < Limits::ImageTypes; i++)
+        {
+            if (grp == bw::image_grps[i])
+            {
+                archive((uint16_t)(i + 1));
+                return;
+            }
+        }
+        throw SaveFail(SaveFail::Grp);
+    }
+}
+
+template <class Archive>
+void load(Archive &archive, tuple<uint16_t, GrpSprite *&> &tuple)
+{
+    GrpSprite *&grp = get<GrpSprite *&>(tuple);
+    uint16_t image_id;
+    archive(image_id);
+    if (image_id > Limits::ImageTypes)
+        throw SaveFail(SaveFail::Grp);
+    grp = bw::image_grps[image_id - 1];
+}
+
+void load(FixupArchive &archive, tuple<uint16_t, GrpSprite *&> &tuple)
+{
+    // nothing
+}
+
+template <class Archive>
+void save(Archive &archive, const tuple<uint8_t, ImageDrawfuncParam *&> &tuple)
+{
+    uint8_t drawfunc = get<uint8_t>(tuple);
+    ImageDrawfuncParam *&param = get<ImageDrawfuncParam *&>(tuple);
+    if (drawfunc == Image::HpBar)
+    {
+        Unit *unit = (Unit *)param;
+        archive(unit);
+    }
+    else if (drawfunc == Image::Remap)
+    {
+        for (int i = 0; i < Limits::RemapPalettes; i++)
+        {
+            if ((void *&)param == bw::blend_palettes[i].data)
+            {
+                archive((uint8_t)i);
+                return;
+            }
+        }
+        throw SaveFail(SaveFail::ImageRemap);
+    }
+    else
+        archive((uintptr_t)param);
+}
+
+template <class Archive>
+void load(Archive &archive, tuple<uint8_t, ImageDrawfuncParam *&> &tuple)
+{
+    uint8_t drawfunc = get<uint8_t>(tuple);
+    ImageDrawfuncParam *&param = get<ImageDrawfuncParam *&>(tuple);
+    if (drawfunc == Image::HpBar)
+        archive((Unit *&)param);
+    else if (drawfunc == Image::Remap)
+    {
+        uint8_t remap_id;
+        archive(remap_id);
+        if (remap_id >= Limits::RemapPalettes)
+            throw SaveFail(SaveFail::ImageRemap);
+        (void *&)param = bw::blend_palettes[remap_id].data;
+    }
+    else
+        archive((uintptr_t &)param);
+}
+
+void load(FixupArchive &archive, tuple<uint8_t, ImageDrawfuncParam *&> &tuple)
+{
+    uint8_t drawfunc = get<uint8_t>(tuple);
+    ImageDrawfuncParam *&param = get<ImageDrawfuncParam *&>(tuple);
+    if (drawfunc == Image::HpBar)
+        archive((Unit *&)param);
+}
+
+template <class Archive>
+void BulletSystem::serialize(Archive &archive)
+{
+    archive(initstate, moving_to_point, moving_to_unit, bouncing, damage_ground, moving_near, dying);
+    archive(*bw::first_active_bullet, *bw::last_active_bullet);
+}
+
+template <class Archive>
+void Bullet::serialize(Archive &archive)
+{
+    // No hitpoints, unused52 or cooldowns
+    archive(list, move_target, move_target_unit, next_move_waypoint, unk_move_waypoint);
+    archive(flingy_flags, facing_direction, flingyTurnRadius, movement_direction, flingy_id, _unknown_0x026);
+    archive(flingyMovementType, position, exact_position, flingyTopSpeed, current_speed, next_speed);
+    archive(speed, acceleration, pathing_direction, unk4b, player, order, order_state, order_signal);
+    archive(order_fow_unit, order_timer, order_target_pos, target, weapon_id, time_remaining, flags);
+    archive(bounces_remaining, parent, previous_target, spread_seed, targeting, spawned, sprite);
+}
+
+template <class Archive>
+void LoneSpriteSystem::serialize(Archive &archive)
+{
+    archive(lone_sprites, fow_sprites);
 }
 
 void Load::LoadUnitPtr(Unit **ptr)
@@ -1810,33 +2199,46 @@ void Load::LoadPathingChunk()
 
 void Load::LoadGame()
 {
-    lone_sprites->Deserialize(this);
-//  LoadObjectChunk<Flingy, false>(&Flingy::SaveAllocate, &first_allocated_flingy, 0);
-    bullet_system->Deserialize(this);
-    id_to_bullet.reserve(bullet_system->BulletCount());
-    bullet_system->MakeSaveIdMapping([this] (Bullet *bullet, uintptr_t id) {
-        id_to_bullet[id] = bullet;
-    });
+    // There's the cursor marker already, however it will not be pointed by the global cursor_marker...
+    for (int i = 0; i < *bw::map_height_tiles; i++)
+    {
+        bw::horizontal_sprite_lines[i] = nullptr;
+        bw::horizontal_sprite_lines_rev[i] = nullptr;
+    }
+    lone_sprites->lone_sprites.clear();
+
+    try {
+        cereal_archive(version);
+    } catch (const std::exception &e) {
+        std::throw_with_nested(SaveFail(SaveFail::Version));
+    }
+    if (version > SaveVersion)
+        throw SaveFail(SaveFail::Version);
+
+    cereal_archive(*lone_sprites, *bullet_system);
+
+    FixupArchive::SpriteFixup id_to_sprite;
+    FixupArchive::BulletFixup id_to_bullet;
     id_to_sprite.reserve(lone_sprites->lone_sprites.size());
-    lone_sprites->MakeSaveIdMapping([this] (Sprite *sprite, uintptr_t id) {
+    lone_sprites->MakeSaveIdMapping([&] (Sprite *sprite, uintptr_t id) {
         id_to_sprite[id] = sprite;
     });
-    LoadObjectChunk<Unit, false>(&Unit::SaveAllocate, &first_allocated_unit, 0);
-    bullet_system->FinishLoad(this); // Bullets reference units and vice versa
+    id_to_bullet.reserve(bullet_system->BulletCount());
+    bullet_system->MakeSaveIdMapping([&] (Bullet *bullet, uintptr_t id) {
+        id_to_bullet[id] = bullet;
+    });
+    LoadUnits();
+    cereal_archive.ConfirmEmptyBuffer();
+    FixupArchive fixup(version, id_to_sprite, id_to_bullet);
+    fixup(*lone_sprites, *bullet_system);
+    for (auto &sprite : lone_sprites->lone_sprites)
+        sprite->AddToHlines();
+    for (auto &sprite : lone_sprites->fow_sprites)
+        sprite->AddToHlines();
+    for (auto &bullet : bullet_system->ActiveBullets())
+        bullet->sprite->AddToHlines();
+    FixupUnits(fixup);
 
-    for (Unit *unit : first_allocated_unit)
-    {
-        ConvertUnit<false>(unit);
-        for (Order *order : unit->order_queue_begin)
-        {
-            ConvertUnitPtr<false>(&order->target);
-        }
-        if (unit->path)
-        {
-            ConvertPath<false>(unit->path.get());
-        }
-    }
-    fread(&Unit::next_id, 4, 1, file);
     LoadUnitPtr(&(*bw::first_invisible_unit).AsRawPointer());
     LoadUnitPtr(&(*bw::first_active_unit).AsRawPointer());
     LoadUnitPtr(&(*bw::first_hidden_unit).AsRawPointer());
@@ -1896,7 +2298,7 @@ void Load::LoadGame()
 
 int LoadGameObjects()
 {
-    Load load(*bw::loaded_save);
+    Load load((FILE *)*bw::loaded_save);
     bool success = true;
     try
     {
@@ -1905,12 +2307,20 @@ int LoadGameObjects()
     }
     catch (const SaveException &e)
     {
-        debug_log->Log("Load failed: %s\n", e.cause().c_str());
+        error_log->Log("Load failed: %s\n", e.cause().c_str());
         *bw::load_succeeded = 0;
         *bw::replay_data = nullptr; // Otherwise it would save empty lastreplay
         success = false;
     }
+    catch (const std::exception &e)
+    {
+        error_log->Log("Load failed: %s\n", e.what());
+        PrintNestedExceptions(e);
+        *bw::load_succeeded = 0;
+        *bw::replay_data = nullptr;
+        success = false;
+    }
     load.Close();
-    *bw::loaded_save = 0;
+    *bw::loaded_save = nullptr;
     return success;
 }

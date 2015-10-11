@@ -47,6 +47,9 @@ class Path // 0x80
 #endif
         Path();
         ~Path();
+
+        template <class Archive>
+        void serialize(Archive &archive);
 };
 
 static_assert(sizeof(Path) == 0x80, "sizeof(Path");

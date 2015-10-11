@@ -20,12 +20,16 @@ Sprite *__stdcall FindBlockingFowResource(int x_tile, int y_tile, int radius);
 
 extern "C" void __stdcall SetSpriteDirection(int direction);
 
+namespace cereal { class access; }
+
 #pragma pack(push)
 #pragma pack(1)
 
 class Sprite
 {
     friend class LoneSpriteSystem;
+    friend class Load;
+    friend class cereal::access;
     public:
         RevListEntry<Sprite, 0x0> list;
         uint16_t sprite_id;
@@ -49,9 +53,9 @@ class Sprite
         uint32_t id; // 0x24
         uint32_t sort_order; // 0x28
 
-        void Serialize(Save *save);
-        static ptr<Sprite> Deserialize(Load *load);
         ~Sprite();
+        template <class Archive>
+        void serialize(Archive &archive);
 
         static std::pair<int, Sprite *> SaveAllocate(uint8_t *in, uint32_t size);
         static Sprite *Allocate(int sprite_id, const Point &pos, int player);
@@ -207,8 +211,8 @@ class LoneSpriteSystem
         Sprite *AllocateLone(int sprite_id, const Point &pos, int player);
         Sprite *AllocateFow(Sprite *base, int unit_id);
 
-        void Serialize(Save *save);
-        void Deserialize(Load *load);
+        template <class Archive>
+        void serialize(Archive &archive);
         template <class Cb>
         void MakeSaveIdMapping(Cb callback) const;
 

@@ -109,6 +109,7 @@ struct struct230
 
 class Unit
 {
+    friend class Load;
     public:
         static const size_t offset_of_allocated = 0xb8;
 
@@ -180,7 +181,8 @@ class Unit
         uint8_t lastEventColor;
         uint16_t unused8c;
         uint8_t rankIncrease;
-        uint8_t old_kills;
+        // Unused and currently not saved
+        uint8_t _unused_old_kills;
 
         uint8_t last_attacking_player;
         uint8_t secondary_order_wait;
@@ -192,7 +194,8 @@ class Unit
         uint16_t build_queue[5]; // 0x98
         uint16_t energy; // 0xa2
         uint8_t current_build_slot; // 0xa4
-        uint8_t targetOrderSpecial; // 0xa5
+        // Unused and currently not saved
+        uint8_t _unused_targetOrderSpecial; // 0xa5
         uint8_t secondary_order; // 0xa6
         uint8_t buildingOverlayState; // 0xa7
         uint16_t build_hp_gain; // 0xa8
@@ -257,6 +260,8 @@ class Unit
                 uint8_t is_carrying;
                 uint8_t carried_resource_count;
             } worker;
+
+            uint8_t everything_c0[0x10];
         };
         union // d0 union
         {
@@ -292,6 +297,8 @@ class Unit
                 Point origin_point;
                 Unit *carrying_unit;
             } powerup;
+
+            uint8_t everything_d0[0xc];
         };
 
         uint32_t flags; // 0xdc
@@ -348,9 +355,8 @@ class Unit
         uint16_t air_strength;
         uint16_t ground_strength;
         int32_t search_left;
-        int32_t search_right;
-        int32_t unit_search_top;
-        int32_t unit_search_bottom;
+        // Old unit search data, not used or saved
+        int32_t _unused_140[3];
         uint8_t _repulseUnknown;
         uint8_t repulseAngle;
         uint8_t driftPosX;
@@ -377,7 +383,8 @@ class Unit
         Unit *next_temp_flagged;
         std::atomic<Unit **> nearby_helping_units;
 
-        // DamagedUnit data
+        // DamagedUnit data, should be only accessed from DamagedUnit.
+        // See comment in bullet.h ProgressBulletBufs::GetDamagedUnit for more info.
         struct
         {
             uint32_t valid_frame;
@@ -391,7 +398,8 @@ class Unit
         Unit();
         ~Unit() { if (unit_id == Pylon) { pylon.aura.~unique_ptr<Sprite>(); } }
 
-        static std::pair<int, Unit *> SaveAllocate(uint8_t *in, uint32_t size, DummyListHead<Unit, Unit::offset_of_allocated> *list_head, uint32_t *out_id);
+        // Hack for loading saves
+        static Unit *RawAlloc();
 
         Unit *&next() { return list.next; }
         Unit *&prev() { return list.prev; }
@@ -479,6 +487,8 @@ class Unit
         bool IsReaver() const { return unit_id == Unit::Reaver || unit_id == Unit::Warbringer; }
         bool HasHangar() const { return IsCarrier() || IsReaver(); }
         bool IsGoliath() const { return unit_id == Unit::Goliath || unit_id == Unit::AlanSchezar; }
+        /// Used for union saving
+        bool IsVulture() const { return unit_id == Unit::Vulture || unit_id == Unit::JimRaynorV; }
         bool IsMineralField() const
             { return unit_id == Unit::MineralPatch1 || unit_id == Unit::MineralPatch2 || unit_id == Unit::MineralPatch3; }
         static bool IsGasBuilding(int unit_id)
@@ -619,8 +629,11 @@ class Unit
         std::string DebugStr() const;
         const char *GetName() const;
 
+        // cereal, in save.cpp
+        template <class Archive>
+        void serialize(Archive &archive);
+
     private:
-        static Unit *RawAlloc();
         Unit(bool); // Raw alloc
 
         void AddToLookup();

@@ -685,7 +685,6 @@ void MainUnitSearch::Remove(Unit *unit)
 
     RemoveAt(unit->search_left);
     unit->search_left = -1;
-    unit->search_right = -1;
 
     area_cache_enabled = false;
     Validate();

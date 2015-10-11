@@ -113,6 +113,9 @@ class Image
         Image();
         ~Image() {}
 
+        template <class Archive>
+        void serialize(Archive &archive);
+
         void SingleDelete();
 
         void SetFlipping(bool set);

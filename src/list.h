@@ -33,6 +33,7 @@ class ListHead
     public:
         ListHead() { value = 0; }
         operator C*&() { return value; }
+        operator C * const &() const { return value; }
         C *& AsRawPointer() { return value; }
         ListHead &operator=(C * const val) { value = val;  return *this; }
         C *operator-> () const { return value; }
@@ -57,6 +58,11 @@ class ListEntry
         ListEntry()
         {
         }
+        static ListEntry *FromValue(C *val)
+        {
+            return (ListEntry *)((uint8_t *)val + offset);
+        }
+
         void Remove(ListHead<C, offset> &first)
         {
             if (next)
@@ -101,6 +107,7 @@ class RevListHead
     public:
         RevListHead() { value = 0; }
         operator C*&() { return value; }
+        operator C * const &() const { return value; }
         C *& AsRawPointer() { return value; }
         C *operator-> () const { return value; }
         RevListHead &operator=(C * const val) { value = val;  return *this; }
@@ -124,6 +131,10 @@ class RevListEntry
     public:
         RevListEntry()
         {
+        }
+        static RevListEntry *FromValue(C *val)
+        {
+            return (RevListEntry *)((uint8_t *)val + offset);
         }
         void Remove(RevListHead<C, offset> &first)
         {

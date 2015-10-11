@@ -21,6 +21,9 @@ class Order
         static Order *RawAlloc() { return new Order(true); }
         ~Order() {}
 
+        template <class Archive>
+        void serialize(Archive &archive);
+
         static Order *Allocate(int order, uint32_t position_xy, Unit *target, int fow_unit_id);
         void SingleDelete();
 
