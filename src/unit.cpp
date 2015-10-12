@@ -5432,6 +5432,13 @@ void Unit::Trigger_GiveUnit(int new_player, ProgressUnitResults *results)
     {
         unit->GiveTo(new_player, results);
     }
+    if (HasHangar())
+    {
+        for (Unit *unit : carrier.in_child)
+            unit->GiveTo(new_player, results);
+        for (Unit *unit : carrier.out_child)
+            unit->GiveTo(new_player, results);
+    }
     if (flags & UnitStatus::Building)
     {
         if (building.addon != nullptr)

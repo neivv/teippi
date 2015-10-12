@@ -1194,9 +1194,27 @@ struct Test_MindControl : public GameTest {
             } break; case 2: {
                 if (target->player == da->player) {
                     TestAssert(da->shields == 0);
-                    Pass();
+                    ClearUnits();
+                    da = CreateUnitForTestAt(Unit::DarkArchon, 0, Point(100, 100));
+                    target = CreateUnitForTest(Unit::Carrier, 1);
+                    target->IssueSecondaryOrder(Order::TrainFighter);
+                    target->build_queue[target->current_build_slot] = Unit::Interceptor;
+                    state++;
                 } else {
                     TestAssert(da->order == Order::MindControl);
+                }
+            } break; case 3: {
+                if (target->carrier.in_child != nullptr || target->carrier.out_child != nullptr) {
+                    IssueOrderTargetingUnit_Simple(da, Order::MindControl, target);
+                    state++;
+                }
+            } break; case 4: {
+                if (target->player == da->player) {
+                    Unit *interceptor = target->carrier.in_child;
+                    if (interceptor == nullptr)
+                        interceptor = target->carrier.out_child;
+                    TestAssert(interceptor && interceptor->player == da->player);
+                    Pass();
                 }
             }
         }
