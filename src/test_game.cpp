@@ -1541,6 +1541,32 @@ struct Test_ParasiteAggro : public GameTest {
     }
 };
 
+struct Test_HitChance : public GameTest {
+    void Init() override {
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                for (int i = 0; i < 32; i++) {
+                    Unit *unit = CreateUnitForTestAt(Unit::Marine, 1, Point(100, 100 + 20 * i));
+                    Unit *enemy = CreateUnitForTestAt(Unit::Overlord, 0, Point(120, 100 + 20 * i));
+                    IssueOrderTargetingUnit_Simple(unit, Order::AttackUnit, enemy);
+                }
+                state++;
+            } break; case 1: {
+                for (Bullet *bullet : bullet_system->ActiveBullets()) {
+                    if (bullet->DoesMiss()) {
+                        Pass();
+                    }
+                }
+                for (Unit *unit : *bw::first_active_unit) {
+                    unit->hitpoints = unit->GetMaxHitPoints() * 256;
+                }
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -1575,6 +1601,7 @@ GameTests::GameTests()
     AddTest("Detection", new Test_Detection);
     AddTest("Death", new Test_Death);
     AddTest("Parasite aggro", new Test_ParasiteAggro);
+    AddTest("Hit chance", new Test_HitChance);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)

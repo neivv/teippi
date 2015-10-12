@@ -304,7 +304,7 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
         case 0x2: case 0x4: // Appear on target unit / site
         if (target && parent)
         {
-            if (main_rng->Rand(0x100) < GetMissChance(parent, target))
+            if (main_rng->Rand(0x100) <= GetMissChance(parent, target))
             {
                 int x = sprite->position.x - bw::circle[direction][0] * 30 / 256;
                 int y = sprite->position.y - bw::circle[direction][1] * 30 / 256;
@@ -339,7 +339,7 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
             bounces_remaining = 3; // Won't matter on others
             if (target && parent)
             {
-                if (main_rng->Rand(0x100) < GetMissChance(parent, target))
+                if (main_rng->Rand(0x100) <= GetMissChance(parent, target))
                 {
                     int x = order_target_pos.x - bw::circle[direction][0] * 30 / 256;
                     int y = order_target_pos.y - bw::circle[direction][1] * 30 / 256;
@@ -715,7 +715,7 @@ Unit *Bullet::ChooseBounceTarget()
 
 tuple<BulletState, int, Unit *> Bullet::State_Bounce()
 {
-    if (target && ~flags & 0x1)
+    if (target != nullptr && !DoesMiss())
         ChangeMovePos(this, target->sprite->position.x, target->sprite->position.y);
 
     ProgressBulletMovement(this);
@@ -857,7 +857,7 @@ tuple<BulletState, int> Bullet::State_MoveToUnit()
 {
     if (!target)
         return State_MoveToPoint();
-    if (flags & 0x1) // Stop following
+    if (DoesMiss())
     {
         order_target_pos = target->sprite->position;
         return State_MoveToPoint();
@@ -877,7 +877,7 @@ tuple<BulletState, int> Bullet::State_MoveNearUnit()
 {
     if (!target)
         return State_MoveToPoint();
-    if (flags & 0x1) // Stop following
+    if (DoesMiss())
     {
         order_target_pos = target->sprite->position;
         return State_MoveToPoint();
@@ -959,7 +959,7 @@ void Bullet::NormalHit(ProgressBulletBufs *bufs)
     if (!target)
         return;
 
-    if (flags & 0x1) // Don't follow target
+    if (DoesMiss())
     {
         if (target->ai && parent)
         {
@@ -1232,7 +1232,7 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
             return SpellCast(player, order_target_pos, Tech::DisruptionWeb, parent);
         break;
         case 0x12:
-            if (target && ~flags & 0x1) // Miss
+            if (target != nullptr && !DoesMiss())
             {
                 HitUnit(target, GetWeaponDamage(this, target), bufs);
                 if (~flags & 0x2) // Hallu

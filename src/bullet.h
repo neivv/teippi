@@ -231,6 +231,8 @@ class Bullet
 
         void UpdateMoveTarget(const Point &target);
         void Move(const Point &where);
+        /// Returns true if the random hit chance roll in State_Init failed
+        bool DoesMiss() const { return flags & 0x1; }
 
         void Serialize(Save *save, const BulletSystem *parent);
         template <bool saving> void SaveConvert(const BulletSystem *parent);
