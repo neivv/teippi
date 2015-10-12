@@ -554,7 +554,7 @@ void Sprite::MarkHealthBarDirty()
         return;
     for (Image *img : first_overlay)
     {
-        if (img->drawfunc == 0xa)
+        if (img->drawfunc == Image::HpBar)
         {
             img->flags |= 0x1;
             return;
