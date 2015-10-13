@@ -839,6 +839,7 @@ struct Test_Liftoff : public GameTest {
             } break; case 3: {
                 if (UnitCount() == 1 && building->order != Order::Land) {
                     TestAssert(building->order == units_dat_return_to_idle_order[building->unit_id]);
+                    TestAssert((building->sprite->last_overlay->flags & 4) == 0);
                     // Test lifting once more
                     IssueOrderTargetingNothing(building, Order::LiftOff);
                     state++;
@@ -856,6 +857,7 @@ struct Test_Liftoff : public GameTest {
             } break; case 6: {
                 if (building->order != Order::Land) {
                     TestAssert(!building->IsFlying());
+                    TestAssert((building->sprite->last_overlay->flags & 4) == 0);
                     building->IssueSecondaryOrder(Order::Train);
                     building->build_queue[building->current_build_slot] = Unit::SCV;
                     state++;

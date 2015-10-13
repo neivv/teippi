@@ -127,7 +127,7 @@ class Image
         bool IsFlipped() const { return flags & 0x2; }
         bool IsHidden() const { return flags & 0x40; }
         void FreezeY() { flags |= 0x4; }
-        void ThawY() { flags |= 0x4; }
+        void ThawY() { flags &= ~0x4; }
         void UpdateFrameToDirection();
         void Show();
         void Hide();
