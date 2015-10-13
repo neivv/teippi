@@ -380,10 +380,15 @@ bool Image::IscriptCmd(const Iscript::Command &cmd, IscriptContext *ctx, Rng *rn
         case TurnCWise:
         case Turn1CWise:
         {
-            Flingy *entity = ctx->unit != nullptr ? (Flingy *)ctx->unit : (Flingy *)ctx->bullet;
+            Unit *entity = ctx->unit != nullptr ? (Unit *)ctx->unit : (Unit *)ctx->bullet;
             if (entity == nullptr)
             {
                 Warning("Iscript for image %x uses turn opcode without parent object", image_id);
+            }
+            else if (cmd.opcode == Turn1CWise && entity->target != nullptr)
+            {
+                // Nothing. Allows missile turret to pick targets more quickly
+                // as it can turn to its target without iscript overriding it ._.
             }
             else
             {
@@ -392,7 +397,7 @@ bool Image::IscriptCmd(const Iscript::Command &cmd, IscriptContext *ctx, Rng *rn
                     direction = 0 - cmd.val;
                 else if (cmd.opcode == TurnCWise)
                     direction = cmd.val;
-                SetDirection(entity, entity->facing_direction + direction * 8);
+                SetDirection((Flingy *)entity, entity->facing_direction + direction * 8);
             }
         }
         break;

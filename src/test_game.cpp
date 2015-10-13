@@ -1628,6 +1628,32 @@ struct Test_SubunitSpell : public GameTest {
     }
 };
 
+/// Turn1CWise is not supposed to do anything if the unit has a target.
+struct Test_Turn1CWise : public GameTest {
+    Unit *turret;
+    Unit *target;
+    void Init() override {
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                turret = CreateUnitForTestAt(Unit::MissileTurret, 0, Point(100, 100));
+                target = CreateUnitForTestAt(Unit::Scout, 0, Point(100, 150));
+                state++;
+            } break; case 1: {
+                if (turret->facing_direction == 0) {
+                    IssueOrderTargetingUnit_Simple(turret, Order::AttackUnit, target);
+                    frames_remaining = 10;
+                    state++;
+                }
+            } break; case 2: {
+                if (bullet_system->BulletCount() == 1)
+                    Pass();
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -1664,6 +1690,7 @@ GameTests::GameTests()
     AddTest("Parasite aggro", new Test_ParasiteAggro);
     AddTest("Hit chance", new Test_HitChance);
     AddTest("Subunit spell overlays", new Test_SubunitSpell);
+    AddTest("Iscript turn1cwise", new Test_Turn1CWise);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)
