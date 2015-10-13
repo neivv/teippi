@@ -3018,6 +3018,9 @@ Unit *Unit::GetAutoTarget() const
 {
     Assert(late_unit_frames_in_progress);
     STATIC_PERF_CLOCK(Unit_GetAutoTarget);
+    if (player >= Limits::Players)
+        return nullptr;
+
     int max_range = GetTargetAcquisitionRange();
     if (flags & UnitStatus::InBuilding)
         max_range += 2;
