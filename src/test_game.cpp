@@ -22,6 +22,7 @@
 #include "console/windows_wrap.h"
 
 using std::min;
+using std::get;
 
 #define TestAssert(s) if (!(s)) { if(IsDebuggerPresent()) { INT3(); } Fail(#s); return; }
 
@@ -1567,6 +1568,66 @@ struct Test_HitChance : public GameTest {
     }
 };
 
+struct OverlaySpell {
+    int order;
+    int caster_unit;
+};
+const OverlaySpell overlay_spells[] = {
+    { Order::Lockdown, Unit::Ghost },
+    { Order::Restoration, Unit::Medic },
+    { Order::OpticalFlare, Unit::Medic },
+    { Order::DefensiveMatrix, Unit::ScienceVessel },
+    { Order::Irradiate, Unit::ScienceVessel },
+    { Order::Ensnare, Unit::Queen },
+    { Order::Plague, Unit::Defiler },
+    // These should be tested too but too lazy to add a way to cast them on tanks
+    //{ Order::Feedback, Unit::DarkArchon },
+    //{ Order::Maelstrom, Unit::DarkArchon },
+    { Order::MindControl, Unit::DarkArchon },
+    { Order::StasisField, Unit::Arbiter },
+};
+
+struct Test_SubunitSpell : public GameTest {
+    vector<tuple<Unit *, bool>> targets;
+    int default_overlay;
+    void Init() override {
+        targets.clear();
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                int overlay_spell_count = sizeof overlay_spells / sizeof(overlay_spells[0]);
+                Point pos(100, 100);
+                for (int i = 0; i < overlay_spell_count; i++) {
+                    pos.y += 120;
+                    if (pos.y > 32 * 60) {
+                        pos.y = 100;
+                        pos.x += 200;
+                    }
+                    auto spell = &overlay_spells[i];
+                    Unit *spellcaster = CreateUnitForTestAt(spell->caster_unit, 1, pos);
+                    Unit *target = CreateUnitForTestAt(Unit::SiegeTankTankMode, 0, pos + Point(30, 0));
+                    IssueOrderTargetingUnit_Simple(spellcaster, spell->order, target);
+                    targets.emplace_back(target, false);
+                    default_overlay = target->GetTurret()->sprite->first_overlay->image_id;
+                }
+                frames_remaining = 1000;
+                state++;
+            } break; case 1: {
+                for (auto &tp : targets) {
+                    Unit *turret = get<Unit *>(tp)->GetTurret();
+                    if (turret->sprite->first_overlay->image_id != default_overlay) {
+                        get<bool>(tp) = true;
+                    }
+                }
+                if (std::all_of(targets.begin(), targets.end(), [](const auto &t) { return get<bool>(t); })) {
+                    Pass();
+                }
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -1602,6 +1663,7 @@ GameTests::GameTests()
     AddTest("Death", new Test_Death);
     AddTest("Parasite aggro", new Test_ParasiteAggro);
     AddTest("Hit chance", new Test_HitChance);
+    AddTest("Subunit spell overlays", new Test_SubunitSpell);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)

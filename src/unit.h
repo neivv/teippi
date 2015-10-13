@@ -535,6 +535,7 @@ class Unit
 
         void RemoveOverlayFromSelf(int first_id, int last_id);
         void RemoveOverlayFromSelfOrSubunit(int first_id, int last_id);
+        void AddSpellOverlay(int small_overlay_id);
 
         int GetAirWeapon() const;
         int GetGroundWeapon() const;

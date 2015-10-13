@@ -164,7 +164,9 @@ void Unit::Order_Feedback(ProgressUnitResults *results)
                 if (dead)
                     target->sprite->SpawnLoneSpriteAbove(Sprite::FeedbackHit_Small + target->GetSize());
                 else
-                    AddOverlayHighest(target->sprite, Image::FeedbackHit_Small + target->GetSize(), 0, 0, 0);
+                {
+                    AddSpellOverlay(Image::FeedbackHit_Small);
+                }
             }
             OrderDone();
         }
@@ -198,9 +200,7 @@ void DoMatrixDamage(Unit *target, int dmg)
         target->matrix_hp -= dmg;
         if (~target->flags & UnitStatus::Burrowed)
         {
-            if (target->subunit)
-                target = target->subunit;
-            AddOverlayHighest(target->sprite, Image::DefensiveMatrixHit_Small + target->GetSize(), 0, 0, 0);
+            target->AddSpellOverlay(Image::DefensiveMatrixHit_Small);
         }
     }
     else
@@ -283,7 +283,7 @@ void Unit::ProgressSpellTimers(ProgressUnitResults *results)
 void Unit::Lockdown(int time)
 {
     if (!lockdown_timer)
-        AddOverlayHighest(sprite, Image::Lockdown_Small + GetSize(), 0, 0, 0);
+        AddSpellOverlay(Image::Lockdown_Small);
 
     if (lockdown_timer < time)
         lockdown_timer = time;
@@ -365,7 +365,7 @@ void Unit::Irradiate(Unit *attacker, int attacking_player)
 {
     if (!irradiate_timer && ~flags & UnitStatus::Burrowed)
     {
-        AddOverlayHighest(sprite, Image::Irradiate_Small + GetSize(), 0, 0, 0);
+        AddSpellOverlay(Image::Irradiate_Small);
     }
     irradiate_timer = weapons_dat_cooldown[Weapon::Irradiate];
     irradiated_by = attacker;
@@ -380,7 +380,7 @@ void Plague(Unit *attacker, const Point &position, vector<tuple<Unit *, Unit *>>
         {
             if (!unit->plague_timer)
             {
-                AddOverlayHighest(unit->sprite, Image::Plague_Small + unit->GetSize(), 0, 0, 0);
+                unit->AddSpellOverlay(Image::Plague_Small);
             }
             unit->plague_timer = Spell::PlagueTime;
             if (attacker && UnitWasHit(unit, attacker, true))
@@ -456,7 +456,7 @@ void Unit::Restoration()
         Kill(nullptr);
         return;
     }
-    AddOverlayHighest(sprite, Image::Restoration_Small + GetSize(), 0, 0, 0);
+    AddSpellOverlay(Image::Restoration_Small);
     if (ensnare_timer)
     {
         RemoveOverlayFromSelfOrSubunit(Image::Ensnare_Small, Image::Ensnare_Small + 2);
@@ -496,7 +496,7 @@ void Unit::OpticalFlare(int attacking_player)
     }
     blind |= 1 << attacking_player; // Wow
     PlaySound(Sound::OpticalFlare, this, 1, 0);
-    AddOverlayHighest(sprite, Image::OpticalFlareHit_Small + GetSize(), 0, 0, 0);
+    AddSpellOverlay(Image::OpticalFlareHit_Small);
     RefreshUi();
 }
 
@@ -590,8 +590,7 @@ void Unit::Order_Hallucination(ProgressUnitResults *results)
     }
     ReduceEnergy(energy_cost);
     PlaySound(Sound::Hallucination, target, 1, 0);
-    Unit *topmost = target->GetTurret();
-    AddOverlayHighest(topmost->sprite, Image::HallucinationSmoke, 0, 0, 0);
+    AddOverlayHighest(target->GetTurret()->sprite, Image::HallucinationSmoke, 0, 0, 0);
     OrderDone();
 }
 
@@ -612,8 +611,7 @@ void Unit::Order_MindControl(ProgressUnitResults *results)
     }
     else
     {
-        Unit *topmost = target->GetTurret();
-        AddOverlayHighest(topmost->sprite, Image::MindControl_Small + target->GetSize(), 0, 0, 0);
+        target->AddSpellOverlay(Image::MindControl_Small);
         target->Trigger_GiveUnit(player, results);
         if (target->unit_id == DarkArchon)
             target->energy = 0;

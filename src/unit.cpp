@@ -289,6 +289,11 @@ void Unit::RemoveOverlayFromSelf(int first_id, int last_id)
     }
 }
 
+void Unit::AddSpellOverlay(int small_overlay_id)
+{
+    AddOverlayHighest(GetTurret()->sprite, small_overlay_id + GetSize(), 0, 0, 0);
+}
+
 // Some ai orders use UpdateAttackTarget, which uses unitsearch region cache, so they are progressed later
 void Unit::ProgressOrder_Late(ProgressUnitResults *results)
 {
