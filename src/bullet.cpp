@@ -40,15 +40,6 @@ const Point32 random_chances[] = { Point32(1, 1), Point32(51, 31), Point32(7, 12
 
 TempMemoryPool pbf_memory;
 
-static void ShowShieldHitOverlay(Unit *unit, int direction)
-{
-    Image *img = unit->sprite->main_image;
-    direction = ((direction - 0x7c) >> 3) & 0x1f;
-    int8_t *shield_los = images_dat_shield_overlay[img->image_id];
-    shield_los = shield_los + *(uint32_t *)(shield_los + 8 + img->direction * 4) + direction * 2; // sigh
-    AddOverlayAboveMain(unit->sprite, Image::ShieldOverlay, shield_los[0], shield_los[1], direction);
-}
-
 static void UnitKilled(Unit *target, Unit *attacker, int attacking_player, vector<Unit *> *killed_units)
 {
     // Kinda stupid that TransportDeath() does about the same...
@@ -110,14 +101,10 @@ void DamagedUnit::AddHit(uint32_t dmg, int weapon_id, int player, int direction,
     auto dmg_type = weapons_dat_damage_type[weapon_id];
     auto armor_type = units_dat_armor_type[base->unit_id];
 
-    bool damaged_shields = false;
-    if (base->HasShields() && base->shields >= 256)
-    {
-        dmg = base->DamageShields(dmg, dmg_type == 4);
-        if (base->shields >= 256)
-            ShowShieldHitOverlay(base, direction);
-        damaged_shields = true;
-    }
+    uint32_t old_damage = dmg;
+    dmg = base->DamageShields(dmg, direction, dmg_type == 4);
+    bool damaged_shields = dmg != old_damage;
+
     if (dmg_type != 4) // Ignore armor
     {
         int armor_reduction = base->GetArmor() * 256;
@@ -679,8 +666,8 @@ void HallucinationHit(Unit *target, Unit *attacker, int direction, vector<tuple<
         if (attacker->player != target->player)
             Notify_UnitWasHit(target);
     }
-    if (target->shields >= 128 && target->HasShields())
-        ShowShieldHitOverlay(target, direction);
+    if (target->shields >= 256 && target->HasShields())
+        target->ShowShieldHitOverlay(direction);
 }
 
 void Bullet::HitUnit(Unit *target, int dmg, ProgressBulletBufs *bufs)

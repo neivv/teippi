@@ -3764,16 +3764,29 @@ int Unit::ReduceMatrixDamage(int dmg)
     return dmg;
 }
 
-int Unit::DamageShields(int dmg, bool ignore_armor)
+void Unit::ShowShieldHitOverlay(int direction)
 {
+    Image *img = sprite->main_image;
+    direction = ((direction - 0x7c) >> 3) & 0x1f;
+    int8_t *shield_los = images_dat_shield_overlay[img->image_id];
+    shield_los = shield_los + *(uint32_t *)(shield_los + 8 + img->direction * 4) + direction * 2; // sigh
+    AddOverlayAboveMain(sprite, Image::ShieldOverlay, shield_los[0], shield_los[1], direction);
+}
+
+uint32_t Unit::DamageShields(uint32_t dmg, int direction, bool ignore_armor)
+{
+    if (!HasShields() || shields < 256)
+        return dmg;
     if (!ignore_armor)
     {
-        int shield_upg_reduction = GetUpgradeLevel(Upgrade::ProtossPlasmaShields, player) * 256;
-        dmg = max(128, dmg - shield_upg_reduction);
+        uint32_t shield_upg_reduction = GetUpgradeLevel(Upgrade::ProtossPlasmaShields, player) * 256;
+        dmg = max((uint32_t)128, dmg - shield_upg_reduction);
     }
 
-    int shield_dmg = min(dmg, shields);
+    uint32_t shield_dmg = min(dmg, (uint32_t)shields);
     shields -= shield_dmg;
+    if (shield_dmg != 0 && shields != 0)
+        ShowShieldHitOverlay(direction);
     return dmg - shield_dmg;
 }
 

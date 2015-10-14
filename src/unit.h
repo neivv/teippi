@@ -451,7 +451,8 @@ class Unit
         /// Returns remaining dmg
         int ReduceMatrixDamage(int dmg);
         /// Returns remaining dmg
-        int DamageShields(int dmg, bool ignore_armor);
+        uint32_t DamageShields(uint32_t dmg, int direction, bool ignore_armor);
+        void ShowShieldHitOverlay(int direction);
         void DamageSelf(int dmg, ProgressUnitResults *results);
 
         bool CanDetect() const;

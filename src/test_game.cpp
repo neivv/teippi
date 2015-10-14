@@ -1656,6 +1656,46 @@ struct Test_Turn1CWise : public GameTest {
     }
 };
 
+/// When an attack which ignores armor gets absorbed by defensive matrix, the attack
+/// deals 128 damage to hitpoints, even if the unit had shields.
+struct Test_MatrixStorm : public GameTest {
+    Unit *target;
+    void Init() override {
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                Unit *vessel = CreateUnitForTestAt(Unit::ScienceVessel, 0, Point(100, 100));
+                target = CreateUnitForTestAt(Unit::Scout, 0, Point(100, 150));
+                IssueOrderTargetingUnit_Simple(vessel, Order::DefensiveMatrix, target);
+                state++;
+            } break; case 1: {
+                if (target->matrix_timer != 0) {
+                    Unit *ht = CreateUnitForTestAt(Unit::HighTemplar, 0, Point(100, 100));
+                    IssueOrderTargetingUnit_Simple(ht, Order::PsiStorm, target);
+                    frames_remaining = 250;
+                    state++;
+                }
+            } break; case 2: {
+                int hp_dmg = units_dat_hitpoints[target->unit_id] - target->hitpoints;
+                int shield_dmg = target->GetMaxShields() - target->GetShields();
+                TestAssert(shield_dmg == 0);
+                TestAssert(hp_dmg == 0 || hp_dmg == 128);
+                if (hp_dmg == 128) {
+                    state++;
+                }
+            } break; case 3: {
+                if (bullet_system->BulletCount() == 0)
+                    Pass();
+                // There should not be a shield overlay either
+                for (Image *img : target->sprite->first_overlay) {
+                    TestAssert(img->image_id != Image::ShieldOverlay);
+                }
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -1693,6 +1733,7 @@ GameTests::GameTests()
     AddTest("Hit chance", new Test_HitChance);
     AddTest("Subunit spell overlays", new Test_SubunitSpell);
     AddTest("Iscript turn1cwise", new Test_Turn1CWise);
+    AddTest("Matrix + storm", new Test_MatrixStorm);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)
