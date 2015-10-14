@@ -448,10 +448,9 @@ class Unit
         int GetTargetAcquisitionRange() const;
         int GetMaxEnergy() const;
         int GetModifiedDamage(int dmg) const;
-        /// Returns remaining dmg
-        int ReduceMatrixDamage(int dmg);
-        /// Returns remaining dmg
-        uint32_t DamageShields(uint32_t dmg, int direction, bool ignore_armor);
+        /// Assumes that dmg <= shields, most likely should not be called but let
+        /// DamagedUnit call it when necessary
+        void DamageShields(int32_t dmg, int direction);
         void ShowShieldHitOverlay(int direction);
         void DamageSelf(int dmg, ProgressUnitResults *results);
 

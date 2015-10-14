@@ -3751,19 +3751,6 @@ int Unit::GetModifiedDamage(int dmg) const
     return dmg;
 }
 
-int Unit::ReduceMatrixDamage(int dmg)
-{
-    if (matrix_hp)
-    {
-        int matrix_dmg = dmg;
-        if (matrix_dmg > matrix_hp)
-            matrix_dmg = matrix_hp;
-        dmg -= matrix_dmg;
-        DoMatrixDamage(this, matrix_dmg);
-    }
-    return dmg;
-}
-
 void Unit::ShowShieldHitOverlay(int direction)
 {
     Image *img = sprite->main_image;
@@ -3773,21 +3760,12 @@ void Unit::ShowShieldHitOverlay(int direction)
     AddOverlayAboveMain(sprite, Image::ShieldOverlay, shield_los[0], shield_los[1], direction);
 }
 
-uint32_t Unit::DamageShields(uint32_t dmg, int direction, bool ignore_armor)
+void Unit::DamageShields(int32_t dmg, int direction)
 {
-    if (!HasShields() || shields < 256)
-        return dmg;
-    if (!ignore_armor)
-    {
-        uint32_t shield_upg_reduction = GetUpgradeLevel(Upgrade::ProtossPlasmaShields, player) * 256;
-        dmg = max((uint32_t)128, dmg - shield_upg_reduction);
-    }
-
-    uint32_t shield_dmg = min(dmg, (uint32_t)shields);
-    shields -= shield_dmg;
-    if (shield_dmg != 0 && shields != 0)
+    Assert(dmg <= shields);
+    shields -= dmg;
+    if (shields != 0)
         ShowShieldHitOverlay(direction);
-    return dmg - shield_dmg;
 }
 
 void Unit::DamageSelf(int dmg, ProgressUnitResults *results)

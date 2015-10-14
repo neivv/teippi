@@ -24,10 +24,13 @@
 #include "rng.h"
 #include "warn.h"
 #include "unit_cache.h"
+#include "damage_calculation.h"
 
 using std::get;
 using std::min;
 using std::max;
+
+const DamageCalculation default_damage_calculation;
 
 BulletSystem *bullet_system;
 bool bulletframes_in_progress = false; // Protects calling Kill() when FindHelpingUnits may be run
@@ -91,35 +94,41 @@ DamagedUnit ProgressBulletBufs::GetDamagedUnit(Unit *unit)
     return DamagedUnit(unit);
 }
 
+/// Convenience function for DamageCalculation class which can be annoying
+/// (and error-prone) to initialize with all the variables units can have.
+static DamageCalculation MakeDamageCalculation(Unit *unit, uint32_t base_damage, int weapon_id)
+{
+    int32_t shields = 0;
+    if (unit->HasShields() && unit->shields >= 256)
+        shields = unit->shields;
+
+    return default_damage_calculation
+        .BaseDamage(base_damage)
+        .HitPoints(unit->hitpoints)
+        .Shields(shields)
+        .MatrixHp(unit->matrix_hp)
+        .ArmorReduction(unit->GetArmor() * 256)
+        .ShieldReduction(GetUpgradeLevel(Upgrade::ProtossPlasmaShields, unit->player) * 256)
+        .ArmorType(units_dat_armor_type[unit->unit_id])
+        .DamageType(weapons_dat_damage_type[weapon_id])
+        .Hallucination(unit->flags & UnitStatus::Hallucination)
+        .AcidSpores(unit->acid_spore_count)
+        .IgnoreArmor(weapons_dat_damage_type[weapon_id] == 4);
+}
+
 void DamagedUnit::AddHit(uint32_t dmg, int weapon_id, int player, int direction, Unit *attacker, ProgressBulletBufs *bufs)
 {
     if (IsDead())
         return;
 
-    dmg = base->GetModifiedDamage(dmg);
-    dmg = base->ReduceMatrixDamage(dmg);
-    auto dmg_type = weapons_dat_damage_type[weapon_id];
-    auto armor_type = units_dat_armor_type[base->unit_id];
-
-    uint32_t old_damage = dmg;
-    dmg = base->DamageShields(dmg, direction, dmg_type == 4);
-    bool damaged_shields = dmg != old_damage;
-
-    if (dmg_type != 4) // Ignore armor
-    {
-        int armor_reduction = base->GetArmor() * 256;
-        if (dmg > armor_reduction)
-            dmg -= armor_reduction;
-        else
-            dmg = 0;
-    }
-
-    dmg = (dmg * bw::damage_multiplier[dmg_type][armor_type]) / 256;
-    if (!damaged_shields && !dmg)
-        dmg = 128;
+    auto damage = MakeDamageCalculation(base, dmg, weapon_id).Calculate();
+    if (damage.shield_damage)
+        base->DamageShields(damage.shield_damage, direction);
+    if (damage.matrix_damage)
+        DoMatrixDamage(base, damage.matrix_damage);
 
     if (!IsCheatActive(Cheats::Power_Overwhelming) || IsHumanPlayer(player))
-        AddDamage(dmg);
+        AddDamage(damage.hp_damage);
     if (IsDead())
     {
         UnitKilled(base, attacker, player, bufs->killed_units);
