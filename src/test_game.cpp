@@ -1573,25 +1573,25 @@ struct Test_HitChance : public GameTest {
 struct OverlaySpell {
     int order;
     int caster_unit;
+    int target_unit;
 };
 const OverlaySpell overlay_spells[] = {
-    { Order::Lockdown, Unit::Ghost },
-    { Order::Restoration, Unit::Medic },
-    { Order::OpticalFlare, Unit::Medic },
-    { Order::DefensiveMatrix, Unit::ScienceVessel },
-    { Order::Irradiate, Unit::ScienceVessel },
-    { Order::Ensnare, Unit::Queen },
-    { Order::Plague, Unit::Defiler },
-    // These should be tested too but too lazy to add a way to cast them on tanks
-    //{ Order::Feedback, Unit::DarkArchon },
-    //{ Order::Maelstrom, Unit::DarkArchon },
-    { Order::MindControl, Unit::DarkArchon },
-    { Order::StasisField, Unit::Arbiter },
+    { Order::Lockdown, Unit::Ghost, Unit::Goliath },
+    { Order::Restoration, Unit::Medic, Unit::SiegeTankTankMode },
+    { Order::OpticalFlare, Unit::Medic, Unit::Goliath },
+    { Order::DefensiveMatrix, Unit::ScienceVessel, Unit::SiegeTankTankMode },
+    { Order::Irradiate, Unit::ScienceVessel, Unit::Goliath, },
+    { Order::Ensnare, Unit::Queen, Unit::SiegeTankTankMode },
+    { Order::Plague, Unit::Defiler, Unit::Goliath },
+    // Note: If feedback kills it spawns a sprite instead of a image
+    { Order::Feedback, Unit::DarkArchon, Unit::Battlecruiser },
+    { Order::Maelstrom, Unit::DarkArchon, Unit::Ultralisk },
+    { Order::MindControl, Unit::DarkArchon, Unit::Goliath },
+    { Order::StasisField, Unit::Arbiter, Unit::SiegeTankTankMode },
 };
 
-struct Test_SubunitSpell : public GameTest {
-    vector<tuple<Unit *, bool>> targets;
-    int default_overlay;
+struct Test_SpellOverlay : public GameTest {
+    vector<tuple<Unit *, int, bool>> targets;
     void Init() override {
         targets.clear();
     }
@@ -1608,17 +1608,17 @@ struct Test_SubunitSpell : public GameTest {
                     }
                     auto spell = &overlay_spells[i];
                     Unit *spellcaster = CreateUnitForTestAt(spell->caster_unit, 1, pos);
-                    Unit *target = CreateUnitForTestAt(Unit::SiegeTankTankMode, 0, pos + Point(30, 0));
+                    Unit *target = CreateUnitForTestAt(spell->target_unit, 0, pos + Point(30, 0));
                     IssueOrderTargetingUnit_Simple(spellcaster, spell->order, target);
-                    targets.emplace_back(target, false);
-                    default_overlay = target->GetTurret()->sprite->first_overlay->image_id;
+                    int default_overlay = target->GetTurret()->sprite->first_overlay->image_id;
+                    targets.emplace_back(target, default_overlay, false);
                 }
                 frames_remaining = 1000;
                 state++;
             } break; case 1: {
                 for (auto &tp : targets) {
                     Unit *turret = get<Unit *>(tp)->GetTurret();
-                    if (turret->sprite->first_overlay->image_id != default_overlay) {
+                    if (turret->sprite->first_overlay->image_id != get<int>(tp)) {
                         get<bool>(tp) = true;
                     }
                 }
@@ -1731,7 +1731,7 @@ GameTests::GameTests()
     AddTest("Death", new Test_Death);
     AddTest("Parasite aggro", new Test_ParasiteAggro);
     AddTest("Hit chance", new Test_HitChance);
-    AddTest("Subunit spell overlays", new Test_SubunitSpell);
+    AddTest("Spell overlays", new Test_SpellOverlay);
     AddTest("Iscript turn1cwise", new Test_Turn1CWise);
     AddTest("Matrix + storm", new Test_MatrixStorm);
 }

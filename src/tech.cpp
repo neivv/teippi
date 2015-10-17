@@ -165,7 +165,7 @@ void Unit::Order_Feedback(ProgressUnitResults *results)
                     target->sprite->SpawnLoneSpriteAbove(Sprite::FeedbackHit_Small + target->GetSize());
                 else
                 {
-                    AddSpellOverlay(Image::FeedbackHit_Small);
+                    target->AddSpellOverlay(Image::FeedbackHit_Small);
                 }
             }
             OrderDone();
