@@ -567,6 +567,13 @@ class Unit
 
         bool HasWayOfAttacking() const;
         bool IsBetterTarget(const Unit *other) const;
+        /// Returns true if cmp is better target than prev.
+        /// Used by ai code, but is not depending on any ai structures.
+        bool Ai_IsBetterTarget(const Unit *cmp, const Unit *prev) const {
+            return Ai_ChooseBetterTarget(cmp, prev) == cmp;
+        }
+        const Unit *Ai_ChooseBetterTarget(const Unit *cmp, const Unit *prev) const;
+
         bool IsInvisible() const { return flags & (UnitStatus::BeginInvisibility | UnitStatus::InvisibilityDone); }
         bool IsInvisibleTo(const Unit *unit) const;
         bool CanSeeUnit(const Unit *other) const;
@@ -585,8 +592,6 @@ class Unit
         void Cloak(int tech);
 
         static bool IsClickable(int unit_id);
-
-        Unit *ChooseBetterTarget(Unit *cmp, Unit *prev);
 
         bool CanBeAttacked() const;
         bool CanAttackUnit(const Unit *other, bool check_detection = true) const;
@@ -644,8 +649,10 @@ class Unit
         void AddToLookup();
 
         Unit *PickBestTarget(Unit **targets, int amount) const;
-        Unit *GetBetterTarget(Unit *unit);
-        Unit *ValidateTarget(Unit *unit);
+        /// These two are used by Ai_IsBetterTarget
+        const Unit *GetBetterTarget(const Unit *unit) const;
+        const Unit *ValidateTarget(const Unit *unit) const;
+
         Unit *ChooseTarget(bool ground);
         Unit *ChooseTarget(UnitSearchRegionCache::Entry units, int region, bool ground);
         tuple<int, Unit *> ChooseTarget_Player(bool check_alliance, Array<Unit *> units, int region_id, bool ground);

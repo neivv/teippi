@@ -3353,7 +3353,7 @@ bool Unit::IsThreat(const Unit *other) const
     }
 }
 
-Unit *Unit::GetBetterTarget(Unit *unit)
+const Unit *Unit::GetBetterTarget(const Unit *unit) const
 {
     if (unit->unit_id == Interceptor && unit->interceptor.parent)
     {
@@ -3363,7 +3363,7 @@ Unit *Unit::GetBetterTarget(Unit *unit)
     return unit;
 }
 
-Unit *Unit::ValidateTarget(Unit *unit)
+const Unit *Unit::ValidateTarget(const Unit *unit) const
 {
     if (IsComputerPlayer(player) && !IsFlying() && unit->flags & UnitStatus::Unk80 && !IsInAttackRange(unit))
         return nullptr;
@@ -3372,7 +3372,7 @@ Unit *Unit::ValidateTarget(Unit *unit)
     return unit;
 }
 
-Unit *Unit::ChooseBetterTarget(Unit *cmp, Unit *prev)
+const Unit *Unit::Ai_ChooseBetterTarget(const Unit *cmp, const Unit *prev) const
 {
     if (prev == nullptr)
         return cmp;

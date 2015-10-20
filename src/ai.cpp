@@ -79,21 +79,78 @@ static bool IsNotChasing(Unit *unit) // dunno
     return ai->region->state != 7;
 }
 
+static void SetAttackTarget(Unit *unit, Unit *new_target, bool accept_if_sieged)
+{
+    if (unit->flags & UnitStatus::InBuilding)
+        unit->target = new_target;
+    else
+        AttackUnit(unit, new_target, true, accept_if_sieged);
+
+    if (unit->HasHangar() && !unit->IsInAttackRange(new_target))
+        unit->flags |= UnitStatus::Disabled2;
+}
+
+/// Makes UpdateAttackTarget a bit prettier.
+class UpdateAttackTargetContext
+{
+    public:
+        constexpr UpdateAttackTargetContext(const Unit *unit, bool critters, bool must_reach) : unit(unit),
+            accept_critters(critters), must_reach(must_reach) { }
+
+        Unit *CheckValid(Unit *check) const
+        {
+            if (check == nullptr)
+                return nullptr;
+            else if (must_reach && unit->IsUnreachable(check))
+                return nullptr;
+            else if (!unit->CanAttackUnit(check, true))
+                return nullptr;
+            else if (!accept_critters && check->IsCritter())
+                return nullptr;
+            return check;
+        }
+        /// One of the validity checks is slightly different, because bw...
+        Unit *CheckPreviousAttackerValid(Unit *check) const
+        {
+            if (check == nullptr)
+                return nullptr;
+            else if (must_reach && unit->IsUnreachable(check))
+                return nullptr;
+            else if (check->IsDisabled()) // Why???
+                return check;
+            else if (check->unit_id != Unit::Bunker)
+            {
+                if (check->target == nullptr || check->target->player != unit->player)
+                    return nullptr;
+            }
+            else if (!unit->CanAttackUnit(check, true))
+                return nullptr;
+            else if (!accept_critters && check->IsCritter())
+                return nullptr;
+            return check;
+        }
+
+    private:
+        const Unit * const unit;
+        const bool accept_critters;
+        const bool must_reach;
+};
+
 bool UpdateAttackTarget(Unit *unit, bool accept_if_sieged, bool accept_critters, bool must_reach)
 {
     STATIC_PERF_CLOCK(Ai_UpdateAttackTarget);
 
-    if (!unit->ai || !unit->HasWayOfAttacking())
+    if (unit->ai == nullptr || !unit->HasWayOfAttacking())
         return false;
     if (unit->order_queue_begin && unit->order_queue_begin->order_id == Order::Patrol)
         return false;
     if (unit->order == Order::Pickup4)
     {
         must_reach = true;
-        if (!unit->previous_attacker && unit->order_queue_begin && unit->order_queue_begin->order_id == Order::AttackUnit)
+        if (unit->previous_attacker == nullptr && unit->order_queue_begin && unit->order_queue_begin->order_id == Order::AttackUnit)
             return false;
     }
-    if (unit->target && unit->flags & UnitStatus::Reacts && unit->move_target_unit)
+    if (unit->target != nullptr && unit->flags & UnitStatus::Reacts && unit->move_target_unit != nullptr)
     {
         if (unit->IsEnemy(unit->move_target_unit) && unit->IsStandingStill() == 2)
         {
@@ -106,94 +163,48 @@ bool UpdateAttackTarget(Unit *unit, bool accept_if_sieged, bool accept_critters,
         }
     }
 
-
+    const UpdateAttackTargetContext ctx(unit, accept_critters, must_reach);
     Unit *target;
     if (unit->IsFlying())
-        target = unit->Ai_ChooseAirTarget();
-    else
-        target = unit->Ai_ChooseGroundTarget();
-    if (target != nullptr)
     {
-        if (must_reach && unit->IsUnreachable(target))
-            target = nullptr;
-        else if (!unit->CanAttackUnit(target, true))
-            target = nullptr;
-        else if (!accept_critters && target->IsCritter())
-            target = nullptr;
+        target = ctx.CheckValid(unit->Ai_ChooseAirTarget());
+        if (target == nullptr)
+            target = ctx.CheckValid(unit->Ai_ChooseGroundTarget());
     }
-    if (target == nullptr)
+    else
     {
-        if (unit->IsFlying())
-            target = unit->Ai_ChooseGroundTarget();
-        else
-            target = unit->Ai_ChooseAirTarget();
-        if (target)
-        {
-            if (must_reach && unit->IsUnreachable(target))
-                target = nullptr;
-            else if (!unit->CanAttackUnit(target, true))
-                target = nullptr;
-            else if (!accept_critters && target->IsCritter())
-                target = nullptr;
-        }
+        target = ctx.CheckValid(unit->Ai_ChooseGroundTarget());
+        if (target == nullptr)
+            target = ctx.CheckValid(unit->Ai_ChooseAirTarget());
     }
 
     Unit *previous_attack_target = nullptr;
     if (orders_dat_use_weapon_targeting[unit->order] && unit->target != nullptr)
-    {
-        previous_attack_target = unit->target;
-        if (must_reach && unit->IsUnreachable(previous_attack_target))
-            previous_attack_target = nullptr;
-        else if (!unit->CanAttackUnit(previous_attack_target, true))
-            previous_attack_target = nullptr;
-        else if (!accept_critters && previous_attack_target->IsCritter())
-            previous_attack_target = nullptr;
-    }
-    if (must_reach && unit->previous_attacker && unit->IsUnreachable(unit->previous_attacker))
-        unit->previous_attacker = nullptr;
+        previous_attack_target = ctx.CheckValid(unit->target);
 
-    if (unit->previous_attacker != nullptr && !unit->previous_attacker->IsDisabled())
-    {
-        if ((unit->previous_attacker->unit_id != Unit::Bunker) && (!unit->previous_attacker->target || unit->previous_attacker->target->player != unit->player))
-            unit->previous_attacker = nullptr;
-        else if (!unit->CanAttackUnit(unit->previous_attacker, true))
-            unit->previous_attacker = nullptr;
-        else if (!accept_critters && unit->previous_attacker->IsCritter())
-            unit->previous_attacker = nullptr;
-    }
+    if (unit->previous_attacker != nullptr)
+        unit->previous_attacker = ctx.CheckPreviousAttackerValid(unit->previous_attacker);
 
-    Unit *new_target = unit->ChooseBetterTarget(target, previous_attack_target);
-    new_target = unit->ChooseBetterTarget(unit->previous_attacker, new_target);
+    Unit *new_target = previous_attack_target;
+    if (unit->Ai_IsBetterTarget(target, previous_attack_target))
+        new_target = target;
+    if (unit->Ai_IsBetterTarget(unit->previous_attacker, new_target))
+        new_target = unit->previous_attacker;
 
     if (new_target == nullptr)
     {
         if (!IsNotChasing(unit))
             return false;
-        new_target = nullptr;
-        if (!unit->Ai_TryReturnHome(true))
-        {
-            new_target = unit->GetAutoTarget();
-            if (!new_target)
-                return false;
-            if (must_reach && unit->IsUnreachable(new_target))
-                return false;
-            if (!unit->CanAttackUnit(new_target, true))
-                return false;
-            if (!accept_critters && new_target->IsCritter())
-                return false;
-        }
-        else
+        if (unit->Ai_TryReturnHome(true))
+            return false;
+
+        new_target = ctx.CheckValid(unit->GetAutoTarget());
+        if (new_target == nullptr)
             return false;
     }
     if (new_target != unit->target)
     {
-        if (unit->flags & UnitStatus::InBuilding)
-            unit->target = new_target;
-        else
-            AttackUnit(unit, new_target, true, accept_if_sieged);
-
-        if (unit->HasHangar() && !unit->IsInAttackRange(new_target))
-            unit->flags |= UnitStatus::Disabled2;
+        SetAttackTarget(unit, new_target, accept_if_sieged);
     }
 
     return true;

@@ -308,7 +308,8 @@ void HitReactions::UpdatePickedTarget(Unit *own, Unit *attacker)
     }
 
     Unit *previous_picked = own->ai_reaction_private.picked_target;
-    own->ai_reaction_private.picked_target = own->ChooseBetterTarget(attacker, previous_picked);
+    if (own->Ai_IsBetterTarget(attacker, previous_picked))
+        own->ai_reaction_private.picked_target = attacker;
     if (previous_picked == nullptr)
         update_attack_targets.emplace_back(own);
 }
