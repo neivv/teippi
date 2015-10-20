@@ -109,6 +109,9 @@ static void MarkPlayerNeutral(int player)
 void Neutralize(int player)
 {
     Assert(player >= 0 && player < Limits::Players);
+    if (IsCheatActive(Cheats::Staying_Alive) && IsHumanPlayer(player))
+        return;
+
     if (bw::game_data->got.victory_conditions == 4 || bw::game_data->got.victory_conditions == 5)
     {
         Unit *next = bw::first_player_unit[player];
