@@ -385,10 +385,15 @@ class Unit
         std::atomic<Unit **> nearby_helping_units;
 
         // DamagedUnit data
-        struct
+        class DamagedUnitPrivate
         {
+            friend class DamagedUnit;
+            friend struct ProgressBulletBufs;
             uint32_t valid_frame;
             uint32_t damage; // Hp damage only
+
+            public:
+                constexpr DamagedUnitPrivate() : valid_frame(0), damage(0) { }
         } dmg_unit;
 
         /// For Ai::HitReactions.

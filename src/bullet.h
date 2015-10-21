@@ -121,6 +121,7 @@ class DamagedUnit
 
         bool IsDead() const;
         void AddHit(uint32_t dmg, int weapon_id, int player, int direction, Unit *attacker, ProgressBulletBufs *bufs);
+        int32_t GetDamage();
 
     private:
         void AddDamage(int dmg);

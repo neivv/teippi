@@ -66,6 +66,7 @@ class Image;
 class Iscript;
 class Bullet;
 class BulletSystem;
+class DamagedUnit;
 class Flingy;
 class Tbl;
 class Path;

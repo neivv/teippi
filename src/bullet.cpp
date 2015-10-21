@@ -83,6 +83,11 @@ void DamagedUnit::AddDamage(int amt)
     base->dmg_unit.damage += amt;
 }
 
+int32_t DamagedUnit::GetDamage()
+{
+    return base->dmg_unit.damage;
+}
+
 DamagedUnit ProgressBulletBufs::GetDamagedUnit(Unit *unit)
 {
     if (unit->dmg_unit.valid_frame != *bw::frame_count)
@@ -936,7 +941,7 @@ void BulletSystem::ProcessHits(ProgressBulletBufs *bufs)
         Unit *unit = dmg_unit.base;
         if (!dmg_unit.IsDead())
         {
-            unit->hitpoints -= unit->dmg_unit.damage;
+            unit->hitpoints -= dmg_unit.GetDamage();
             if (images_dat_damage_overlay[unit->sprite->main_image->image_id] &&
                     unit->flags & UnitStatus::Completed)
             {

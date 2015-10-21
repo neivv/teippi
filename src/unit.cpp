@@ -98,7 +98,6 @@ Unit::Unit()
     _repulseUnknown = 0;
     driftPosX = 0;
     driftPosY = 0;
-    dmg_unit.valid_frame = 0;
     secondary_order = Order::Fatal;
 }
 
