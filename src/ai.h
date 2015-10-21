@@ -308,6 +308,52 @@ namespace Ai
         return GetAiRegion(unit->player, unit->sprite->position);
     }
 
+    /// Makes UpdateAttackTarget a bit prettier.
+    class UpdateAttackTargetContext
+    {
+        public:
+            constexpr UpdateAttackTargetContext(const Unit *unit, bool critters, bool must_reach) : unit(unit),
+                accept_critters(critters), must_reach(must_reach) { }
+
+            Unit *CheckValid(Unit *check) const
+            {
+                if (check == nullptr)
+                    return nullptr;
+                else if (must_reach && unit->IsUnreachable(check))
+                    return nullptr;
+                else if (!unit->CanAttackUnit(check, true))
+                    return nullptr;
+                else if (!accept_critters && check->IsCritter())
+                    return nullptr;
+                return check;
+            }
+            /// One of the validity checks is slightly different, because bw...
+            Unit *CheckPreviousAttackerValid(Unit *check) const
+            {
+                if (check == nullptr)
+                    return nullptr;
+                else if (must_reach && unit->IsUnreachable(check))
+                    return nullptr;
+                else if (check->IsDisabled()) // Why???
+                    return check;
+                else if (check->unit_id != Unit::Bunker)
+                {
+                    if (check->target == nullptr || check->target->player != unit->player)
+                        return nullptr;
+                }
+                else if (!unit->CanAttackUnit(check, true))
+                    return nullptr;
+                else if (!accept_critters && check->IsCritter())
+                    return nullptr;
+                return check;
+            }
+
+        private:
+            const Unit * const unit;
+            const bool accept_critters;
+            const bool must_reach;
+    };
+
 } // namespace ai
 
 #endif // AI_H

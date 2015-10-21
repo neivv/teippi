@@ -11,11 +11,33 @@
 #include "order.h"
 #include "pathing.h"
 
+#include "player.h"
+#include "log.h"
+
 #include <windows.h>
 
 using std::get;
 
 namespace Ai {
+
+/// Wraps the target prioritization and storing it inside unit.
+/// Separate class mostly for testing the logic without having
+/// to modify any global state like HitReactions does.
+class BestPickedTarget
+{
+    public:
+        constexpr BestPickedTarget(Unit *unit) : unit(unit) { }
+        Unit *GetPicked() { return unit->ai_reaction_private.picked_target; }
+        void UpdatePicked(Unit *attacker) {
+            if (unit->Ai_IsBetterTarget(attacker, GetPicked()))
+                unit->ai_reaction_private.picked_target = attacker;
+        }
+        void Reset() { unit->ai_reaction_private.picked_target = nullptr; }
+
+    private:
+        Unit * const unit;
+};
+
 
 static bool IsUsableSpellOrder(int order)
 {
@@ -295,23 +317,16 @@ void HitReactions::UnitWasHit(Unit *own, Unit *attacker, bool important_hit, boo
 
 void HitReactions::UpdatePickedTarget(Unit *own, Unit *attacker)
 {
-    bool must_reach = own->order == Order::Pickup4;
-    if (must_reach && own->IsUnreachable(attacker))
-        return;
+    const UpdateAttackTargetContext ctx(own, true, own->order == Order::Pickup4);
 
-    if (!attacker->IsDisabled())
+    if (ctx.CheckPreviousAttackerValid(attacker) != nullptr)
     {
-        if ((attacker->unit_id != Unit::Bunker) && (attacker->target == nullptr || attacker->target->player != own->player))
-            return;
-        if (!own->CanAttackUnit(attacker, true))
-            return;
+        BestPickedTarget picked_target(own);
+        Unit *previous_picked = picked_target.GetPicked();
+        picked_target.UpdatePicked(attacker);
+        if (previous_picked == nullptr)
+            update_attack_targets.emplace_back(own);
     }
-
-    Unit *previous_picked = own->ai_reaction_private.picked_target;
-    if (own->Ai_IsBetterTarget(attacker, previous_picked))
-        own->ai_reaction_private.picked_target = attacker;
-    if (previous_picked == nullptr)
-        update_attack_targets.emplace_back(own);
 }
 
 void HitReactions::React(Unit *own, Unit *attacker, bool important_hit)
@@ -429,14 +444,15 @@ void HitReactions::ProcessUpdateAttackTarget()
 {
     for (Unit *own : update_attack_targets)
     {
-        Unit *picked = own->ai_reaction_private.picked_target;
+        BestPickedTarget picked_target(own);
+        Unit *picked = picked_target.GetPicked();
         if (picked != nullptr)
         {
             own->SetPreviousAttacker(picked);
             if (own->HasSubunit())
                 own->subunit->SetPreviousAttacker(picked);
             UpdateAttackTarget(own, false, true, false);
-            own->ai_reaction_private.picked_target = nullptr;
+            picked_target.Reset();
         }
     }
 }
@@ -457,6 +473,86 @@ void HitReactions::UpdateRegionEnemyStrengths()
             }
         }
     }
+}
+
+Unit *GetBestTarget(Unit *unit, const vector<Unit *> &units)
+{
+    BestPickedTarget picked_target(unit);
+    for (Unit *other : units)
+    {
+        picked_target.UpdatePicked(other);
+    }
+    Unit *ret = picked_target.GetPicked();
+    picked_target.Reset();
+    return ret;
+}
+
+/// For each unit, picks all their enemies and confirms that BestPickedTarget
+/// uses same logic as just calling UpdateAttackTarget repeatedly.
+/// Logs and debug breaks any cases where it is not true, and obviously
+/// causes all units to attack enemies by their logic.
+bool TestBestTargetPicking()
+{
+    vector<Unit *> units;
+    for (Unit *unit : *bw::first_active_unit)
+    {
+        if (!IsComputerPlayer(unit->player) || unit->ai == nullptr)
+            continue;
+        if (unit->IsWorker() || ~unit->flags & UnitStatus::Completed)
+            continue;
+
+        units.clear();
+        for (Unit *other : *bw::first_active_unit)
+        {
+            const UpdateAttackTargetContext ctx(unit, true, unit->order == Order::Pickup4);
+            if (unit->IsEnemy(other) && ctx.CheckPreviousAttackerValid(other) != nullptr)
+                units.emplace_back(other);
+        }
+        Unit *assumed = GetBestTarget(unit, units);
+        Unit *old_target = unit->target;
+        Unit *air_target = unit->Ai_ChooseAirTarget();
+        Unit *ground_target = unit->Ai_ChooseGroundTarget();
+        for (Unit *other : units)
+        {
+            unit->SetPreviousAttacker(other);
+            if (unit->HasSubunit())
+                unit->subunit->SetPreviousAttacker(other);
+            UpdateAttackTarget(unit, false, true, false);
+        }
+        unit_search->valid_region_cache = false;
+        Unit *picked = unit->target;
+        // If the auto target is not a threat, it can cause UpdateAttackTarget switch
+        // back and forth weirdly (see Test_AiTargetPriority).
+        if (ground_target != nullptr && unit->IsThreat(ground_target))
+            continue;
+        if (air_target != nullptr && unit->IsThreat(air_target))
+            continue;
+
+        if (picked != assumed && picked != old_target && picked != air_target && picked != ground_target)
+        {
+            debug_log->Log("Best target picking error for unit %08X (%p)\n", unit->lookup_id, unit);
+            int pos = 0;
+            for (Unit *other : units)
+            {
+                if (pos == 8)
+                {
+                    debug_log->Log("\n");
+                    pos = 0;
+                }
+                debug_log->Log("%08X ", other->lookup_id);
+                pos++;
+            }
+            debug_log->Log("\n");
+            uint32_t picked_id = 0, assumed_id = 0;
+            if (picked != nullptr)
+                picked_id = picked->lookup_id;
+            if (assumed != nullptr)
+                assumed_id = assumed->lookup_id;
+            debug_log->Log("Picked %08X (%p), assumed %08X (%p)\n", picked_id, picked, assumed_id, assumed);
+            return false;
+        }
+    }
+    return true;
 }
 
 } // namespace Ai

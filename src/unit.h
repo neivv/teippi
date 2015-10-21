@@ -394,7 +394,7 @@ class Unit
         /// For Ai::HitReactions.
         class AiReactionPrivate
         {
-            friend class Ai::HitReactions;
+            friend class Ai::BestPickedTarget;
             Unit *picked_target;
 
             public:

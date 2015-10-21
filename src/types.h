@@ -131,6 +131,7 @@ namespace Ai
     template <class C> class DataList;
     struct ResourceArea;
     struct ResourceAreaArray;
+    class BestPickedTarget;
 }
 
 namespace Pathing

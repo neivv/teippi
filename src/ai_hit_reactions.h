@@ -28,6 +28,8 @@ namespace Ai
     /// Maintains some state caused by units getting hit, and only fully updates
     /// some ai region etc things when ProcessEverything is called (Or the state
     /// is destroyed)
+    /// There is a comment in Test_AiTargetPriority which explains slight differences
+    /// between this and bw's implementation.
     /// NOTE: Some of the unit-specific data is stored inside unit struct, so only a
     /// single HitReactions may be active at a time.
     class HitReactions
@@ -68,6 +70,9 @@ namespace Ai
             /// Does unit-specific reactions for the hit. Note: There are some cases when it modifies
             /// global ai state as well, at least with Ai_Detect.
             void React(Unit *own, Unit *attacker, bool important_hit);
+
+            /// Adds attacker to the list of possible new targets
+            /// (Well, checks if it is better new target than the previously best)
             void UpdatePickedTarget(Unit *own, Unit *attacker);
 
             /// Buffers helping unit-attacker pairs to the helpers vector.
@@ -113,5 +118,9 @@ namespace Ai
             vector<uint8_t> region_enemy_strength_updates;
             ClearOnMoveBool is_valid;
     };
+
+    /// For testing
+    bool TestBestTargetPicking();
+    Unit *GetBestTarget(Unit *unit, const vector<Unit *> &units);
 }
 #endif /* AI_HIT_REACTIONS_H */

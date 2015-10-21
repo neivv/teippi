@@ -15,6 +15,7 @@
 #include "dialog.h"
 #include "yms.h"
 #include "ai.h"
+#include "ai_hit_reactions.h"
 
 #include "possearch.hpp"
 
@@ -1696,6 +1697,74 @@ struct Test_MatrixStorm : public GameTest {
     }
 };
 
+/// Tests Ai::UpdateAttackTarget and related code
+struct Test_AiTargetPriority : public GameTest {
+    void Init() override {
+        AiPlayer(1);
+        SetEnemy(1, 0);
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: case 1: {
+                // Should prioritize the closer one, regardless of the creation order.
+                const Point positions[] = { Point(100, 100), Point(200, 100) };
+                Unit *first;
+                if (state == 0)
+                    first = CreateUnitForTestAt(Unit::Marine, 0, positions[0]);
+                Unit *second = CreateUnitForTestAt(Unit::Marine, 0, positions[1]);
+                if (state == 1)
+                    first = CreateUnitForTestAt(Unit::Marine, 0, positions[0]);
+                Unit *unit = CreateUnitForTestAt(Unit::Zergling, 1, Point(300, 100));
+                IssueOrderTargetingUnit_Simple(first, Order::AttackUnit, unit);
+                IssueOrderTargetingUnit_Simple(second, Order::AttackUnit, unit);
+                TestAssert(Ai::GetBestTarget(unit, { first, second }) == second);
+                ClearUnits();
+                state++;
+            } break; case 2: {
+                // Here the guardian threatens marine (Marine is inside range), and zergling doesn't,
+                // but zergling is inside marine's range and guardian isn't.
+                // As such, the result will be one being active last.
+                // That is bw's logic, but having the decision be consistent regardless of
+                // order wouldn't be bad either. Often hits like these are in different frames,
+                // and the ai could skip back and forth, which may be a "desired feature".
+                //
+                // In fact, hits over a single frame are more consistent than in bw, as
+                // Ai::HitReactions does only one check, and in case of a "tie" like here,
+                // the "best attacker of current frame" beats auto target.
+                // If (x -> y -> z) means (Ai_ChooseBetterTarget(z, Ai_ChooseBetterTarget(y, x))),
+                // vanilla bw would basically compare like this:
+                // old target -> auto target -> attacker -> auto target -> attacker #2 -> auto target -> ...
+                // \ Ai::UpdateAttackTarget #1           / \ Ai::UpdateAttackTarget #2 / \ ... #3
+                // whereas teippi does the following:
+                // old target -> auto target -> (attacker -> attacker #2 -> attacker #3 -> ...)
+                //                              \ #1      / \ #2        /   \ #3      /   \ ...
+                //                              \ Ai::HitReactions::AddHit (UpdatePickedTarget) /
+                // \ Ai::UpdateAttackTarget from Ai::HitReactions::UpdateAttackTargets /
+                // It could be closer to bw's behaviour if Ai::HitReactions cached the auto target,
+                // but bw's behaviour can be considered to be buggy. For example, if auto target
+                // and attacker #1 "tie", but attacker #2 loses to attacker #1 while beating auto target,
+                // bw would pick attacker #2 where we pick attacker #1.
+                //
+                // Anyways, those tie cases are rare, as they require the auto target to be a unit
+                // which cannot attack
+                const Point positions[] = { Point(100, 100), Point(270, 100) };
+                Unit *first;
+                first = CreateUnitForTestAt(Unit::Guardian, 0, positions[0]);
+                Unit *second = CreateUnitForTestAt(Unit::Zergling, 0, positions[1]);
+                Unit *unit = CreateUnitForTestAt(Unit::Marine, 1, Point(350, 100));
+                IssueOrderTargetingUnit_Simple(first, Order::AttackUnit, unit);
+                IssueOrderTargetingUnit_Simple(second, Order::AttackUnit, unit);
+                TestAssert(Ai::GetBestTarget(unit, { first, second }) == second);
+                TestAssert(Ai::GetBestTarget(unit, { second, first }) == first);
+                ClearUnits();
+                state++;
+            } break; case 3: {
+                Pass();
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -1734,6 +1803,7 @@ GameTests::GameTests()
     AddTest("Spell overlays", new Test_SpellOverlay);
     AddTest("Iscript turn1cwise", new Test_Turn1CWise);
     AddTest("Matrix + storm", new Test_MatrixStorm);
+    AddTest("Ai target priority", new Test_AiTargetPriority);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)

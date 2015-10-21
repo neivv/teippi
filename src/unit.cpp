@@ -3391,13 +3391,6 @@ const Unit *Unit::Ai_ChooseBetterTarget(const Unit *cmp, const Unit *prev) const
     bool prev_can_attack = prev->HasWayOfAttacking();
     bool cmp_can_attack = cmp->HasWayOfAttacking();
 
-    if (!prev_can_attack && cmp_can_attack)
-    {
-        if (prev->unit_id != Bunker || !prev->first_loaded)
-        {
-            return cmp;
-        }
-    }
     if (!cmp_can_attack && prev_can_attack)
     {
         if (cmp->unit_id != Bunker || !cmp->first_loaded)
@@ -3405,8 +3398,16 @@ const Unit *Unit::Ai_ChooseBetterTarget(const Unit *cmp, const Unit *prev) const
             return prev;
         }
     }
+    if (!prev_can_attack && cmp_can_attack)
+    {
+        if (prev->unit_id != Bunker || !prev->first_loaded)
+        {
+            return cmp;
+        }
+    }
     if (!IsThreat(prev) && IsThreat(cmp))
-        return prev;
+        return cmp;
+
     if (IsInAttackRange(prev))
         return prev;
     if (IsInAttackRange(cmp))

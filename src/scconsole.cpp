@@ -21,6 +21,7 @@
 #include "upgrade.h"
 #include "bullet.h"
 #include "test_game.h"
+#include "ai_hit_reactions.h"
 
 #include <string>
 #include <algorithm>
@@ -96,6 +97,12 @@ bool ScConsole::Test(const CmdArgs &args)
     {
         low = 0;
         high = 100000;
+    }
+    else if (strcmp(args[1], "ai_tgtprio") == 0)
+    {
+        bool result = Ai::TestBestTargetPicking();
+        if (!result) { Assert(result); }
+        return true;
     }
     else
     {

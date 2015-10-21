@@ -51,6 +51,7 @@ template <class C>
 class vector : public std::vector<C> {
     public:
         vector() {}
+        vector(std::initializer_list<C> init) : std::vector<C>(init) { }
         vector(vector &&other) : std::vector<C>(move(other)) {}
         vector(const vector &other) = delete;
         vector &operator=(const vector &other) = delete;
