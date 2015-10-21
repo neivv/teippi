@@ -166,6 +166,16 @@ void Unit::DeleteAll()
         bw::client_selection_group2[i] = nullptr;
         bw::client_selection_group3[i] = nullptr;
     }
+    // Setting just all 256 player unit pointers to null might overwrite data that should not be touched?
+    // There may be still a few which need to be cleared, selection group 3 starts at player 0x40,
+    // but there's some map terrain data and such before that.
+    bw::first_player_unit.index_overflowing(0x12) = nullptr;
+    bw::first_player_unit.index_overflowing(0x15) = nullptr;
+    bw::first_player_unit.index_overflowing(0x19) = nullptr;
+    bw::first_player_unit.index_overflowing(0x1a) = nullptr;
+    bw::first_player_unit.index_overflowing(0x1b) = nullptr;
+    bw::first_player_unit.index_overflowing(0x1c) = nullptr;
+    bw::first_player_unit.index_overflowing(0x1d) = nullptr;
     std::fill(bw::validation_replay_path.begin(), bw::validation_replay_path.end(), 0);
 }
 
