@@ -6,29 +6,13 @@
 #include "pathing.h"
 #include "limits.h"
 #include "player.h"
+#include "unit.h"
 
 namespace Ai
 {
     struct Region;
     extern ListHead<GuardAi, 0x0> needed_guards[0x8];
 
-    // Used to gather data (picked_target) for UpdateAttackTarget from UnitWasHit, hence the name
-    class HitUnit
-    {
-        public:
-            HitUnit(Unit *u) : unit(u), picked_target(nullptr) {}
-            HitUnit(HitUnit &&other) = default;
-            HitUnit& operator=(HitUnit &&other) = default;
-
-            Unit *GetUnit() { return unit; }
-            bool Empty() const { return picked_target == nullptr; }
-
-            Unit *unit;
-            Unit *picked_target;
-    };
-
-    vector<HitUnit> ProcessAskForHelp(HelpingUnitVec input);
-    void ClearRegionChangeList();
     Region *GetRegion(int player, int region);
     // Returns iterator for all of the regions in game.
     // Order is not guaranteed to be consistent
@@ -293,9 +277,6 @@ namespace Ai
     void AddUnitAi(Unit *unit, Town *town);
 
     bool ShouldCancelDamaged(const Unit *unit);
-    // main_target_reactions maybe more like serious_hit or did_damage
-    void ReactToHit(HitUnit *own_base, Unit *attacker, bool main_target_reactions, HelpingUnitVec *helpers);
-    void UpdateRegionEnemyStrengths();
     void __fastcall RemoveUnitAi(Unit *unit, bool unk);
     void ProgressScripts();
 
@@ -314,6 +295,18 @@ namespace Ai
     bool TryReactionSpell(Unit *own, bool was_damaged);
     // Cloaks an unit if possible, or burrows it if it is lurker
     void Hide(Unit *own);
+
+    bool IsInAttack(Unit *unit);
+
+    inline Region *GetAiRegion(int player, const Point &pos)
+    {
+        return bw::player_ai_regions[player] + Pathing::GetRegion(pos);
+    }
+
+    inline Region *GetAiRegion(Unit *unit)
+    {
+        return GetAiRegion(unit->player, unit->sprite->position);
+    }
 
 } // namespace ai
 

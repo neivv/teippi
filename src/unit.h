@@ -8,6 +8,7 @@
 #include "sprite.h"
 #include "unitsearch_cache.h" // For UnitSearchRegionCache::Entry
 #include "game.h"
+#include "ai_hit_reactions.h"
 
 #include <atomic>
 
@@ -92,7 +93,7 @@ struct ProgressUnitResults
 {
     vector<DoWeaponDamageData> weapon_damages;
     vector<HallucinationHitData> hallucination_hits;
-    Ai::HelpingUnitVec helping_units;
+    Ai::HitReactions ai_hit_reactions;
 };
 
 #pragma pack(push)
@@ -389,6 +390,16 @@ class Unit
             uint32_t valid_frame;
             uint32_t damage; // Hp damage only
         } dmg_unit;
+
+        /// For Ai::HitReactions.
+        class AiReactionPrivate
+        {
+            friend class Ai::HitReactions;
+            Unit *picked_target;
+
+            public:
+                constexpr AiReactionPrivate() : picked_target(nullptr) { }
+        } ai_reaction_private;
 
         // Funcs etc
 #ifdef SYNC

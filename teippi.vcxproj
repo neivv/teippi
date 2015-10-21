@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\ai.h" />
+    <ClInclude Include="src\ai_hit_reactions.h" />
     <ClInclude Include="src\building.h" />
     <ClInclude Include="src\bullet.h" />
     <ClInclude Include="src\bunker.h" />
@@ -98,6 +99,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\ai.cpp" />
+    <ClCompile Include="src\ai_hit_reactions.cpp" />
     <ClCompile Include="src\building.cpp" />
     <ClCompile Include="src\bullet.cpp" />
     <ClCompile Include="src\bunker.cpp" />

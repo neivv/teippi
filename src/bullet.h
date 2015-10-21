@@ -7,6 +7,7 @@
 #include "game.h"
 #include "common/unsorted_vector.h"
 #include "common/claimable.h"
+#include "ai_hit_reactions.h"
 #include <tuple>
 #include <array>
 
@@ -90,15 +91,15 @@ struct BulletHit
 
 struct BulletFramesInput
 {
-    BulletFramesInput(vector<DoWeaponDamageData> w, vector<HallucinationHitData> h, Ai::HelpingUnitVec hu) :
-        weapon_damages(move(w)), hallucination_hits(move(h)), helping_units(move(hu)) {}
+    BulletFramesInput(vector<DoWeaponDamageData> w, vector<HallucinationHitData> h, Ai::HitReactions hu) :
+        weapon_damages(move(w)), hallucination_hits(move(h)), ai_hit_reactions(move(hu)) {}
     BulletFramesInput(const BulletFramesInput &other) = delete;
     BulletFramesInput(BulletFramesInput &&other) = default;
     BulletFramesInput& operator=(const BulletFramesInput &other) = delete;
     BulletFramesInput& operator=(BulletFramesInput &&other) = default;
     vector<DoWeaponDamageData> weapon_damages;
     vector<HallucinationHitData> hallucination_hits;
-    Ai::HelpingUnitVec helping_units;
+    Ai::HitReactions ai_hit_reactions;
 };
 
 struct ProgressBulletBufs;
@@ -286,7 +287,7 @@ class BulletSystem
         Claimed<vector<Bullet *>> ProgressStates(vector<tuple<Bullet *, Unit *>> *new_bounce_targets);
         void ProcessHits(ProgressBulletBufs *bufs);
         vector<Unit *> ProcessUnitWasHit(vector<tuple<Unit *, Unit *>> hits, ProgressBulletBufs *bufs);
-        vector<Ai::HitUnit> ProcessAiReactToHit(vector<tuple<Unit *, Unit *, bool>> input, Ai::HelpingUnitVec *helping_units);
+        void ProcessAiReactToHit(vector<tuple<Unit *, Unit *, bool>> input, Ai::HitReactions *hit_reactions);
 
         void DeleteBullet(Bullet *bullet);
         std::array<BulletVector *, 7> Vectors()

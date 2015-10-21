@@ -276,6 +276,9 @@
     <ClInclude Include="src\constants\upgrade.h">
       <Filter>Headers\constants</Filter>
     </ClInclude>
+    <ClInclude Include="src\ai_hit_reactions.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\ai.cpp">
@@ -432,6 +435,9 @@
       <Filter>Sources\console</Filter>
     </ClCompile>
     <ClCompile Include="src\bwlauncher.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ai_hit_reactions.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
   </ItemGroup>

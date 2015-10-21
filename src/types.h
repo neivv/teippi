@@ -131,7 +131,6 @@ namespace Ai
     template <class C> class DataList;
     struct ResourceArea;
     struct ResourceAreaArray;
-    typedef vector<tuple<Unit *, Unit *>> HelpingUnitVec;
 }
 
 namespace Pathing

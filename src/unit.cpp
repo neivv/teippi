@@ -2273,9 +2273,8 @@ static void Puwh_Dying(Unit *target, Unit *attacker, Unit **nearby, ProgressUnit
         attacker = attacker->related;
     // Kind of hacky as the whole point of Ai::HitUnit is to collect stuff for UnitWasHit,
     // but as target is dying it might just be dropped
-    Ai::HitUnit hit_unit(target);
-    Ai::ReactToHit(&hit_unit, attacker, true, &results->helping_units);
-    if (!target->ai)
+    results->ai_hit_reactions.NewHit(target, attacker, true);
+    if (target->ai == nullptr)
     {
         for (Unit *unit = *nearby++; unit; unit = *nearby++)
         {

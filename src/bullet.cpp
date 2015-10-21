@@ -1353,7 +1353,7 @@ Claimed<vector<Bullet *>> BulletSystem::ProgressStates(vector<tuple<Bullet *, Un
 }
 
 // Input should not need to be synced
-vector<Ai::HitUnit> BulletSystem::ProcessAiReactToHit(vector<tuple<Unit *, Unit *, bool>> input, Ai::HelpingUnitVec *helping_units)
+void BulletSystem::ProcessAiReactToHit(vector<tuple<Unit *, Unit *, bool>> input, Ai::HitReactions *hit_reactions)
 {
     STATIC_PERF_CLOCK(BulletSystem_Parth);
     // I would not dare to have it sort by pointer here ever, Ai::ReactToHit is really complicated piece of code
@@ -1366,10 +1366,6 @@ vector<Ai::HitUnit> BulletSystem::ProcessAiReactToHit(vector<tuple<Unit *, Unit 
             return get<2>(a) > get<2>(b);
     });
 
-    Unit *previous = nullptr;
-    Ai::HitUnit *hit_unit = nullptr;
-    vector<Ai::HitUnit> hit_units;
-    helping_units->reserve(input.size());
     // Assuming here that it does not make difference if repeating this with same target-attacker pair
     // or repeating without main_target_reactions once main_target_reactions has been true
     // ((It should be sorted so that mtr=true becomes first))
@@ -1379,157 +1375,15 @@ vector<Ai::HitUnit> BulletSystem::ProcessAiReactToHit(vector<tuple<Unit *, Unit 
     {
         auto target = get<0>(tp);
         auto attacker = get<1>(tp);
-        auto main_target_reactions = get<2>(tp);
-        if (previous != target)
-        {
-            hit_units.emplace_back(target);
-            hit_unit = &hit_units.back();
-            previous = target;
-            // This clear is be usually unnecessary as it is done for every bullet hit in UnitWasHit, but
-            // broodling and parasite hits only trigger Ai::ReactToHit so clear flags here as well
-            // Idk if clearing the 0x00c00000 is even necessary but it won't hurt ^_^
-            target->hotkey_groups &= ~0x80c00000;
-        }
-        Ai::ReactToHit(hit_unit, attacker, main_target_reactions, helping_units);
-    }
-    return hit_units;
-}
+        auto important_hit = get<2>(tp);
+        // This clear is be usually unnecessary as it is done for every bullet hit in UnitWasHit, but
+        // broodling and parasite hits only trigger Ai::ReactToHit so clear flags here as well
+        // Idk if clearing the 0x00c00000 is even necessary but it won't hurt ^_^
+        target->hotkey_groups &= ~0x80c00000;
 
-// input should be sorted so the iteration order is consistent across all players' computers
-// It should also not have duplicates
-// And it yields objects which have functions Own() -> Unit * and Enemies -> Iterator<ref<Unit>>
-template<class Iterable>
-void ProcessAiUpdateAttackTarget(Iterable input)
-{
-    for (auto first : input)
-    {
-        Unit *own = first.Own();
-        bool must_reach = own->order == Order::Pickup4;
-
-        Unit *picked = nullptr;
-        for (const ref<Unit> &other_ : first.Enemies())
-        {
-            Unit *other = &other_.get();
-            if (other->hitpoints == 0)
-                continue;
-            if (must_reach && own->IsUnreachable(other))
-                continue;
-
-            if (!other->IsDisabled())
-            {
-                if ((other->unit_id != Unit::Bunker) && (!other->target || other->target->player != own->player))
-                    continue;
-                else if (!own->CanAttackUnit(other, true))
-                    continue;
-            }
-            picked = own->ChooseBetterTarget(other, picked);
-        }
-
-        if (picked)
-        {
-            own->SetPreviousAttacker(picked);
-            if (own->HasSubunit())
-                own->subunit->SetPreviousAttacker(picked);
-            Ai::UpdateAttackTarget(own, false, true, false);
-        }
+        hit_reactions->NewHit(target, attacker, important_hit);
     }
 }
-
-class IterateUatValue
-{
-    friend class enemies;
-    public:
-        class enemies : public Common::Iterator<enemies, ref<Unit>> {
-            public:
-                enemies(Unit *f, Unit *s) : first(f) {
-                    if (s == nullptr) {
-                        second = Optional<ref<Unit>>();
-                    } else {
-                        second = Optional<ref<Unit>>(ref<Unit>(*s));
-                    }
-                }
-                Optional<ref<Unit>> next() {
-                    if (first != nullptr)
-                    {
-                        auto ret = first;
-                        first = nullptr;
-                        return Optional<ref<Unit>>(*ret);
-                    }
-                    else
-                    {
-                        auto ret = move(second);
-                        second = Optional<ref<Unit>>();
-                        return ret;
-                    }
-                }
-
-            private:
-                Unit *first;
-                Optional<ref<Unit>> second;
-        };
-
-        IterateUatValue(Ai::HitUnit *f, Unit *s) : first(f), second(s) {}
-        IterateUatValue(Ai::HitUnit *f) : first(f), second(nullptr) {}
-
-        Unit *Own() { return first->unit; }
-        enemies Enemies() {
-            return enemies(first->picked_target, second);
-        }
-
-    private:
-        Ai::HitUnit *first;
-        Unit * second;
-};
-
-class IterateUat : public Common::Iterator<IterateUat, IterateUatValue>
-{
-    public:
-        using value = IterateUatValue;
-        IterateUat(vector<Ai::HitUnit> &&f, vector<Ai::HitUnit> &&s) : first(move(f)), second(move(s)) {
-            std::sort(first.begin(), first.end(),
-                    [](const auto &a, const auto &b) { return a.unit->lookup_id > b.unit->lookup_id; });
-            std::sort(second.begin(), second.end(),
-                    [](const auto &a, const auto &b) { return a.unit->lookup_id > b.unit->lookup_id; });
-            // Dirty tricks - final entry having lookup id 0 and sorting reverse is slightly more efficent
-            // (Should be)
-            Unit *fake_unit = (Unit *)fake_unit_buf;
-            fake_unit->lookup_id = 0;
-            first.emplace_back(fake_unit);
-            second.emplace_back(fake_unit);
-            first_pos = first.begin();
-            second_pos = second.begin();
-        }
-        IterateUat(IterateUat &&other) = default;
-        IterateUat& operator=(IterateUat &&other) = default;
-
-        Optional<value> next()
-        {
-            Optional<value> ret;
-            if (first_pos->unit->lookup_id == second_pos->unit->lookup_id) {
-                if (first_pos->unit->lookup_id == 0)
-                    return Optional<value>();
-                ret = Optional<value>(value(&*first_pos, second_pos->picked_target));
-                ++first_pos;
-                ++second_pos;
-            }
-            else if (first_pos->unit->lookup_id > second_pos->unit->lookup_id) {
-                ret = Optional<value>(value(&*first_pos));
-                ++first_pos;
-            }
-            else {
-                ret = Optional<value>(value(&*second_pos));
-                ++second_pos;
-            }
-            return ret;
-        }
-
-    private:
-        vector<Ai::HitUnit> first;
-        vector<Ai::HitUnit> second;
-        vector<Ai::HitUnit>::iterator first_pos;
-        vector<Ai::HitUnit>::iterator second_pos;
-        char fake_unit_buf[sizeof(Unit)];
-};
 
 void BulletSystem::ProgressFrames(BulletFramesInput input)
 {
@@ -1580,20 +1434,14 @@ void BulletSystem::ProgressFrames(BulletFramesInput input)
     auto ph_time = clock.GetTime();
     clock.Start();
 
-    Ai::UpdateRegionEnemyStrengths();
-
     auto canceled_ai_units = ProcessUnitWasHit(move(*bufs.unit_was_hit), &bufs);
-    auto update_attack_targets = ProcessAiReactToHit(move(*bufs.ai_react), &input.helping_units);
+    ProcessAiReactToHit(move(*bufs.ai_react), &input.ai_hit_reactions);
     auto puwh_time = clock.GetTime();
     clock.Start();
 
-    auto more_uat = Ai::ProcessAskForHelp(move(input.helping_units));
-    auto afh_time = clock.GetTime();
-
-    Ai::ClearRegionChangeList();
+    input.ai_hit_reactions.ProcessEverything();
+    auto ahr_time = clock.GetTime();
     clock.Start();
-
-    ProcessAiUpdateAttackTarget(IterateUat(move(update_attack_targets), move(more_uat)));
 
     // Sync with child threads. It is possible (but very unlikely) for a child be still busy,
     // if this thread did not want to wait for its result and did the search itself.
@@ -1638,7 +1486,7 @@ void BulletSystem::ProgressFrames(BulletFramesInput input)
         unit->Kill(nullptr);
     }
 
-    perf_log->Log("Pbf: %f ms + Ph %f ms + Puwh %f ms + Afh %f ms + Uaat %f ms = about %f ms\n", pbf_time, ph_time, puwh_time, afh_time, clock.GetTime(), clock2.GetTime());
+    perf_log->Log("Pbf: %f ms + Ph %f ms + Puwh %f ms + Ahr %f ms + Clean %f ms = about %f ms\n", pbf_time, ph_time, puwh_time, ahr_time, clock.GetTime(), clock2.GetTime());
     perf_log->Log("Sleep count: %d\n", threads->GetSleepCount() - prev_sleep);
     perf_log->Indent(2);
     StaticPerfClock::LogCalls();
