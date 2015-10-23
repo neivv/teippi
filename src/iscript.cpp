@@ -599,31 +599,57 @@ Iscript::Command Iscript::ProgressUntilCommand(const IscriptContext *ctx, Rng *r
                 pos = cmd.pos;
         break;
         case TrgtRangeCondJmp:
+        {
+            Unit *entity = ctx->unit != nullptr ? (Unit *)ctx->unit : (Unit *)ctx->bullet;
+            if (entity == nullptr)
+            {
+                Warning("Iscript for image %x uses trgtrangecondjmp without parent object", ctx->img->image_id);
+            }
             // Bw checks also for !ctx->constant but why should it?
-            if (ctx->unit->target)
+            else if (entity->target)
             {
                 uint32_t x, y;
-                GetClosestPointOfTarget(ctx->unit, &x, &y);
-                if (IsPointInArea(ctx->unit, cmd.val, x, y))
-                    pos = cmd.pos;
-            }
-        break;
-        case TrgtArcCondJmp:
-        {
-            // Here would also be if (!ctx->constant)
-            const Point *own = &ctx->unit->sprite->position;
-            const Unit *target = ctx->unit->target;
-            if (target)
-            {
-                int dir = GetFacingDirection(own->x, own->y, target->sprite->position.x, target->sprite->position.y);
-                if (abs(dir - cmd.val1()) < cmd.val2())
+                GetClosestPointOfTarget(entity, &x, &y);
+                if (IsPointInArea(entity, cmd.val, x, y))
                     pos = cmd.pos;
             }
         }
         break;
+        case TrgtArcCondJmp:
+        {
+            Unit *entity = ctx->unit != nullptr ? (Unit *)ctx->unit : (Unit *)ctx->bullet;
+            if (entity == nullptr)
+            {
+                Warning("Iscript for image %x uses trgtarccondjmp without parent object", ctx->img->image_id);
+            }
+            else
+            {
+                // Here would also be if (!ctx->constant)
+                const Point *own = &entity->sprite->position;
+                const Unit *target = entity->target;
+                if (target)
+                {
+                    int dir = GetFacingDirection(own->x, own->y, target->sprite->position.x,
+                                                 target->sprite->position.y);
+                    if (abs(dir - cmd.val1()) < cmd.val2())
+                        pos = cmd.pos;
+                }
+            }
+        }
+        break;
         case CurDirectCondJmp:
-            if (abs(ctx->unit->facing_direction - cmd.val1()) < cmd.val2())
-                pos = cmd.pos;
+        {
+            Flingy *entity = ctx->unit != nullptr ? (Flingy *)ctx->unit : (Flingy *)ctx->bullet;
+            if (entity == nullptr)
+            {
+                Warning("Iscript for image %x uses curdirectcondjmp without parent object", ctx->img->image_id);
+            }
+            else
+            {
+                if (abs(ctx->unit->facing_direction - cmd.val1()) < cmd.val2())
+                    pos = cmd.pos;
+            }
+        }
         break;
         case Call:
             return_pos = pos;
