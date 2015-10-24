@@ -139,7 +139,8 @@ class array_offset<Type, Size, More...> : public offset_base
                 }
                 const array_offset<Type, More...> operator*() {
                     uintptr_t deref_end = address + array_offset<Type, More...>::size() * sizeof(Type);
-                    Assert(deref_end <= end);
+                    // Avoid unused var warning ._.
+                    if (deref_end > end) { Assert(deref_end <= end); }
                     return array_offset<Type, More...>(address);
                 }
                 bool operator!=(const iterator &other) const {
