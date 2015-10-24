@@ -24,7 +24,7 @@ struct MapDl
 };
 #pragma pack(pop)
 
-const int ProtocolVersion = 0xdaef;
+const int ProtocolVersion = 0xdaf0;
 
 static bool IsReplayCommand(uint8_t command)
 {
