@@ -16,6 +16,7 @@
 #include "yms.h"
 #include "ai.h"
 #include "ai_hit_reactions.h"
+#include "triggers.h"
 
 #include "possearch.hpp"
 
@@ -28,6 +29,11 @@ using std::get;
 #define TestAssert(s) if (!(s)) { if(IsDebuggerPresent()) { INT3(); } Fail(#s); return; }
 
 // This file has special permission for different brace style =)
+
+static void ClearTriggers() {
+    for (int i = 0; i < Limits::ActivePlayers; i++)
+        FreeTriggerList(&bw::triggers[i]);
+}
 
 Unit *GameTest::CreateUnitForTest(int unit_id, int player) {
     return CreateUnitForTestAt(unit_id, player, Point(100, 100));
@@ -1765,6 +1771,61 @@ struct Test_AiTargetPriority : public GameTest {
     }
 };
 
+struct TransmissionTest {
+    int unit_id;
+    Point pos;
+    bool ok;
+};
+// Well, these variants mostly test finding specific unit at a location but that's nice too
+const TransmissionTest transmission_tests[] = {
+    { Unit::Marine, Point(100, 100), false },
+    { Unit::Zergling, Point(100, 100), true },
+    { Unit::Zergling, Point(400, 100), false },
+};
+
+struct Test_Transmission : public GameTest {
+    Unit *unit;
+    const TransmissionTest *variant;
+    void Init() override {
+        bw::locations[0] = Location { Rect32(50, 50, 150, 150), 0, 0 };
+        variant = transmission_tests;
+    }
+    void NextFrame() override {
+        // Maybe is initialized incorrectly, as the structure is incomplete
+        Trigger trigger;
+        memset(&trigger, 0, sizeof(Trigger));
+        trigger.actions[0].location = 1;
+        trigger.actions[0].amount = 7;
+        trigger.actions[0].misc = 500;
+        trigger.actions[0].unit_id = Unit::Zergling;
+        trigger.actions[0].sound_id = 0;
+        trigger.actions[0].action_id = 0x7;
+        switch (state) {
+            case 0: {
+                unit = CreateUnitForTestAt(variant->unit_id, 0, variant->pos);
+                *bw::current_trigger = &trigger;
+                *bw::trigger_current_player = 0;
+                ProgressActions(&trigger);
+                TestAssert(bw::player_wait_active[0] != 0);
+                state++;
+            } break; case 1: {
+                if (bw::player_wait_active[0] == 0) {
+                    bool circle_flashing = unit->sprite->selection_flash_timer != 0;
+                    TestAssert(circle_flashing == variant->ok);
+                    variant++;
+                    const TransmissionTest *test_end = transmission_tests +
+                        sizeof transmission_tests / sizeof(transmission_tests[0]);
+                    ClearUnits();
+                    state = 0;
+                    if (variant == test_end) {
+                        Pass();
+                    }
+                }
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -1804,6 +1865,7 @@ GameTests::GameTests()
     AddTest("Iscript turn1cwise", new Test_Turn1CWise);
     AddTest("Matrix + storm", new Test_MatrixStorm);
     AddTest("Ai target priority", new Test_AiTargetPriority);
+    AddTest("Transmission trigger", new Test_Transmission);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)
@@ -1844,6 +1906,7 @@ void GameTests::StartTest() {
     NoAi();
     AllyPlayers();
     GiveAllTechs();
+    ClearTriggers();
     *bw::cheat_flags = 0;
     tests[current_test]->state = 0;
     tests[current_test]->Init();

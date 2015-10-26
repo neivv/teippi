@@ -28,27 +28,28 @@ struct Location
     uint16_t flags;
 };
 
-// Incomplete
-struct Trigger
-{
-    uint8_t dc0[0x948];
-    uint32_t flags;
-};
-
 struct TriggerAction
 {
     uint8_t location;
     uint8_t dc1[0x3];
     uint32_t string_id;
-    uint32_t dc8;
+    uint32_t sound_id;
     uint32_t time;
-    uint32_t playeR;
+    uint32_t player;
     uint32_t misc;
     uint16_t unit_id;
-    uint8_t id;
+    uint8_t action_id;
     uint8_t amount;
     uint8_t flags;
     uint8_t dc1d[0x3];
+};
+
+// Incomplete
+struct Trigger
+{
+    uint8_t dc0[0x148];
+    TriggerAction actions[0x40];
+    uint32_t flags;
 };
 #pragma pack(pop)
 

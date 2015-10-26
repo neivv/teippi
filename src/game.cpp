@@ -384,7 +384,7 @@ void GameEnd()
         bw::unk_6CEF8C[i][0] = 0;
 
     FreeUnkSound(&*bw::unk_sound);
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < Limits::ActivePlayers; i++)
         FreeTriggerList(&bw::triggers[i]);
     for (int i = 0; i < 2; i++)
     {

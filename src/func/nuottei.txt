@@ -138,6 +138,7 @@
 
 00489CC0 = void ProgressTime(), edx int
 00489450 = void ProgressTriggerList(), eax TriggerList *
+00489130 = ProgressActions(), esi Trigger *trigger
 0048A200 = void ApplyVictory()
 00416000 = DeleteTimer(), esi Control *ctrl, edx timer_id
 004C7380 = Unit *FindUnitInLocation(), arg 1 unit_id, arg 2 player, eax location
