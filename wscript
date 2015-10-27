@@ -107,6 +107,8 @@ def build(bld):
         cxxflags += ['/Zi', '/FS']
         cxxflags += ['/GS-'] # Security cookies break the hooking system
         linkflags += ['/DEBUG']
+        if not debug:
+            linkflags += ['/OPT:REF', '/OPT:ICF']
 
     if debug:
         defines += ['DEBUG']
