@@ -117,6 +117,34 @@ struct DetectFreeze
     uintptr_t last_value;
 };
 
+static std::string GetExePath()
+{
+    int bufsize = 260;
+    char static_buf[260];
+    ptr<char[]> large_buf;
+    char *buffer = static_buf;
+    while (true)
+    {
+        auto result = GetModuleFileName(NULL, buffer, bufsize);
+        if (result == 0)
+            return "";
+        else if (result < bufsize)
+            return std::string(buffer);
+        else if (bufsize > 2500)
+            return "";
+
+        bufsize *= 2;
+        large_buf.reset(new char[bufsize]);
+        buffer = large_buf.get();
+    }
+}
+
+static std::string GetExeDirectory()
+{
+    auto path = GetExePath();
+    return path.substr(0, path.find_last_of("\\/"));
+}
+
 static void InitFreezeLogging()
 {
     HANDLE thread_handle;
@@ -132,7 +160,19 @@ static void InitFreezeLogging()
     }
     else
     {
-        new FreezeLogger(thread_handle, "Errors/freeze.log", DetectFreeze(), [](const std::string &msg) {
+        // Firegraft does something to the current working directory,
+        // so use an absolute path
+        std::string exe_dir = GetExeDirectory();
+        if (exe_dir.empty())
+        {
+            char buf[64];
+            // GetLastError might be wrong here as std::string does memory allocation.
+            // Oh well.
+            snprintf(buf, sizeof buf, "Could not get exe directory: %d", GetLastError());
+            MessageBoxA(0, buf, "How is this possible?", 0);
+        }
+        std::string logfile = exe_dir + "/Errors/freeze.log";
+        new FreezeLogger(thread_handle, logfile, DetectFreeze(), [](const std::string &msg) {
             MessageBoxA(0, "InitFreezeLogging failed", msg.c_str(), 0);
         });
     }
