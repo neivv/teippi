@@ -21,10 +21,10 @@ class SaveBase
         void Close();
         bool IsOk() const { return file != 0; }
 
+        template <bool saving> void ConvertSpritePtr(Sprite **ptr, const LoneSpriteSystem *sprites) const;
+        template <bool saving> void ConvertBulletPtr(Bullet **ptr, const BulletSystem *bullets) const;
 
     protected:
-        template <bool saving> void ConvertSpritePtr(Sprite **ptr);
-        template <bool saving> void ConvertBulletPtr(Bullet **ptr);
         template <bool saving> void ConvertBullet(Bullet *bullet);
         template <bool saving> void ConvertUnit(Unit *unit);
 
@@ -42,6 +42,13 @@ class SaveBase
         template <bool saving> void ConvertPathing(Pathing::PathingSystem *pathing, Pathing::PathingSystem *offset = 0);
 
         FILE *file;
+
+        // Well, lone sprite as owned sprites are only pointed
+        // from the parent
+        std::unordered_map<Sprite *, uintptr_t> sprite_to_id;
+        std::unordered_map<Bullet *, uintptr_t> bullet_to_id;
+        std::unordered_map<uintptr_t, Bullet *> id_to_bullet;
+        std::unordered_map<uintptr_t, Sprite *> id_to_sprite;
 };
 
 class Save : public SaveBase<Save>

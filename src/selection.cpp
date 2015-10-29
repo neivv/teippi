@@ -189,7 +189,7 @@ void Command_SelectionRemove(uint8_t *buf)
             Unit *unit = Unit::FindById(unit_ids[i]);
             if (!unit)
                 continue;
-            Sprite *sprite = unit->sprite;
+            Sprite *sprite = unit->sprite.get();
             if (unit->IsDying() || sprite->IsHidden() || unit->player != player)
                 continue;
 
@@ -310,13 +310,12 @@ void CenterOnSelectionGroup(uint8_t group_id)
     for (unsigned i = 0; i < count; i++)
     {
         Unit *unit = group[i];
-        Sprite *sprite = unit->sprite;
-        if ((unit->order == Order::Die && unit->order_state == 1) || sprite->IsHidden())
+        if (unit->IsDying() || unit->sprite->IsHidden())
             continue;
         if (IsMultiSelectable(unit) || count == 1)
         {
-            x += sprite->position.x;
-            y += sprite->position.y;
+            x += unit->sprite->position.x;
+            y += unit->sprite->position.y;
         }
     }
 
@@ -341,9 +340,8 @@ void SelectHotkeyGroup(uint8_t group_id)
     for (unsigned i = 0; i < count; i++)
     {
         Unit *unit = group[i];
-        Sprite *sprite = unit->sprite;
-        if ((unit->order == Order::Die && unit->order_state == 1) ||
-            sprite->IsHidden() || unit->player != *bw::command_user) // Todo: Why sc compare command_user instead of self_player_id2 o.o
+        // Todo: Why sc compare command_user instead of self_player_id2 o.o
+        if (unit->IsDying() || unit->sprite->IsHidden() || unit->player != *bw::command_user)
         {
             continue;
         }

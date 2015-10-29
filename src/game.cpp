@@ -120,7 +120,7 @@ static SyncHashes GetSyncHashes()
                     paths_hash ^= unit->path->values[pos] << 16;
                 paths_hash = (paths_hash << 1) | (paths_hash >> 31);
             }
-            unit_sprites_hash ^= HashSprite(unit->sprite);
+            unit_sprites_hash ^= HashSprite(unit->sprite.get());
         }
         units_hash = (units_hash << 1) | (units_hash >> 31);
         unit_sprites_hash = (unit_sprites_hash << 1) | (unit_sprites_hash >> 31);
@@ -343,7 +343,6 @@ static void FreeAllObjects()
     Sprite::DeleteAll();
     lone_sprites->DeleteAll();
     bullet_system->DeleteAll();
-    Image::DeleteAll();
     Order::DeleteAll();
     Ai::DeleteAll();
 }

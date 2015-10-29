@@ -5,7 +5,7 @@
 #include "offsets.h"
 #include "list.h"
 #include "image.h"
-#include "common/unsorted_vector.h"
+#include "unsorted_list.h"
 #include "common/iter.h"
 #include "rng.h"
 #include <tuple>
@@ -49,11 +49,9 @@ class Sprite
         uint32_t id; // 0x24
         uint32_t sort_order; // 0x28
 
-        uintptr_t container_index; // LoneSpriteSystem
-
         void Serialize(Save *save);
         static ptr<Sprite> Deserialize(Load *load);
-        ~Sprite() {}
+        ~Sprite();
 
         static std::pair<int, Sprite *> SaveAllocate(uint8_t *in, uint32_t size);
         static Sprite *Allocate(int sprite_id, const Point &pos, int player);
@@ -61,7 +59,6 @@ class Sprite
         Sprite *SpawnLoneSpriteAbove(int sprite_id);
         static Sprite *Spawn(Image *spawner, uint16_t sprite_id, const Point &pos, int elevation_level);
 
-        void SingleDelete();
         void Remove();
         static void DeleteAll();
 
@@ -96,11 +93,13 @@ class Sprite
 #endif
         Sprite();
 
+        /// Initializes the sprite, returns false if unable and nothing was changed.
+        /// Static to emphasize the fact it manipulates global state.
+        static bool Initialize(Sprite *sprite, int sprite_id, const Point &pos, int player);
+
         void AddToHlines();
-        static Sprite *RawAlloc();
 
         static void PackIds();
-        static Sprite *AllocateBase(int sprite_id, const Point &pos, int player);
 
         static uint32_t next_id;
         static uint32_t count;
@@ -208,12 +207,13 @@ class LoneSpriteSystem
         Sprite *AllocateLone(int sprite_id, const Point &pos, int player);
         Sprite *AllocateFow(Sprite *base, int unit_id);
 
-        template <bool saving> Sprite *SaveConvertSpritePtr(Sprite *in);
         void Serialize(Save *save);
         void Deserialize(Load *load);
+        template <class Cb>
+        void MakeSaveIdMapping(Cb callback) const;
 
-        UnsortedPtrVector<Sprite> lone_sprites;
-        UnsortedPtrVector<Sprite> fow_sprites;
+        UnsortedList<ptr<Sprite>, 128> lone_sprites;
+        UnsortedList<ptr<Sprite>> fow_sprites;
 };
 
 extern LoneSpriteSystem *lone_sprites;

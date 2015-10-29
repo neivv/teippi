@@ -35,7 +35,6 @@ class ListHead
         operator C*&() { return value; }
         C *& AsRawPointer() { return value; }
         ListHead &operator=(C * const val) { value = val;  return *this; }
-        C *&operator*() { return value; }
         C *operator-> () const { return value; }
 
         ListIterator<C, offset, false> begin() const

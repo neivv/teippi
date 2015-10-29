@@ -167,7 +167,7 @@ std::string Iscript::Command::DebugStr() const
 
 Image *Image::Iscript_AddOverlay(const IscriptContext *ctx, int image_id_, int x, int y, bool above)
 {
-    Image *img = Allocate();
+    Image *img = new Image;
     if (above)
     {
         img->list.prev = nullptr;
@@ -531,7 +531,7 @@ bool Image::IscriptCmd(const Iscript::Command &cmd, IscriptContext *ctx, Rng *rn
         break;
         case CreateGasOverlays:
         {
-            Image *img = Allocate();
+            Image *img = new Image;
             if (parent->first_overlay == this)
             {
                 Assert(list.prev == nullptr);
@@ -549,12 +549,12 @@ bool Image::IscriptCmd(const Iscript::Command &cmd, IscriptContext *ctx, Rng *rn
             // But with dynamic allocation, that is not the case
             if (units_dat_flags[ctx->unit->unit_id] & UnitFlags::ResourceContainer)
             {
-                if (ctx->unit->building.resource.resource_amount == 0)
+                if (ctx->unit->resource.resource_amount == 0)
                     smoke_img = VespeneSmallSmoke1 + cmd.val;
             }
             else
             {
-                if (ctx->unit->building.silo.nuke == nullptr)
+                if (ctx->unit->silo.nuke == nullptr)
                     smoke_img = VespeneSmallSmoke1 + cmd.val;
             }
             Point pos = LoFile::GetOverlay(image_id, Overlay::Special).GetValues(this, cmd.val).ToPoint16();

@@ -36,10 +36,36 @@ void *Sprite::operator new(size_t size)
 }
 #endif
 
-
 Sprite::Sprite()
 {
+    id = next_id++;
+    if (next_id == 0)
+    {
+        PackIds();
+    }
+    count++;
+    if (count > draw_order_limit)
+    {
+        draw_order_limit *= 2;
+        if (draw_order == (Sprite **)bw::units.raw_pointer())
+            draw_order = (Sprite **)malloc(draw_order_limit * sizeof(Sprite *));
+        else
+            draw_order = (Sprite **)realloc(draw_order, draw_order_limit * sizeof(Sprite *));
+    }
     index = 0;
+}
+
+Sprite::~Sprite()
+{
+    // Selection overlays are still static bw arrays
+    // (Though they should have been already removed)
+    RemoveSelectionOverlays();
+    for (Image *img = first_overlay; img != nullptr;)
+    {
+        Image *next = img->list.next;
+        delete img;
+        img = next;
+    }
 }
 
 void Sprite::PackIds()
@@ -82,76 +108,54 @@ void Sprite::AddToHlines()
     }
 }
 
-Sprite *Sprite::RawAlloc()
+bool Sprite::Initialize(Sprite *sprite, int sprite_id, const Point &pos, int player)
 {
-    Sprite *sprite;
-    sprite = new Sprite;
-    sprite->id = next_id++;
-    if (next_id == 0)
-    {
-        PackIds();
-    }
-    count++;
-    if (count > draw_order_limit)
-    {
-        draw_order_limit *= 2;
-        if (draw_order == (Sprite **)bw::units.raw_pointer())
-            draw_order = (Sprite **)malloc(draw_order_limit * sizeof(Sprite *));
-        else
-            draw_order = (Sprite **)realloc(draw_order, draw_order_limit * sizeof(Sprite *));
-    }
-    return sprite;
-}
-
-Sprite *Sprite::AllocateBase(int sprite_id, const Point &pos, int player)
-{
-    Sprite *sprite = RawAlloc();
-
     sprite->main_image = nullptr;
     sprite->first_overlay = nullptr;
     sprite->last_overlay = nullptr;
+
     if (InitializeSprite(sprite, sprite_id, pos.x, pos.y, player) == 0)
     {
         // Remove() can't be called as AddToHlines() hasn't been called
         // So lazy way of doing things
         Assert(!sprite->first_overlay);
         count--;
-        return nullptr;
+        return false;
     }
     else
     {
-        //debug_log->Log("Init main image: ID %x, addr %p, parent %p (%d)\n", sprite->main_image->image_id, sprite->main_image, sprite->main_image->parent, sprite->main_image->parent == sprite);
-
         sprite->AddToHlines();
-        return sprite;
+        return true;
     }
 }
 
 Sprite *Sprite::Allocate(int sprite_id, const Point &pos, int player)
 {
-    return AllocateBase(sprite_id, pos, player);
+    ptr<Sprite> sprite(new Sprite);
+    if (!Initialize(sprite.get(), sprite_id, pos, player))
+        return nullptr;
+    return sprite.release();
 }
 
 Sprite *LoneSpriteSystem::AllocateLone(int sprite_id, const Point &pos, int player)
 {
-    Sprite *sprite = Sprite::AllocateBase(sprite_id, pos, player);
-    if (sprite)
-    {
-        sprite->container_index = lone_sprites.size();
-        lone_sprites.emplace_back(sprite);
-    }
-    return sprite;
+    ptr<Sprite> sprite_ptr(new Sprite);
+    if (!Sprite::Initialize(sprite_ptr.get(), sprite_id, pos, player))
+        return nullptr;
+
+    lone_sprites.emplace(move(sprite_ptr));
+    return lone_sprites.back().get();
 }
 
 Sprite *LoneSpriteSystem::AllocateFow(Sprite *base, int unit_id)
 {
-    Sprite *sprite = Sprite::AllocateBase(base->sprite_id, base->position, base->player);
-    if (!sprite)
+    ptr<Sprite> sprite_ptr(new Sprite);
+    if (!Sprite::Initialize(sprite_ptr.get(), base->sprite_id, base->position, base->player))
         return nullptr;
 
+    fow_sprites.emplace(move(sprite_ptr));
+    Sprite *sprite = fow_sprites.back().get();
     sprite->index = unit_id;
-    sprite->container_index = fow_sprites.size();
-    fow_sprites.emplace_back(sprite);
 
     for (Image *img = sprite->first_overlay, *next; img; img = next)
     {
@@ -216,11 +220,6 @@ void Sprite::Remove()
     }
 
     count--;
-}
-
-void Sprite::SingleDelete()
-{
-    Remove();
 }
 
 void LoneSpriteSystem::DeleteAll()
@@ -424,7 +423,7 @@ Sprite::ProgressFrame_C ProgressLoneSpriteFrame(Sprite *sprite)
     return sprite->ProgressFrame(IscriptContext(), main_rng);
 }
 
-bool ProgressLoneSprite2Frame(Sprite *sprite)
+bool ProgressFowSpriteFrame(Sprite *sprite)
 {
     if (sprite->player < Limits::Players)
         DrawTransmissionSelectionCircle(sprite, bw::self_alliance_colors[sprite->player]);
@@ -444,28 +443,26 @@ bool ProgressLoneSprite2Frame(Sprite *sprite)
 
 void LoneSpriteSystem::ProgressFrames()
 {
-    for (ptr<Sprite> &sprite : lone_sprites.SafeIter())
+    for (auto entry : lone_sprites.Entries())
     {
-        for (auto &cmd : ProgressLoneSpriteFrame(sprite.get()))
+        for (auto &cmd : ProgressLoneSpriteFrame(entry->get()))
         {
             if (cmd.opcode == IscriptOpcode::End)
             {
-                sprite->Remove();
-                lone_sprites.back()->container_index = sprite->container_index;
-                lone_sprites.erase_at(sprite->container_index);
+                entry->get()->Remove();
+                entry.swap_erase();
             }
             else
                 Warning("LoneSpriteSystem::ProgressFrames did not handle iscript command %x for sprite %x",
-                       cmd.opcode, sprite->sprite_id);
+                       cmd.opcode, entry->get()->sprite_id);
         }
     }
-    for (ptr<Sprite> &sprite : fow_sprites.SafeIter())
+    for (auto entry : fow_sprites.Entries())
     {
-        if (ProgressLoneSprite2Frame(sprite.get()) == false)
+        if (ProgressFowSpriteFrame(entry->get()) == false)
         {
-            sprite->Remove();
-            fow_sprites.back()->container_index = sprite->container_index;
-            fow_sprites.erase_at(sprite->container_index);
+            entry->get()->Remove();
+            entry.swap_erase();
         }
     }
 }

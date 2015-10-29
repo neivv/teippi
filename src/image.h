@@ -86,8 +86,6 @@ struct GrpSprite
 class Image
 {
     public:
-        static const size_t offset_of_allocated = 0x40;
-
         RevListEntry<Image, 0x0> list;
         uint16_t image_id;
         uint8_t drawfunc;
@@ -109,19 +107,13 @@ class Image
 
         // ---------------
 
-        DummyListEntry<Image, offset_of_allocated> allocated; // 0x40
-
 #ifdef SYNC
         void *operator new(size_t size);
 #endif
         Image();
         ~Image() {}
-        static Image *Allocate();
-
 
         void SingleDelete();
-        static void DeleteAll();
-        static void FreeMemory(int count);
 
         void SetFlipping(bool set);
         bool IsFlipped() const { return flags & 0x2; }
@@ -251,9 +243,6 @@ class Image
         Image *Iscript_AddOverlay(const IscriptContext *ctx, int image_id, int x, int y, bool above);
 };
 
-extern DummyListHead<Image, Image::offset_of_allocated> first_allocated_image;
-
-static_assert(Image::offset_of_allocated == offsetof(Image, allocated), "Image::allocated offset");
 static_assert(sizeof(CycleStruct) == 0x10, "sizeof(CycleStruct)");
 
 #pragma pack(pop)

@@ -7,6 +7,7 @@ def options(opt):
     opt.load('compiler_cxx')
     opt.add_option('--debug', action='store_true', help='"Debug" build', dest='debug')
     opt.add_option('--nodebug', action='store_true', help='Release build (Default)', dest='nodebug')
+    opt.add_option('--optimize', action='store_true', help='Optimize always', dest='optimize')
     opt.add_option('--static', action='store_true', help='Enable static linkage (Default)', dest='static')
     opt.add_option('--nostatic', action='store_true', help='Disable static linkage', dest='nostatic')
     opt.add_option('--console', action='store_true', help='Console support (Requires freetype2)', dest='console')
@@ -39,6 +40,7 @@ def configure(conf):
                 conf.fatal('Freetype not found, please pass --freetype-include and --freetype-lib manually')
 
     conf.env.debug = conf.options.debug and not conf.options.nodebug
+    conf.env.optimize = conf.options.optimize
     conf.env.static = conf.options.static or not conf.options.nostatic
     conf.env.console = conf.options.console and not conf.options.noconsole
     conf.env.perf_test = conf.options.perf_test
@@ -51,7 +53,7 @@ def configure(conf):
     if msvc:
         cflags = []
     else:
-        cflags = ['-m32', '-march=i686', '-Wall', '-g', '-O3']
+        cflags = ['-m32', '-march=i686', '-Wall', '-g']
     conf.env.append_value('CFLAGS', cflags)
     conf.env.append_value('CXXFLAGS', cflags)
 
@@ -71,6 +73,7 @@ def build(bld):
     debug = (bld.env.debug or bld.options.debug) and not bld.options.nodebug
     if bld.options.static and bld.options.nostatic:
         bld.fatal('Both --static and --nostatic were specified')
+    optimize = bld.env.optimize or bld.options.optimize
     static = (bld.options.static or bld.env.static) and not bld.options.nostatic
     if bld.options.console and bld.options.noconsole:
         bld.fatal('Both --console and --noconsole were specified')
@@ -96,6 +99,9 @@ def build(bld):
         cflags += ['-Wno-format']
         if bld.env.CXX_NAME == 'gcc':
             cflags += ['-Wno-strict-overflow', '-Wno-sign-compare']
+        # Only msvc works without optimizations atm
+        #if perf_test or not debug or optimize:
+        cflags += ['-O3']
         cxxflags += ['--std=gnu++14']
         noexcept_cxxflags += ['-fno-exceptions']
         linkflags += ['-m32', '-pthread', '-Wl,--shared']
@@ -108,7 +114,7 @@ def build(bld):
             linkflags += ['-static']
             bld.env.SHLIB_MARKER = ''
     else:
-        if perf_test or not debug:
+        if perf_test or not debug or optimize:
             cflags += ['/Ox']
         libs += ['user32']
         except_cxxflags += ['/EHsc']

@@ -123,9 +123,9 @@ void Neutralize(int player)
                 continue;
             if (unit->order == Order::Die)
                 continue;
-            if (units_dat_flags[unit->unit_id] & UnitFlags::SingleEntity && unit->building.powerup.carrying_unit != nullptr)
+            if (units_dat_flags[unit->unit_id] & UnitFlags::SingleEntity && unit->powerup.carrying_unit != nullptr)
             {
-                Unit *worker = unit->building.powerup.carrying_unit;
+                Unit *worker = unit->powerup.carrying_unit;
                 if (worker->carried_powerup_flags != 0)
                 {
                     DeletePowerupImages(worker);

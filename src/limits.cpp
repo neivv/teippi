@@ -216,7 +216,7 @@ void RemoveFromPosSearch()
 
 Image *AllocateImage()
 {
-    return Image::Allocate();
+    return new Image;
 }
 
 void DeleteImage()
@@ -254,7 +254,8 @@ Sprite * __stdcall CreateFowSprite(int unit_id, Sprite *base)
 void DeleteSprite()
 {
     REG_EDI(Sprite *, sprite);
-    sprite->SingleDelete();
+    sprite->Remove();
+    delete sprite;
 }
 
 Bullet * __stdcall CreateBullet(int x, int y, int player, int direction)

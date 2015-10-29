@@ -157,31 +157,7 @@ void ProgressBulletBufs::AddToAiReact(Unit *unit, Unit *attacker, bool main_targ
         ai_react->emplace_back(unit, attacker, main_target_reactions);
 }
 
-BulletSystem::BulletVector *BulletSystem::GetOwningVector(const Bullet *bullet)
-{
-    auto index = bullet->bulletsystem_entry;
-    for (auto vec : Vectors())
-    {
-        if (vec->size() > index && (*vec)[index].get() == bullet)
-            return vec;
-    }
-    Assert(false);
-    return nullptr;
-}
-
-const BulletSystem::BulletVector *BulletSystem::GetOwningVector(const Bullet *bullet) const
-{
-    auto index = bullet->bulletsystem_entry;
-    for (auto vec : Vectors())
-    {
-        if (vec->size() > index && (*vec)[index].get() == bullet)
-            return vec;
-    }
-    Assert(false);
-    return nullptr;
-}
-
-BulletSystem::BulletVector *BulletSystem::GetStateVector(BulletState state)
+BulletSystem::BulletContainer *BulletSystem::GetStateContainer(BulletState state)
 {
     switch (state)
     {
@@ -389,8 +365,7 @@ Bullet *BulletSystem::AllocateBullet(Unit *parent, int player, int direction, in
     ptr<Bullet> bullet_ptr = ptr<Bullet>(new Bullet);
     if (bullet_ptr->Initialize(parent, player, direction, weapon, pos) == true)
     {
-        bullet_ptr->bulletsystem_entry = initstate.size();
-        initstate.emplace_back(move(bullet_ptr));
+        initstate.emplace(move(bullet_ptr));
         Bullet *bullet = initstate.back().get();
 
         if (*bw::first_active_bullet)
@@ -410,7 +385,7 @@ Bullet *BulletSystem::AllocateBullet(Unit *parent, int player, int direction, in
     else
     {
         debug_log->Log("Bullet creation failed %x %x.%x\n", weapon, pos.x, pos.y);
-        bullet_ptr->sprite->SingleDelete();
+        bullet_ptr->sprite->Remove();
         return nullptr;
     }
 }
@@ -714,13 +689,12 @@ Unit *Bullet::ChooseBounceTarget()
     return found;
 }
 
-tuple<BulletState, int, Unit *> Bullet::State_Bounce()
+BulletState Bullet::State_Bounce(BulletStateResults *results)
 {
     if (target != nullptr && !DoesMiss())
         ChangeMovePos(this, target->sprite->position.x, target->sprite->position.y);
 
     ProgressBulletMovement(this);
-    int do_missile_dmgs = 0;
     if (move_target == position)
     {
         bounces_remaining--;
@@ -733,11 +707,12 @@ tuple<BulletState, int, Unit *> Bullet::State_Bounce()
                 for (auto &cmd : SetIscriptAnimation(IscriptAnim::Special1, true))
                 {
                     if (cmd.opcode == IscriptOpcode::DoMissileDmg)
-                        do_missile_dmgs++;
+                        results->do_missile_dmgs.emplace(this);
                     else
                         Warning("Bullet::State_Bounce did not handle all iscript commands for bullet %x", weapon_id);
                 }
-                return make_tuple(BulletState::Bounce, do_missile_dmgs, new_target);
+                results->new_bounce_targets.emplace(this, new_target);
+                return BulletState::Bounce;
             }
         }
 
@@ -748,20 +723,19 @@ tuple<BulletState, int, Unit *> Bullet::State_Bounce()
         for (auto &cmd : SetIscriptAnimation(IscriptAnim::Death, true))
         {
             if (cmd.opcode == IscriptOpcode::DoMissileDmg)
-                do_missile_dmgs++;
+                results->do_missile_dmgs.emplace(this);
             else
                 Warning("Bullet::State_Bounce did not handle all iscript commands for bullet %x", weapon_id);
         }
-        return make_tuple(BulletState::Die, do_missile_dmgs, nullptr);
+        return BulletState::Die;
     }
-    return make_tuple(BulletState::Bounce, do_missile_dmgs, nullptr);
+    return BulletState::Bounce;
 }
 
-tuple<BulletState, int> Bullet::State_Init()
+BulletState Bullet::State_Init(BulletStateResults *results)
 {
-    int do_missile_dmgs = 0;
     if (~order_signal & 0x1)
-        return make_tuple(BulletState::Init, do_missile_dmgs);
+        return BulletState::Init;
     order_signal &= ~0x1;
 
     BulletState state;
@@ -804,17 +778,16 @@ tuple<BulletState, int> Bullet::State_Init()
     for (auto &cmd : SetIscriptAnimation(anim, true))
     {
         if (cmd.opcode == IscriptOpcode::DoMissileDmg)
-            do_missile_dmgs++;
+            results->do_missile_dmgs.emplace(this);
         else
             Warning("Bullet::State_Init did not handle iscript command %x for bullet %x", cmd.opcode, weapon_id);
     }
-    return make_tuple(state, do_missile_dmgs);
+    return state;
 }
 
 // Psi storm behaviour
-tuple<BulletState, int> Bullet::State_GroundDamage()
+BulletState Bullet::State_GroundDamage(BulletStateResults *results)
 {
-    int do_missile_dmgs = 0;
     if (time_remaining-- == 0)
     {
         if (target)
@@ -824,64 +797,63 @@ tuple<BulletState, int> Bullet::State_GroundDamage()
         for (auto &cmd : SetIscriptAnimation(IscriptAnim::Death, true))
         {
             if (cmd.opcode == IscriptOpcode::DoMissileDmg)
-                do_missile_dmgs++;
+                results->do_missile_dmgs.emplace(this);
             else
                 Warning("Bullet::State_GroundDamage did not handle iscript command %x for bullet %x", cmd.opcode, weapon_id);
         }
-        return make_tuple(BulletState::Die, do_missile_dmgs);
+        return BulletState::Die;
     }
     else if (time_remaining % 7 == 0)
-        do_missile_dmgs++;
-    return make_tuple(BulletState::GroundDamage, do_missile_dmgs);
+        results->do_missile_dmgs.emplace(this);
+    return BulletState::GroundDamage;
 }
 
-tuple<BulletState, int> Bullet::State_MoveToPoint()
+BulletState Bullet::State_MoveToPoint(BulletStateResults *results)
 {
     ProgressBulletMovement(this);
     if (time_remaining-- != 0 && position != move_target)
-        return make_tuple(BulletState::MoveToPoint, 0);
+        return BulletState::MoveToPoint;
 
     if (target)
         order_target_pos = target->sprite->position;
-    int do_missile_dmgs = 0;
     for (auto &cmd : SetIscriptAnimation(IscriptAnim::Death, true))
     {
         if (cmd.opcode == IscriptOpcode::DoMissileDmg)
-            do_missile_dmgs++;
+            results->do_missile_dmgs.emplace(this);
         else
             Warning("Bullet::State_MoveToPoint did not handle iscript command %x for bullet %x", cmd.opcode, weapon_id);
     }
-    return make_tuple(BulletState::Die, do_missile_dmgs);
+    return BulletState::Die;
 }
 
-tuple<BulletState, int> Bullet::State_MoveToUnit()
+BulletState Bullet::State_MoveToUnit(BulletStateResults *results)
 {
     if (!target)
-        return State_MoveToPoint();
+        return State_MoveToPoint(results);
     if (DoesMiss())
     {
         order_target_pos = target->sprite->position;
-        return State_MoveToPoint();
+        return State_MoveToPoint(results);
     }
     else
     {
         ChangeMovePos(this, target->sprite->position.x, target->sprite->position.y);
-        auto result = State_MoveToPoint();
-        if (get<BulletState>(result) == BulletState::MoveToPoint)
-            return make_tuple(BulletState::MoveToTarget, get<int>(result));
+        auto result = State_MoveToPoint(results);
+        if (result == BulletState::MoveToPoint)
+            return BulletState::MoveToTarget;
         else
             return result;
     }
 }
 
-tuple<BulletState, int> Bullet::State_MoveNearUnit()
+BulletState Bullet::State_MoveNearUnit(BulletStateResults *results)
 {
     if (!target)
-        return State_MoveToPoint();
+        return State_MoveToPoint(results);
     if (DoesMiss())
     {
         order_target_pos = target->sprite->position;
-        return State_MoveToPoint();
+        return State_MoveToPoint(results);
     }
     else
     {
@@ -890,9 +862,9 @@ tuple<BulletState, int> Bullet::State_MoveNearUnit()
         int x = min(*bw::map_width - 1, max(0, pos.x - diff.x));
         int y = min(*bw::map_height - 1, max(0, pos.y - diff.y));
         ChangeMovePos(this, x, y);
-        auto result = State_MoveToPoint();
-        if (get<BulletState>(result) == BulletState::MoveToPoint)
-            return make_tuple(BulletState::MoveNearUnit, get<int>(result));
+        auto result = State_MoveToPoint(results);
+        if (result == BulletState::MoveToPoint)
+            return BulletState::MoveNearUnit;
         else
             return result;
     }
@@ -1259,33 +1231,36 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
     return Optional<SpellCast>();
 }
 
-void BulletSystem::DeleteBullet(Bullet *bullet)
+void BulletSystem::DeleteBullet(BulletContainer::entry *bullet)
 {
-    bullet->SingleDelete();
-    auto owning_vector = GetOwningVector(bullet);
-    Assert(owning_vector->back()->bulletsystem_entry == owning_vector->size() - 1);
-    owning_vector->back()->bulletsystem_entry = bullet->bulletsystem_entry;
-    owning_vector->erase_at(bullet->bulletsystem_entry);
+    (*bullet)->get()->SingleDelete();
+    bullet->swap_erase();
 }
 
-void BulletSystem::SwitchBulletState(ptr<Bullet> &bullet, BulletState old_state, BulletState new_state)
+void BulletSystem::SwitchBulletState(BulletContainer::entry *bullet, BulletState new_state)
 {
-    if (old_state == new_state)
-        return;
-    auto old_vec = GetStateVector(old_state);
-    auto new_vec = GetStateVector(new_state);
-    old_vec->back()->bulletsystem_entry = bullet->bulletsystem_entry;
-    auto bullet_ptr = old_vec->erase_at(bullet->bulletsystem_entry);
-    bullet_ptr->bulletsystem_entry = new_vec->size();
-    new_vec->emplace_back(move(bullet_ptr));
+    BulletContainer *new_container = GetStateContainer(new_state);
+    bullet->move_to(new_container);
 }
 
-Claimed<vector<Bullet *>> BulletSystem::ProgressStates(vector<tuple<Bullet *, Unit *>> *new_bounce_targets)
+void BulletSystem::ProgressBulletsForState(BulletContainer *container, BulletStateResults *results,
+    BulletState state, BulletState (Bullet::*state_function)(BulletStateResults *))
 {
-    Claimed<vector<Bullet *>> do_missile_dmgs = bullet_buf.Claim();
-    do_missile_dmgs->clear();
-    for (Bullet *bullet : ActiveBullets())
+    for (auto entry : container->Entries())
     {
+        BulletState result = ((entry)->get()->*state_function)(results);
+        if (result != state)
+            SwitchBulletState(&entry, result);
+    }
+}
+
+Claimed<BulletStateResults> BulletSystem::ProgressStates()
+{
+    auto results = state_results_buf.Claim();
+    results->clear();
+    for (BulletContainer::entry bullet_it : ActiveBullets_Entries())
+    {
+        Bullet *bullet = bullet_it->get();
         bullet->sprite->UpdateVisibilityPoint();
 
         for (auto &cmd : bullet->sprite->ProgressFrame(IscriptContext(bullet), main_rng))
@@ -1293,68 +1268,24 @@ Claimed<vector<Bullet *>> BulletSystem::ProgressStates(vector<tuple<Bullet *, Un
             if (cmd.opcode == IscriptOpcode::End)
             {
                 bullet->sprite->Remove();
-                DeleteBullet(bullet);
+                DeleteBullet(&bullet_it);
             }
             else if (cmd.opcode == IscriptOpcode::DoMissileDmg)
-                do_missile_dmgs->push_back(bullet);
+                results->do_missile_dmgs.emplace(bullet);
             else
                 Warning("Unhandled iscript command %x in BulletSystem::ProgressStates, weapon %x", cmd.opcode, bullet->weapon_id);
         }
     }
 
-    for (ptr<Bullet> &bullet : initstate.SafeIter())
-    {
-        auto result = bullet->State_Init();
-        int dmd_count = get<int>(result);
-        while (dmd_count--)
-            do_missile_dmgs->push_back(bullet.get());
-        SwitchBulletState(bullet, BulletState::Init, get<BulletState>(result));
-    }
-    for (ptr<Bullet> &bullet : moving_to_point.SafeIter())
-    {
-        auto result = bullet->State_MoveToPoint();
-        int dmd_count = get<int>(result);
-        while (dmd_count--)
-            do_missile_dmgs->push_back(bullet.get());
-        SwitchBulletState(bullet, BulletState::MoveToPoint, get<BulletState>(result));
-    }
-    for (ptr<Bullet> &bullet : moving_to_unit.SafeIter())
-    {
-        auto result = bullet->State_MoveToUnit();
-        int dmd_count = get<int>(result);
-        while (dmd_count--)
-            do_missile_dmgs->push_back(bullet.get());
-        SwitchBulletState(bullet, BulletState::MoveToTarget, get<BulletState>(result));
-    }
-    for (ptr<Bullet> &bullet : damage_ground.SafeIter())
-    {
-        auto result = bullet->State_GroundDamage();
-        int dmd_count = get<int>(result);
-        while (dmd_count--)
-            do_missile_dmgs->push_back(bullet.get());
-        SwitchBulletState(bullet, BulletState::GroundDamage, get<BulletState>(result));
-    }
-    for (ptr<Bullet> &bullet : moving_near.SafeIter())
-    {
-        auto result = bullet->State_MoveNearUnit();
-        int dmd_count = get<int>(result);
-        while (dmd_count--)
-            do_missile_dmgs->push_back(bullet.get());
-        SwitchBulletState(bullet, BulletState::MoveNearUnit, get<BulletState>(result));
-    }
-    for (ptr<Bullet> &bullet : bouncing.SafeIter())
-    {
-        auto result = bullet->State_Bounce();
-        int dmd_count = get<int>(result);
-        while (dmd_count--)
-            do_missile_dmgs->push_back(bullet.get());
-        Unit *new_target = get<Unit *>(result);
-        if (new_target != nullptr)
-            new_bounce_targets->emplace_back(bullet.get(), new_target);
-        SwitchBulletState(bullet, BulletState::Bounce, get<BulletState>(result));
-    }
+    BulletStateResults *results_ptr = &results.Inner();
+    ProgressBulletsForState(&initstate, results_ptr, BulletState::Init, &Bullet::State_Init);
+    ProgressBulletsForState(&moving_to_point, results_ptr, BulletState::MoveToPoint, &Bullet::State_MoveToPoint);
+    ProgressBulletsForState(&moving_to_unit, results_ptr, BulletState::MoveToTarget, &Bullet::State_MoveToUnit);
+    ProgressBulletsForState(&damage_ground, results_ptr, BulletState::GroundDamage, &Bullet::State_GroundDamage);
+    ProgressBulletsForState(&moving_near, results_ptr, BulletState::MoveNearUnit, &Bullet::State_MoveNearUnit);
+    ProgressBulletsForState(&bouncing, results_ptr, BulletState::Bounce, &Bullet::State_Bounce);
 
-    return do_missile_dmgs;
+    return results;
 }
 
 // Input should not need to be synced
@@ -1385,7 +1316,6 @@ void BulletSystem::ProcessAiReactToHit(vector<tuple<Unit *, Unit *, bool>> input
         // broodling and parasite hits only trigger Ai::ReactToHit so clear flags here as well
         // Idk if clearing the 0x00c00000 is even necessary but it won't hurt ^_^
         target->hotkey_groups &= ~0x80c00000;
-
         hit_reactions->NewHit(target, attacker, important_hit);
     }
 }
@@ -1398,9 +1328,7 @@ void BulletSystem::ProgressFrames(BulletFramesInput input)
         prev_sleep = threads->GetSleepCount();
     PerfClock clock, clock2;
 
-    auto new_bounce_targets = bounce_target_buf.Claim();
-    new_bounce_targets->clear();
-    auto do_missile_dmgs = ProgressStates(&new_bounce_targets.Inner());
+    auto state_results = ProgressStates();
 
     auto dmg_units = dmg_unit_buf.Claim();
     auto spells = spell_buf.Claim();
@@ -1412,7 +1340,7 @@ void BulletSystem::ProgressFrames(BulletFramesInput input)
     spells->clear();
     killed_units->clear();
     bulletframes_in_progress = true;
-    for (Bullet *bullet : do_missile_dmgs.Inner())
+    for (Bullet *bullet : state_results->do_missile_dmgs)
     {
         auto spell = bullet->DoMissileDmg(&bufs);
         if (spell)
@@ -1457,7 +1385,7 @@ void BulletSystem::ProgressFrames(BulletFramesInput input)
     unit_search->DisableAreaCache();
     bulletframes_in_progress = false;
 
-    for (const auto &tuple : new_bounce_targets.Inner())
+    for (const auto &tuple : state_results->new_bounce_targets)
     {
         Bullet *bullet = get<Bullet *>(tuple);
         Unit *new_target = get<Unit *>(tuple);

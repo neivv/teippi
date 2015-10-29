@@ -222,9 +222,6 @@
     <ClInclude Include="src\common\optional.h">
       <Filter>Headers\common</Filter>
     </ClInclude>
-    <ClInclude Include="src\common\unsorted_vector.h">
-      <Filter>Headers\common</Filter>
-    </ClInclude>
     <ClInclude Include="src\common\vector.h">
       <Filter>Headers\common</Filter>
     </ClInclude>
@@ -421,6 +418,9 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="src\unitsearch_cache.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\unsorted_list.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="src\upgrade.h">

@@ -284,7 +284,6 @@ void Unit::Lockdown(int time)
 {
     if (!lockdown_timer)
         AddSpellOverlay(Image::Lockdown_Small);
-
     if (lockdown_timer < time)
         lockdown_timer = time;
     DisableUnit(this);
@@ -590,7 +589,7 @@ void Unit::Order_Hallucination(ProgressUnitResults *results)
     }
     ReduceEnergy(energy_cost);
     PlaySound(Sound::Hallucination, target, 1, 0);
-    AddOverlayHighest(target->GetTurret()->sprite, Image::HallucinationSmoke, 0, 0, 0);
+    AddOverlayHighest(target->GetTurret()->sprite.get(), Image::HallucinationSmoke, 0, 0, 0);
     OrderDone();
 }
 

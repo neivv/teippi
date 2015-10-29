@@ -61,6 +61,8 @@ void *Unit::operator new(size_t size)
 }
 #endif
 
+Unit::Unit(bool) { }
+
 Unit::Unit()
 {
     prev() = nullptr;
@@ -112,11 +114,6 @@ Unit *Unit::RawAlloc()
     return new Unit(false);
 }
 
-Unit::~Unit()
-{
-    delete path;
-}
-
 void Unit::SingleDelete()
 {
     Unit *next = id_lookup[lookup_id % UNIT_ID_LOOKUP_SIZE];
@@ -145,7 +142,6 @@ void Unit::DeleteAll()
     {
         Unit *unit = *it;
         ++it;
-        delete unit->sprite;
         if (unit->ai)
             unit->ai->Delete();
         delete unit;
@@ -181,7 +177,6 @@ void Unit::DeleteAll()
 
 void Unit::DeletePath()
 {
-    delete path;
     path = nullptr;
 }
 
@@ -300,7 +295,7 @@ void Unit::RemoveOverlayFromSelf(int first_id, int last_id)
 
 void Unit::AddSpellOverlay(int small_overlay_id)
 {
-    AddOverlayHighest(GetTurret()->sprite, small_overlay_id + GetSize(), 0, 0, 0);
+    AddOverlayHighest(GetTurret()->sprite.get(), small_overlay_id + GetSize(), 0, 0, 0);
 }
 
 // Some ai orders use UpdateAttackTarget, which uses unitsearch region cache, so they are progressed later
@@ -766,7 +761,7 @@ void Unit::ProgressFrame(ProgressUnitResults *results)
     if (~units_dat_flags[unit_id] & UnitFlags::Subunit && !sprite->IsHidden())
     {
         if (player < Limits::Players)
-            DrawTransmissionSelectionCircle(sprite, bw::self_alliance_colors[player]);
+            DrawTransmissionSelectionCircle(sprite.get(), bw::self_alliance_colors[player]);
     }
     ProgressTimers(results);
     //debug_log->Log("Order %x\n", order);
@@ -802,8 +797,8 @@ void Unit::ProgressFrame_Late(ProgressUnitResults *results)
             switch (cmd.opcode)
             {
                 case IscriptOpcode::End:
-                    sprite->SingleDelete();
-                    sprite = nullptr;
+                    sprite->Remove();
+                    sprite.reset(nullptr);
                 break;
                 case IscriptOpcode::AttackMelee:
                     AttackMelee(cmd.data[0], (uint16_t *)(cmd.data + 1), results);
@@ -851,7 +846,7 @@ void Unit::ProgressActiveUnitFrame()
         Point32 lo = LoFile::GetOverlay(sprite->main_image->image_id, Overlay::Special).GetValues(sprite->main_image, 0);
         subunit->exact_position = exact_position;
         subunit->position = Point(exact_position.x >> 8, exact_position.y >> 8);
-        MoveSprite(subunit->sprite, subunit->position.x, subunit->position.y);
+        MoveSprite(subunit->sprite.get(), subunit->position.x, subunit->position.y);
         Image *subunit_img = subunit->sprite->main_image;
         if (subunit_img->x_off != lo.x || subunit_img->y_off != lo.y)
         {
@@ -898,7 +893,7 @@ void Unit::ProgressFrame_Hidden(ProgressUnitResults *results)
         {
             if (cmd.opcode == IscriptOpcode::End)
             {
-                sprite->SingleDelete();
+                sprite->Remove();
                 sprite = nullptr;
             }
             else
@@ -913,7 +908,7 @@ bool Unit::ProgressFrame_Dying()
     {
         if (sprite->IsHidden())
         {
-            sprite->SingleDelete();
+            sprite->Remove();
             sprite = nullptr;
         }
         else
@@ -922,7 +917,7 @@ bool Unit::ProgressFrame_Dying()
             {
                 if (cmd.opcode == IscriptOpcode::End)
                 {
-                    sprite->SingleDelete();
+                    sprite->Remove();
                     sprite = nullptr;
                 }
                 else
@@ -1954,9 +1949,9 @@ void Unit::SetButtons(int buttonset)
 void Unit::DeleteOrder(Order *order)
 {
     if (orders_dat_highlight[order->order_id] != 0xffff)
-        hightlighted_order_count--;
-    if (hightlighted_order_count == 0xff) // Pointless
-        hightlighted_order_count = 0;
+        highlighted_order_count--;
+    if (highlighted_order_count == 0xff) // Pointless
+        highlighted_order_count = 0;
 
     if (order->list.next)
         order->list.next->list.prev = order->list.prev;
@@ -2331,7 +2326,7 @@ void Unit::Remove(ProgressUnitResults *results)
         subunit = nullptr;
     }
     Die(results);
-    sprite->SingleDelete();
+    sprite->Remove();
     sprite = nullptr;
 }
 
@@ -2396,14 +2391,14 @@ void Unit::RemoveFromHangar()
 
 void Unit::RemoveHarvesters()
 {
-    Unit *worker = building.resource.first_awaiting_worker;
-    building.resource.awaiting_workers = 0;
+    Unit *worker = resource.first_awaiting_worker;
+    resource.awaiting_workers = 0;
     while (worker)
     {
-        Unit *next = worker->worker.harvesters.next;
-        worker->worker.harvesters.prev = nullptr;
-        worker->worker.harvesters.next = nullptr;
-        worker->worker.previous_harvested = nullptr;
+        Unit *next = worker->harvester.harvesters.next;
+        worker->harvester.harvesters.prev = nullptr;
+        worker->harvester.harvesters.next = nullptr;
+        worker->harvester.previous_harvested = nullptr;
         worker = next;
     }
 }
@@ -2453,47 +2448,47 @@ void Unit::KillChildren(ProgressUnitResults *results)
                 RemoveFromHangar();
             return;
         case Unit::Ghost:
-            if (building.ghost.nukedot)
+            if (ghost.nukedot)
             {
-                auto cmds = building.ghost.nukedot->SetIscriptAnimation(IscriptAnim::Death, true);
+                auto cmds = ghost.nukedot->SetIscriptAnimation(IscriptAnim::Death, true);
                 if (!Empty(cmds))
-                    Warning("Unit::KillChildren did not handle all iscript commands for nukedot (%x)", building.ghost.nukedot->sprite_id);
+                    Warning("Unit::KillChildren did not handle all iscript commands for nukedot (%x)", ghost.nukedot->sprite_id);
             }
             return;
         case Unit::NuclearSilo:
-            if (building.silo.nuke)
+            if (silo.nuke)
             {
-                building.silo.nuke->Kill(results);
-                building.silo.nuke = nullptr;
+                silo.nuke->Kill(results);
+                silo.nuke = nullptr;
             }
             return;
         case Unit::NuclearMissile:
             if (related && related->unit_id == Unit::NuclearSilo)
             {
-                related->building.silo.nuke = nullptr;
-                related->building.silo.has_nuke = 0;
+                related->silo.nuke = nullptr;
+                related->silo.has_nuke = 0;
             }
             return;
         case Unit::Pylon:
-            if (building.pylon.aura)
+            if (pylon.aura)
             {
-                building.pylon.aura->SingleDelete();
-                building.pylon.aura = nullptr;
+                pylon.aura->Remove();
+                pylon.aura = nullptr;
             }
-            // Incompleted pylons are not in list, but maybe it can die as well before being added to the list (Order_InitPylon lisää)
-            if (pylon.list.prev == nullptr && pylon.list.next == nullptr && *bw::first_pylon != this)
+            // Incompleted pylons are not in list, but maybe it can die as well before being added to the list (Order_InitPylon adds them)
+            if (pylon_list.list.prev == nullptr && pylon_list.list.next == nullptr && *bw::first_pylon != this)
                 return;
 
-            pylon.list.Remove(*bw::first_pylon);
+            pylon_list.list.Remove(*bw::first_pylon);
             *bw::pylon_refresh = 1;
             return;
         case Unit::NydusCanal:
         {
-            Unit *exit = building.nydus.exit;
+            Unit *exit = nydus.exit;
             if (exit)
             {
-                exit->building.nydus.exit = nullptr;
-                building.nydus.exit = nullptr;
+                exit->nydus.exit = nullptr;
+                nydus.exit = nullptr;
                 exit->Kill(results);
             }
             return;
@@ -2621,7 +2616,7 @@ bool Unit::RemoveSubunitOrGasContainer()
             if (flags & UnitStatus::Completed)
                 ModifyUnitCounters2(this, -1, 0);
             flags &= ~UnitStatus::Completed;
-            building.resource.first_awaiting_worker = nullptr;
+            resource.first_awaiting_worker = nullptr;
             TransformUnit(this, VespeneGeyser);
             order = units_dat_human_idle_order[unit_id];
             order_state = 0;
@@ -2691,7 +2686,7 @@ void Unit::Die(ProgressUnitResults *results)
     DropPowerup(this);
     RemoveFromSelections(this);
     RemoveFromClientSelection3(this);
-    RemoveSelectionCircle(sprite);
+    RemoveSelectionCircle(sprite.get());
     ModifyUnitCounters(this, -1);
     if (flags & UnitStatus::Completed)
         ModifyUnitCounters2(this, -1, 0);
@@ -2751,7 +2746,7 @@ void Unit::Order_Die(ProgressUnitResults *results)
         HideUnit(this);
     if (subunit)
     {
-        TransferMainImage(sprite, subunit->sprite);
+        TransferMainImage(sprite.get(), subunit->sprite.get());
         subunit->Remove(results);
         subunit = nullptr;
     }
@@ -2792,7 +2787,7 @@ void Unit::CancelConstruction(ProgressUnitResults *results)
         return;
     if (unit_id == Guardian || unit_id == Lurker || unit_id == Devourer || unit_id == Mutalisk || unit_id == Hydralisk)
         return;
-    if (unit_id == NydusCanal && building.nydus.exit)
+    if (unit_id == NydusCanal && nydus.exit)
         return;
     if (flags & UnitStatus::Building)
     {
@@ -2820,7 +2815,7 @@ void Unit::CancelConstruction(ProgressUnitResults *results)
         build_queue[current_build_slot] = None;
         remaining_build_time = 0;
         int old_image = sprites_dat_image[flingy_dat_sprite[units_dat_flingy[previous_unit_id]]];
-        ReplaceSprite(old_image, 0, sprite);
+        ReplaceSprite(old_image, 0, sprite.get());
         order_signal &= ~0x4;
         SetIscriptAnimation_NoHandling(IscriptAnim::Special2, true, "CancelConstruction", results);
         IssueOrderTargetingNothing(this, Order::Birth);
@@ -2831,7 +2826,7 @@ void Unit::CancelConstruction(ProgressUnitResults *results)
         {
             if (related)
             {
-                related->building.silo.nuke = nullptr;
+                related->silo.nuke = nullptr;
                 related->order_state = 0;
             }
             RefreshUi();
@@ -2884,7 +2879,7 @@ void Unit::CancelZergBuilding(ProgressUnitResults *results)
                 lowest->y_off = 7;
                 lowest->flags |= 0x1;
             }
-            PrepareDrawSprite(sprite);
+            PrepareDrawSprite(sprite.get());
             IssueOrderTargetingNothing(this, Order::ResetCollision1);
             AppendOrder(this, units_dat_return_to_idle_order[unit_id], 0, 0, None, 0);
             SetHp(this, prev_hp);
@@ -3766,7 +3761,7 @@ void Unit::ShowShieldHitOverlay(int direction)
     direction = ((direction - 0x7c) >> 3) & 0x1f;
     int8_t *shield_los = images_dat_shield_overlay[img->image_id];
     shield_los = shield_los + *(uint32_t *)(shield_los + 8 + img->direction * 4) + direction * 2; // sigh
-    AddOverlayAboveMain(sprite, Image::ShieldOverlay, shield_los[0], shield_los[1], direction);
+    AddOverlayAboveMain(sprite.get(), Image::ShieldOverlay, shield_los[0], shield_los[1], direction);
 }
 
 void Unit::DamageShields(int32_t dmg, int direction)
@@ -4169,7 +4164,7 @@ void Unit::Order_DroneMutate(ProgressUnitResults *results)
                     else
                         MutateBuilding(this, building);
                     if (powerup)
-                        MoveUnit(powerup, powerup->building.powerup.origin_point.x, powerup->building.powerup.origin_point.y);
+                        MoveUnit(powerup, powerup->powerup.origin_point.x, powerup->powerup.origin_point.y);
                     return;
                 }
             }
@@ -4178,7 +4173,7 @@ void Unit::Order_DroneMutate(ProgressUnitResults *results)
     // Any kind of error happened
     if (sprite->last_overlay->drawfunc == Image::Shadow)
         sprite->last_overlay->SetOffset(sprite->last_overlay->x_off, 7);
-    PrepareDrawSprite(sprite); // ?
+    PrepareDrawSprite(sprite.get()); // ?
     PrependOrderTargetingNothing(this, Order::ResetCollision1);
     DoNextQueuedOrder();
 }
@@ -4192,7 +4187,7 @@ void Unit::MutateExtractor(ProgressUnitResults *results)
         order_flags |= 0x4; // Remove death
         Kill(results);
         StartZergBuilding(extractor);
-        AddOverlayBelowMain(extractor->sprite, Image::VespeneGeyserUnderlay, 0, 0, 0);
+        AddOverlayBelowMain(extractor->sprite.get(), Image::VespeneGeyserUnderlay, 0, 0, 0);
     }
     else
     {
@@ -4251,11 +4246,11 @@ void Unit::Order_HarvestMinerals(ProgressUnitResults *results)
         if (worker.is_carrying)
         {
             worker.is_carrying = 0;
-            Unit *previous_harvested = worker.previous_harvested;
+            Unit *previous_harvested = harvester.previous_harvested;
             if (previous_harvested)
             {
-                worker.previous_harvested = nullptr;
-                previous_harvested->building.resource.awaiting_workers--;
+                harvester.previous_harvested = nullptr;
+                previous_harvested->resource.awaiting_workers--;
                 if (LetNextUnitMine(previous_harvested) != 0)
                     BeginHarvest(this, previous_harvested);
             }
@@ -4331,25 +4326,25 @@ void Unit::AcquireResource(Unit *resource, ProgressUnitResults *results)
 
 int Unit::MineResource(ProgressUnitResults *results)
 {
-    if (building.resource.resource_amount <= 8)
+    if (resource.resource_amount <= 8)
     {
         if (IsMineralField())
         {
             Kill(results);
-            return building.resource.resource_amount;
+            return resource.resource_amount;
         }
         else
         {
-            building.resource.resource_amount = 0;
+            resource.resource_amount = 0;
             return 2;
         }
     }
     else
     {
-        building.resource.resource_amount -= 8;
+        resource.resource_amount -= 8;
         if (IsMineralField())
             UpdateMineralAmountAnimation(this);
-        else if (building.resource.resource_amount < 8)
+        else if (resource.resource_amount < 8)
             ShowInfoMessage(String::GeyserDepleted, Sound::GeyserDepleted, player);
         return 8;
     }
@@ -5457,9 +5452,9 @@ void Unit::Trigger_GiveUnit(int new_player, ProgressUnitResults *results)
         {
             currently_building->GiveTo(new_player, results);
         }
-        if (unit_id == NydusCanal && building.nydus.exit != nullptr)
+        if (unit_id == NydusCanal && nydus.exit != nullptr)
         {
-            building.nydus.exit->GiveTo(new_player, results);
+            nydus.exit->GiveTo(new_player, results);
         }
     }
 }

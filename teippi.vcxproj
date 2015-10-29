@@ -77,7 +77,6 @@
     <ClInclude Include="src\common\ll-deque.h" />
     <ClInclude Include="src\common\log_freeze.h" />
     <ClInclude Include="src\common\optional.h" />
-    <ClInclude Include="src\common\unsorted_vector.h" />
     <ClInclude Include="src\common\vector.h" />
     <ClInclude Include="src\console\assert.h" />
     <ClInclude Include="src\console\cmdargs.h" />
@@ -144,6 +143,7 @@
     <ClInclude Include="src\unitlist.h" />
     <ClInclude Include="src\unitsearch.h" />
     <ClInclude Include="src\unitsearch_cache.h" />
+    <ClInclude Include="src\unsorted_list.h" />
     <ClInclude Include="src\upgrade.h" />
     <ClInclude Include="src\warn.h" />
     <ClInclude Include="src\x86.h" />

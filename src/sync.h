@@ -321,7 +321,7 @@ struct SyncBullet
 
 struct SyncUnit
 {
-    SyncUnit(const Unit *in) : sprite(in->sprite), ptr(in), target(in->target), subunit(in->subunit),
+    SyncUnit(const Unit *in) : sprite(in->sprite.get()), ptr(in), target(in->target), subunit(in->subunit),
         previous_attacker(in->previous_attacker), lookup_id(in->lookup_id), hp(in->hitpoints), shields(in->shields),
         current_speed(in->current_speed), next_speed(in->next_speed), flags(in->flags), move_target(in->move_target),
         order_target_pos(in->order_target_pos), energy(in->energy), invisibility_effects(in->invisibility_effects),
@@ -331,7 +331,7 @@ struct SyncUnit
         air_strength(in->air_strength)
     {
         if (in->path)
-            path = SyncPath(in->path);
+            path = SyncPath(in->path.get());
     }
     SyncSprite sprite;
     Optional<SyncPath> path;

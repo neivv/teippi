@@ -302,6 +302,69 @@ void ConvertUnitPtr(Unit **ptr)
     }
 }
 
+template <class P> template <bool saving>
+void SaveBase<P>::ConvertSpritePtr(Sprite **in, const LoneSpriteSystem *lone_sprites) const
+{
+    if (*in != nullptr)
+    {
+        try
+        {
+            if (saving)
+                *in = (Sprite *)sprite_to_id.at(*in);
+            else
+                *in = id_to_sprite.at((uintptr_t)*in);
+        }
+        catch (const std::out_of_range &e)
+        {
+            throw NewSaveConvertFail(Sprite *, in, 0);
+        }
+    }
+}
+
+template <class Cb>
+void LoneSpriteSystem::MakeSaveIdMapping(Cb callback) const
+{
+    uintptr_t pos = 1;
+    for (auto &sprite : lone_sprites)
+    {
+        callback(sprite.get(), pos);
+        pos += 1;
+    }
+}
+
+template <class P> template <bool saving>
+void SaveBase<P>::ConvertBulletPtr(Bullet **in, const BulletSystem *bullets) const
+{
+    if (*in != nullptr)
+    {
+        try
+        {
+            if (saving)
+                *in = (Bullet *)bullet_to_id.at(*in);
+            else
+                *in = id_to_bullet.at((uintptr_t)*in);
+        }
+        catch (const std::out_of_range &e)
+        {
+            throw NewSaveConvertFail(Bullet *, in, 0);
+        }
+    }
+}
+
+template <class Cb>
+void BulletSystem::MakeSaveIdMapping(Cb callback) const
+{
+    uintptr_t pos = 1;
+    for (auto *container : Containers())
+    {
+        for (auto &bullet : *container)
+        {
+            callback(bullet.get(), pos);
+            pos += 1;
+        }
+    }
+}
+
 template <bool saving>
 void Image::SaveConvert()
 {
@@ -411,8 +474,8 @@ void SaveBase<P>::ConvertUnit(Unit *unit)
         ConvertUnitPtr<saving>(&unit->list.prev);
         ConvertUnitPtr<saving>(&unit->move_target_unit);
         ConvertUnitPtr<saving>(&unit->target);
-        unit->spawned_bullets = bullet_system->SaveConvertBulletPtr<saving>(unit->spawned_bullets.AsRawPointer());
-        unit->targeting_bullets = bullet_system->SaveConvertBulletPtr<saving>(unit->targeting_bullets.AsRawPointer());
+        ConvertBulletPtr<saving>(&unit->spawned_bullets.AsRawPointer(), bullet_system);
+        ConvertBulletPtr<saving>(&unit->targeting_bullets.AsRawPointer(), bullet_system);
         ConvertUnitPtr<saving>(&unit->player_units.prev);
         ConvertUnitPtr<saving>(&unit->player_units.next);
         ConvertUnitPtr<saving>(&unit->subunit);
@@ -429,19 +492,19 @@ void SaveBase<P>::ConvertUnit(Unit *unit)
         {
             ConvertUnitPtr<saving>(&unit->building.addon);
             if (unit->unit_id == Unit::NuclearSilo)
-                ConvertUnitPtr<saving>(&unit->building.silo.nuke);
+                ConvertUnitPtr<saving>(&unit->silo.nuke);
         }
         if (unit->IsWorker())
         {
             ConvertUnitPtr<saving>(&unit->worker.powerup);
             ConvertUnitPtr<saving>(&unit->worker.current_harvest_target);
-            ConvertUnitPtr<saving>(&unit->worker.previous_harvested);
-            ConvertUnitPtr<saving>(&unit->worker.harvesters.prev);
-            ConvertUnitPtr<saving>(&unit->worker.harvesters.next);
+            ConvertUnitPtr<saving>(&unit->harvester.previous_harvested);
+            ConvertUnitPtr<saving>(&unit->harvester.harvesters.prev);
+            ConvertUnitPtr<saving>(&unit->harvester.harvesters.next);
         }
         else if (units_dat_flags[unit->unit_id] & (UnitFlags::SingleEntity | UnitFlags::ResourceContainer))
         {
-            ConvertUnitPtr<saving>(&unit->building.powerup.carrying_unit);
+            ConvertUnitPtr<saving>(&unit->powerup.carrying_unit);
         }
         else if (unit->IsCarrier() || unit->IsReaver())
         {
@@ -456,15 +519,15 @@ void SaveBase<P>::ConvertUnit(Unit *unit)
         }
         else if (unit->unit_id == Unit::Ghost)
         {
-            unit->building.ghost.nukedot = lone_sprites->SaveConvertSpritePtr<saving>(unit->building.ghost.nukedot);
+            ConvertSpritePtr<saving>(&unit->ghost.nukedot, lone_sprites);
         }
         if (unit->unit_id == Unit::Pylon)
         {
             if (saving)
             {
-                unit->pylon.list.prev = 0;
-                unit->pylon.list.next = 0;
-                unit->building.pylon.aura = 0;
+                unit->pylon_list.list.prev = nullptr;
+                unit->pylon_list.list.next = nullptr;
+                unit->pylon.aura.release();
             }
         }
         else if (unit->HasRally())
@@ -663,13 +726,13 @@ void Save::CreateUnitSave(Unit *unit_)
     if (unit->path)
     {
         Path *path;
-        BeginBufWrite(&path, unit->path);
+        BeginBufWrite(&path, unit->path.get());
         ConvertPath<true>(path);
     }
 
     // There is single frame for units that die instantly/are removed when their sprite is null
     if (unit->sprite)
-        CreateSpriteSave(unit->sprite);
+        CreateSpriteSave(unit->sprite.get());
 }
 
 template <class C, class L>
@@ -924,6 +987,15 @@ void Save::SaveGame(uint32_t time)
     if (!*bw::campaign_mission)
         ReplaceWithFullPath(&*bw::map_path, MAX_PATH);
 
+    bullet_to_id.reserve(bullet_system->BulletCount());
+    bullet_system->MakeSaveIdMapping([this] (Bullet *bullet, uintptr_t id) {
+        bullet_to_id[bullet] = id;
+    });
+    sprite_to_id.reserve(lone_sprites->lone_sprites.size());
+    lone_sprites->MakeSaveIdMapping([this] (Sprite *sprite, uintptr_t id) {
+        sprite_to_id[sprite] = id;
+    });
+
     lone_sprites->Serialize(this);
     //SaveObjectChunk(&Save::CreateFlingySave, first_allocated_flingy);
     bullet_system->Serialize(this);
@@ -1074,8 +1146,9 @@ std::pair<int, Unit *> Unit::SaveAllocate(uint8_t *in, uint32_t size, DummyListH
     }
     if (out->path)
     {
-        out->path = new Path;
-        memcpy(out->path, in, sizeof(Path));
+        out->path.release();
+        out->path = make_unique<Path>();
+        memcpy(out->path.get(), in, sizeof(Path));
         in += sizeof(Path);
     }
 
@@ -1087,7 +1160,8 @@ std::pair<int, Unit *> Unit::SaveAllocate(uint8_t *in, uint32_t size, DummyListH
         std::tie(diff, sprite) = Sprite::SaveAllocate(in, size);
         if (diff == 0)
             return std::make_pair(0, (Unit *)0);
-        out->sprite = sprite;
+        out->sprite.release();
+        out->sprite.reset(sprite);
     }
     out->ai = nullptr;
     if (out->search_left != -1)
@@ -1107,78 +1181,49 @@ std::pair<int, Unit *> Unit::SaveAllocate(uint8_t *in, uint32_t size, DummyListH
         return std::make_pair(sizeof(Unit) + sizeof(Order) * order_count + diff, out);
 }
 
-template <bool saving>
-Bullet *BulletSystem::SaveConvertBulletPtr(const Bullet *in) const
-{
-    if (in == nullptr)
-        return nullptr;
-    if (saving)
-    {
-        auto owning_vector = GetOwningVector(in);
-        uintptr_t index = 1;
-        for (auto *vec : Vectors())
-        {
-            if (vec == owning_vector)
-                return (Bullet *)(index + in->bulletsystem_entry);
-            index += vec->size();
-        }
-        Assert(false);
-        return nullptr;
-    }
-    else
-    {
-        uintptr_t index = (uintptr_t)in - 1;
-        for (auto *vec : Vectors())
-        {
-            if (index < vec->size())
-                return vec->at(index).get();
-            index -= vec->size();
-        }
-        throw SaveReadFail_("BulletSystem::SaveConvertBulletPtr");
-    }
-}
-
 void BulletSystem::Serialize(Save *save)
 {
-    uintptr_t vector_sizes[0x7];
-    auto vectors = Vectors();
-    std::transform(vectors.begin(), vectors.end(), vector_sizes, [](auto *vec) { return vec->size(); });
-    save->AddData(vector_sizes, sizeof vector_sizes);
+    uintptr_t container_sizes[0x7];
+    auto containers = Containers();
+    std::transform(containers.begin(), containers.end(), container_sizes, [](auto *c) { return c->size(); });
+    save->AddData(container_sizes, sizeof container_sizes);
     save->BeginCompression();
-    for (auto *vec : Vectors())
+    for (auto *c : Containers())
     {
-        for (auto &bullet : *vec)
+        for (auto &bullet : *c)
         {
             bullet->Serialize(save, this);
         }
     }
     save->EndCompression();
-    auto first_active_bullet = SaveConvertBulletPtr<true>(*bw::first_active_bullet);
-    auto last_active_bullet = SaveConvertBulletPtr<true>(*bw::last_active_bullet);
+    Bullet *first_active_bullet = *bw::first_active_bullet;
+    Bullet *last_active_bullet = *bw::last_active_bullet;
+    save->ConvertBulletPtr<true>(&first_active_bullet, this);
+    save->ConvertBulletPtr<true>(&last_active_bullet, this);
     save->AddData(&first_active_bullet, sizeof(Bullet *));
     save->AddData(&last_active_bullet, sizeof(Bullet *));
 }
 
-template <bool saving>
-void Bullet::SaveConvert(const BulletSystem *parent_sys)
+template <bool saving, class T>
+void Bullet::SaveConvert(SaveBase<T> *save, const BulletSystem *parent_sys)
 {
     try
     {
-        list.next = parent_sys->SaveConvertBulletPtr<saving>(list.next);
-        list.prev = parent_sys->SaveConvertBulletPtr<saving>(list.prev);
+        save->template ConvertBulletPtr<saving>(&list.next, parent_sys);
+        save->template ConvertBulletPtr<saving>(&list.prev, parent_sys);
         ConvertUnitPtr<saving>(&move_target_unit);
         ConvertUnitPtr<saving>(&target);
         ConvertUnitPtr<saving>(&previous_target);
         ConvertUnitPtr<saving>(&parent);
         if (target)
         {
-            targeting.next = parent_sys->SaveConvertBulletPtr<saving>(targeting.next);
-            targeting.prev = parent_sys->SaveConvertBulletPtr<saving>(targeting.prev);
+            save->template ConvertBulletPtr<saving>(&targeting.next, parent_sys);
+            save->template ConvertBulletPtr<saving>(&targeting.prev, parent_sys);
         }
         if (parent)
         {
-            spawned.next = parent_sys->SaveConvertBulletPtr<saving>(spawned.next);
-            spawned.prev = parent_sys->SaveConvertBulletPtr<saving>(spawned.prev);
+            save->template ConvertBulletPtr<saving>(&spawned.next, parent_sys);
+            save->template ConvertBulletPtr<saving>(&spawned.prev, parent_sys);
         }
     }
     catch (const SaveException &e)
@@ -1192,7 +1237,7 @@ void Bullet::Serialize(Save *save, const BulletSystem *parent)
     char buf[sizeof(Bullet)];
     Bullet *copy = (Bullet *)buf;
     memcpy(buf, this, sizeof(Bullet));
-    copy->SaveConvert<true>(parent);
+    copy->SaveConvert<true>(save, parent);
     save->AddData(buf, sizeof(Bullet));
     sprite->Serialize(save);
 }
@@ -1201,13 +1246,11 @@ void BulletSystem::Deserialize(Load *load)
 {
     try
     {
-        uintptr_t vector_sizes[0x7];
-        load->Read(vector_sizes, sizeof vector_sizes);
-        for (auto i = 0; i < 0x7; i++)
-            Vectors()[i]->reserve(vector_sizes[i]);
+        uintptr_t container_sizes[0x7];
+        load->Read(container_sizes, sizeof container_sizes);
 
-        uintptr_t *current_remaining = vector_sizes;
-        for (auto *vec : Vectors())
+        uintptr_t *current_remaining = container_sizes;
+        for (auto *cont : Containers())
         {
             while (*current_remaining != 0)
             {
@@ -1215,16 +1258,13 @@ void BulletSystem::Deserialize(Load *load)
                 load->ReadCompressed(bullet.get(), sizeof(Bullet));
                 memset(&bullet->sprite, 0, sizeof(ptr<Sprite>));
                 bullet->sprite = Sprite::Deserialize(load);
-                vec->emplace_back(move(bullet));
+                cont->emplace(move(bullet));
                 *current_remaining -= 1;
             }
             current_remaining++;
         }
-        Bullet *first_active_bullet, *last_active_bullet;
-        load->Read(&first_active_bullet, sizeof(uintptr_t));
-        load->Read(&last_active_bullet, sizeof(uintptr_t));
-        *bw::first_active_bullet = SaveConvertBulletPtr<false>(first_active_bullet);
-        *bw::last_active_bullet = SaveConvertBulletPtr<false>(last_active_bullet);
+        load->Read(&bw::first_active_bullet->AsRawPointer(), sizeof(uintptr_t));
+        load->Read(&bw::last_active_bullet->AsRawPointer(), sizeof(uintptr_t));
     }
     catch (const SaveException &e)
     {
@@ -1232,21 +1272,12 @@ void BulletSystem::Deserialize(Load *load)
     }
 }
 
-void BulletSystem::FinishLoad()
+void BulletSystem::FinishLoad(Load *load)
 {
-    for (Bullet *bullet : ActiveBullets())
-        bullet->SaveConvert<false>(this);
-}
-
-template <bool saving>
-Sprite *LoneSpriteSystem::SaveConvertSpritePtr(Sprite *in)
-{
-    if (in == nullptr)
-        return nullptr;
-    if (saving)
-        return (Sprite *)(in->container_index + 1);
-    else
-        return lone_sprites[(uintptr_t)in + 1].get();
+    load->ConvertBulletPtr<false>(&bw::first_active_bullet->AsRawPointer(), this);
+    load->ConvertBulletPtr<false>(&bw::last_active_bullet->AsRawPointer(), this);
+    for (auto &bullet : ActiveBullets())
+        bullet->SaveConvert<false>(load, this);
 }
 
 void LoneSpriteSystem::Serialize(Save *save)
@@ -1275,17 +1306,15 @@ void LoneSpriteSystem::Deserialize(Load *load)
         bw::horizontal_sprite_lines_rev[i] = nullptr;
     }
     lone_sprites.clear();
-    lone_sprites.reserve(lone_count);
-    fow_sprites.reserve(fow_count);
     for (auto i = 0; i < lone_count; i++)
     {
         ptr<Sprite> sprite = Sprite::Deserialize(load);
-        lone_sprites.emplace_back(move(sprite));
+        lone_sprites.emplace(move(sprite));
     }
     for (auto i = 0; i < fow_count; i++)
     {
         ptr<Sprite> sprite = Sprite::Deserialize(load);
-        fow_sprites.emplace_back(move(sprite));
+        fow_sprites.emplace(move(sprite));
     }
 }
 
@@ -1336,7 +1365,6 @@ ptr<Sprite> Sprite::Deserialize(Load *load)
             Image *img = new Image;
             load->ReadCompressed(img, sizeof(Image));
             img->SaveConvert<false>();
-            img->allocated.Add(first_allocated_image);
             img->list.next = nullptr;
             img->list.prev = sprite->last_overlay;
             if (!sprite->first_overlay)
@@ -1370,7 +1398,7 @@ std::pair<int, Sprite *> Sprite::SaveAllocate(uint8_t *in, uint32_t size)
     if (size < sizeof(Image) * count)
         throw SaveReadFail_("Sprite/image");
 
-    Sprite *out = RawAlloc();
+    Sprite *out = new Sprite;
     memcpy(out, in, sizeof(Sprite));
     in += sizeof(Sprite);
     out->first_overlay = 0;
@@ -1381,7 +1409,6 @@ std::pair<int, Sprite *> Sprite::SaveAllocate(uint8_t *in, uint32_t size)
         Image *img = new Image;
         memcpy(img, in, sizeof(Image));
         img->SaveConvert<false>();
-        img->allocated.Add(first_allocated_image);
         img->list.next = 0;
         img->list.prev = out->last_overlay;
         if (!out->first_overlay)
@@ -1786,8 +1813,16 @@ void Load::LoadGame()
     lone_sprites->Deserialize(this);
 //  LoadObjectChunk<Flingy, false>(&Flingy::SaveAllocate, &first_allocated_flingy, 0);
     bullet_system->Deserialize(this);
+    id_to_bullet.reserve(bullet_system->BulletCount());
+    bullet_system->MakeSaveIdMapping([this] (Bullet *bullet, uintptr_t id) {
+        id_to_bullet[id] = bullet;
+    });
+    id_to_sprite.reserve(lone_sprites->lone_sprites.size());
+    lone_sprites->MakeSaveIdMapping([this] (Sprite *sprite, uintptr_t id) {
+        id_to_sprite[id] = sprite;
+    });
     LoadObjectChunk<Unit, false>(&Unit::SaveAllocate, &first_allocated_unit, 0);
-    bullet_system->FinishLoad(); // Bullets reference units and vice versa
+    bullet_system->FinishLoad(this); // Bullets reference units and vice versa
 
     for (Unit *unit : first_allocated_unit)
     {
@@ -1798,7 +1833,7 @@ void Load::LoadGame()
         }
         if (unit->path)
         {
-            ConvertPath<false>(unit->path);
+            ConvertPath<false>(unit->path.get());
         }
     }
     fread(&Unit::next_id, 4, 1, file);
