@@ -95,6 +95,7 @@ class Sprite
 
         void AddMultipleOverlaySprites(int overlay_type, int count, int sprite_id, int base, bool flip);
         void AddDamageOverlay();
+        void AddOverlayAboveMain(int image_id, int x, int y, int direction);
 
         static void RemoveAllSelectionOverlays();
         void RemoveSelectionOverlays();
@@ -107,8 +108,7 @@ class Sprite
         Sprite();
 
         /// Initializes the sprite, returns false if unable and nothing was changed.
-        /// Static to emphasize the fact it manipulates global state.
-        static bool Initialize(Sprite *sprite, int sprite_id, const Point &pos, int player);
+        bool Initialize(int sprite_id, const Point &pos, int player);
 
         void AddToHlines();
 

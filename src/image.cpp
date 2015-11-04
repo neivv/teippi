@@ -10,6 +10,9 @@
 #include "yms.h"
 #include "draw.h"
 #include "perfclock.h"
+#include "strings.h"
+
+#include <atomic>
 
 bool GrpFrameHeader::IsDecoded() const
 {
@@ -76,6 +79,56 @@ Image::Image()
 {
     list.prev = nullptr;
     list.next = nullptr;
+}
+
+Image::Image(Sprite *parent, int image_id, int x, int y) : image_id(image_id), x_off(x), y_off(y), parent(parent)
+{
+    list.prev = nullptr;
+    list.next = nullptr;
+    grp = bw::image_grps[image_id];
+    flags = 0;
+    frameset = 0;
+    frame = 0;
+    direction = 0;
+    grp_bounds = Rect16(0, 0, 0, 0);
+    iscript.header = 0;
+    iscript.pos = 0;
+    iscript.return_pos = 0;
+    iscript.animation = 0;
+    iscript.wait = 0;
+
+    if (images_dat_turning_graphic[image_id] & 0x1)
+        flags |= ImageFlags::CanTurn;
+    if (images_dat_clickable[image_id] & 0x1)
+        flags |= ImageFlags::Clickable;
+    if (images_dat_use_full_iscript[image_id] & 0x1)
+        flags |= ImageFlags::FullIscript;
+
+    SetDrawFunc(images_dat_drawfunc[image_id], nullptr);
+    if (drawfunc == OverrideColor)
+        drawfunc_param = (void *)(uintptr_t)parent->player;
+    else if (drawfunc == Remap)
+        drawfunc_param = bw::blend_palettes[images_dat_remapping[image_id]].data;
+}
+
+bool Image::InitIscript()
+{
+    int iscript_header = images_dat_iscript_header[image_id];
+    bool success = iscript.Initialize(iscript_header);
+    if (!success)
+    {
+        Warning("Image %s has an invalid iscript header: %d (0x%x)",
+                DebugStr().c_str(), iscript_header, iscript_header);
+        return false;
+    }
+    IscriptContext ctx;
+    ctx.bullet = *bw::active_iscript_bullet;
+    ctx.unit = *bw::active_iscript_unit;
+    auto cmds = SetIscriptAnimation(IscriptAnim::Init, &ctx, main_rng);
+    if (!Empty(cmds))
+        Warning("Image::InitIscript did not handle all iscript commands for image %x", image_id);
+    PrepareDrawImage(this);
+    return true;
 }
 
 #ifdef SYNC
@@ -251,6 +304,35 @@ void Image::MakeDetected()
         SetDrawFunc(DrawFunc::DetectedCloak, 0);
     else if (drawfunc >= DrawFunc::Cloaking && drawfunc <= DrawFunc::Decloaking)
         SetDrawFunc(drawfunc + 3, drawfunc_param);
+}
+
+static std::atomic<Tbl *> images_tbl;
+/// Thread-safely loads/gives loaded images.tbl and keeps it in memory forever.
+static Tbl *GetImagesTbl()
+{
+    const auto release = std::memory_order_release;
+    const auto acquire = std::memory_order_acquire;
+    Tbl *tbl = images_tbl.load(acquire);
+    if (tbl == nullptr)
+    {
+        uint32_t size;
+        Tbl *read_tbl = (Tbl *)ReadMpqFile("arr\\images.tbl", 0, 0, "storm", 0, 0, &size);
+        Assert(read_tbl != nullptr);
+        if (images_tbl.compare_exchange_strong(tbl, read_tbl, release, acquire) == false)
+            SMemFree(read_tbl, __FILE__, __LINE__, 0);
+        else
+            tbl = read_tbl;
+    }
+    return tbl;
+}
+
+std::string Image::DebugStr() const
+{
+    Tbl *tbl = GetImagesTbl();
+    int grp_id = images_dat_grp[image_id];
+    char buf[128];
+    snprintf(buf, sizeof buf / sizeof(buf[0]), "%x [unit\\%s]", image_id, tbl->GetTblString(grp_id));
+    return buf;
 }
 
 void Image::DrawFunc_ProgressFrame(IscriptContext *ctx, Rng *rng)

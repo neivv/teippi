@@ -790,3 +790,20 @@ bool Iscript::GetCommands_C::IgnoreRestCheck(const Iscript::Command &cmd) const
 {
     return cmd.opcode == IscriptOpcode::IgnoreRest && ctx->unit->target != nullptr;
 }
+
+bool Iscript::Initialize(int iscript_header_id)
+{
+    uint8_t *iscript = *bw::iscript;
+    uint32_t header_offset = *(uint32_t *)iscript;
+    Offset *headers = (Offset *)(iscript + header_offset);
+    while (headers[0] != 0xffff)
+    {
+        if (headers[0] == iscript_header_id)
+        {
+            header = headers[1];
+            return true;
+        }
+        headers += 2;
+    }
+    return false;
+}

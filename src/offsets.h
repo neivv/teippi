@@ -646,11 +646,18 @@ namespace bw
         const flingy_dat<uint8_t> flingy_dat_movement_type = 0x006C9858;
 
         const sprites_dat<uint16_t> sprites_dat_image = 0x00666160;
+        const sprites_dat<uint8_t> sprites_dat_start_as_visible = 0x00665C48;
 
         const images_dat<uint8_t> images_dat_drawfunc = 0x00669E28;
         const images_dat<int8_t *> images_dat_shield_overlay = 0x0052E5C8;
         const images_dat<uint32_t> images_dat_damage_overlay = 0x0066A210;
         const images_dat<uint8_t> images_dat_draw_if_cloaked = 0x00667718;
+        const images_dat<uint8_t> images_dat_turning_graphic = 0x0066E860;
+        const images_dat<uint8_t> images_dat_clickable = 0x0066C150;
+        const images_dat<uint8_t> images_dat_remapping = 0x00669A40;
+        const images_dat<uint8_t> images_dat_use_full_iscript = 0x0066D4D8;
+        const images_dat<uint32_t> images_dat_iscript_header = 0x0066EC48;
+        const images_dat<uint32_t> images_dat_grp = 0x00668AA0;
         const array_offset<void *, 6, 0x3e7> images_dat_overlays = 0x0051F2A8;
 
         const techdata_dat<uint16_t> techdata_dat_energy_cost = 0x00656380;

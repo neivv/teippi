@@ -173,9 +173,7 @@
 004A3FD0 = void DrawMinimapDot(), ecx int, eax x32, arg 1 y32, arg 2 int, arg 3 int, arg 4 int
 00497A10 = void MoveSprite(), ecx Sprite *, ebx int, edi int
 00487FD0 = Unit *FindFowUnit(), ecx x32, eax y32, arg 1 int
-00499030 = bool InitializeSprite(), arg 1 Sprite *, edx int, eax x32, edi y32, ecx int
 00498EA0 = void AddOverlayHighest(), eax Sprite *, esi int, arg 1 int, arg 2 int, arg 3 int
-00498E00 = void AddOverlayAboveMain(), eax Sprite *, esi int, arg 1 int, arg 2 int, arg 3 int
 00498D70 = AddOverlayBelowMain(), eax Sprite *sprite, esi image_id, arg 1 x_off, arg 2 y_off, arg 3 direction
 
 004D57B0 = void PrepareDrawImage(), eax Image *
@@ -630,7 +628,7 @@
 004D2930 = void *OpenGrpFile(), edi char *filename
 004D2880 = FileError(), ecx void *file, ebx error
 004212C0 = ErrorMessageBox(), ebx error, arg 1 char *filename
-004D2D10 = void *ReadMpqFile(), arg 1 char *chk_path, arg 2 int, arg 3 int, arg 4 const char *source_file, arg 5 source_line, ecx open_mode, eax dword *out_filesize
+004D2D10 = void *ReadMpqFile(), arg 1 const char *chk_path, arg 2 int, arg 3 int, arg 4 const char *source_file, arg 5 source_line, ecx open_mode, eax dword *out_filesize
 
 00431030 = Unit **GetClickableUnits(), arg 1 x, eax y
 00402A00 = bool IsClickablePixel(), arg 1 Unit *unit, edi x, ebx y

@@ -108,6 +108,9 @@ class Iscript
             return GetCommands_C(this, ctx, rng);
         }
 
+        /// Returns false if header does not exist
+        bool Initialize(int iscript_header_id);
+
     private:
         Command ProgressUntilCommand(const IscriptContext *ctx, Rng *rng);
         Command Decode(const uint8_t *data) const;

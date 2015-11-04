@@ -18,6 +18,8 @@
 
 #include "log.h"
 
+using std::min;
+
 LoneSpriteSystem *lone_sprites;
 
 uint32_t Sprite::next_id = 1;
@@ -114,49 +116,86 @@ void Sprite::Hide()
     SetVisibility(this, 0);
 }
 
-bool Sprite::Initialize(Sprite *sprite, int sprite_id, const Point &pos, int player)
+void Sprite::AddOverlayAboveMain(int image_id, int x, int y, int direction)
 {
-    sprite->main_image = nullptr;
-    sprite->first_overlay = nullptr;
-    sprite->last_overlay = nullptr;
-
-    if (InitializeSprite(sprite, sprite_id, pos.x, pos.y, player) == 0)
+    Image *image = new Image(this, image_id, x, y);
+    if (first_overlay != nullptr)
     {
-        // Remove() can't be called as AddToHlines() hasn't been called
-        // So lazy way of doing things
-        Assert(!sprite->first_overlay);
-        count--;
-        return false;
+        if (main_image == first_overlay)
+            first_overlay = image;
+        image->list.prev = main_image->list.prev;
+        image->list.next = main_image;
+        if (image->list.prev != nullptr)
+            image->list.prev->list.next = image;
+        main_image->list.prev = image;
     }
     else
     {
-        sprite->AddToHlines();
-        return true;
+        main_image = image;
+        first_overlay = image;
+        last_overlay = image;
     }
+    bool success = image->InitIscript();
+    if (!success)
+    {
+        image->SingleDelete();
+        return;
+    }
+    SetImageDirection32(image, direction);
+}
+
+bool Sprite::Initialize(int sprite_id_, const Point &pos, int player_)
+{
+    if (pos.x >= *bw::map_width || pos.y >= *bw::map_height)
+    {
+        count--;
+        return false;
+    }
+    main_image = nullptr;
+    first_overlay = nullptr;
+    last_overlay = nullptr;
+
+    player = player_;
+    sprite_id = sprite_id_;
+    flags = 0;
+    position = pos;
+    visibility_mask = 0xff;
+    elevation = 4;
+    selection_flash_timer = 0;
+    if (sprites_dat_start_as_visible[sprite_id] == 0)
+        Hide();
+
+    AddOverlayAboveMain(sprites_dat_image[sprite_id], 0, 0, 0);
+
+    width = min(255, (int)main_image->grp->width);
+    height = min(255, (int)main_image->grp->height);
+
+    AddToHlines();
+    return true;
 }
 
 Sprite *Sprite::Allocate(int sprite_id, const Point &pos, int player)
 {
     ptr<Sprite> sprite(new Sprite);
-    if (!Initialize(sprite.get(), sprite_id, pos, player))
+    if (!sprite->Initialize(sprite_id, pos, player))
         return nullptr;
     return sprite.release();
 }
 
 Sprite *LoneSpriteSystem::AllocateLone(int sprite_id, const Point &pos, int player)
 {
-    ptr<Sprite> sprite_ptr(new Sprite);
-    if (!Sprite::Initialize(sprite_ptr.get(), sprite_id, pos, player))
+    ptr<Sprite> sprite(new Sprite);
+    if (!sprite->Initialize(sprite_id, pos, player))
         return nullptr;
 
-    lone_sprites.emplace(move(sprite_ptr));
+    lone_sprites.emplace(move(sprite));
     return lone_sprites.back().get();
 }
 
 Sprite *LoneSpriteSystem::AllocateFow(Sprite *base, int unit_id)
 {
     ptr<Sprite> sprite_ptr(new Sprite);
-    if (!Sprite::Initialize(sprite_ptr.get(), base->sprite_id, base->position, base->player))
+    if (!sprite_ptr->Initialize(base->sprite_id, base->position, base->player))
         return nullptr;
 
     fow_sprites.emplace(move(sprite_ptr));

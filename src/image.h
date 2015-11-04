@@ -93,6 +93,8 @@ struct BlendPalette
 struct GrpSprite
 {
     uint16_t frame_count;
+    x16u width;
+    y16u height;
 };
 
 class Image
@@ -110,7 +112,7 @@ class Image
         uint16_t frame;
         Point map_position;
         Point screen_position;
-        uint16_t grpBounds[4];
+        Rect16 grp_bounds;
         GrpSprite *grp;
         void *drawfunc_param;
         void (__fastcall *Render)(int, int, GrpFrameHeader *, Rect32 *, void *);
@@ -122,9 +124,18 @@ class Image
 #ifdef SYNC
         void *operator new(size_t size);
 #endif
+        /// Does no real initialization. Useful when bw is going to initialize it
         Image();
+        /// Initializes the image, but does not add it to parent's list.
+        /// Does not run the initial iscript animation either, as it can behave
+        /// differently based on where in parent's overlay list the image is.
+        /// The iscript animation should be ran afterwards with InitIscript().
+        Image(Sprite *parent, int image_id, int x, int y);
         ~Image() {}
 
+        /// Resets the image's iscript.
+        /// Returns false if image has invalid iscript.
+        bool InitIscript();
         void SingleDelete();
 
         void SetFlipping(bool set);
@@ -242,11 +253,14 @@ class Image
             // Bad: constants/image.h defines WarpTexture
             UseWarpTexture = 0xc,
             SelectionCircle = 0xd,
+            OverrideColor = 0xe, // Flag
             Hallucination = 0x10,
             WarpFlash = 0x11
         };
 
         template <bool saving> void SaveConvert();
+
+        std::string DebugStr() const;
 
     private:
         void DrawFunc_ProgressFrame(IscriptContext *ctx, Rng *rng);
