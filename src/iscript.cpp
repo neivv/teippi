@@ -188,7 +188,7 @@ Image *Image::Iscript_AddOverlay(const IscriptContext *ctx, int image_id_, int x
         if (ctx->unit->CanLocalPlayerControl() || IsReplay())
             img->SetDrawFunc(Hallucination, nullptr);
     }
-    if (img->flags & 0x8)
+    if (img->flags & ImageFlags::CanTurn)
     {
         if (IsFlipped())
             SetImageDirection32(img, 32 - direction);
@@ -198,7 +198,7 @@ Image *Image::Iscript_AddOverlay(const IscriptContext *ctx, int image_id_, int x
     if (img->frame != img->frameset + img->direction)
     {
         img->frame = img->frameset + img->direction;
-        img->flags |= 0x1;
+        img->flags |= ImageFlags::Redraw;
     }
     if (ctx->unit && ctx->unit->IsInvisible())
     {
@@ -255,9 +255,9 @@ bool Image::IscriptCmd(const Iscript::Command &cmd, IscriptContext *ctx, Rng *rn
         case SwitchUl:
         {
             Image *other = Iscript_AddOverlay(ctx, cmd.val, 0, 0, cmd.opcode == ImgOlOrig);
-            if (other && ~other->flags & 0x80)
+            if (other != nullptr && ~other->flags & ImageFlags::UseParentLo)
             {
-                other->flags |= 0x80;
+                other->flags |= ImageFlags::UseParentLo;
                 SetOffsetToParentsSpecialOverlay(other);
             }
         }
@@ -316,7 +316,7 @@ bool Image::IscriptCmd(const Iscript::Command &cmd, IscriptContext *ctx, Rng *rn
                 Sprite *sprite = Sprite::Spawn(this, cmd.val, cmd.point, elevation);
                 if (sprite)
                 {
-                    if (flags & 0x2)
+                    if (IsFlipped())
                         sprite->SetDirection32(32 - direction);
                     else
                         sprite->SetDirection32(direction);
@@ -331,7 +331,7 @@ bool Image::IscriptCmd(const Iscript::Command &cmd, IscriptContext *ctx, Rng *rn
             Sprite *sprite = Sprite::Spawn(this, cmd.val, point.ToPoint16(), parent->elevation + 1);
             if (sprite)
             {
-                if (flags & 0x2)
+                if (IsFlipped())
                     sprite->SetDirection32(32 - direction);
                 else
                     sprite->SetDirection32(direction);
@@ -361,7 +361,7 @@ bool Image::IscriptCmd(const Iscript::Command &cmd, IscriptContext *ctx, Rng *rn
             if (parent->main_image)
             {
                 Image *main_img = parent->main_image;
-                if (main_img->frame != frame || (main_img->flags & 0x2) != (flags & 0x2))
+                if (main_img->frame != frame || main_img->IsFlipped() != IsFlipped())
                 {
                     int new_frame = main_img->frameset + main_img->direction;
                     if (new_frame >= grp->frame_count)
@@ -370,7 +370,7 @@ bool Image::IscriptCmd(const Iscript::Command &cmd, IscriptContext *ctx, Rng *rn
                     {
                         frameset = main_img->frameset;
                         direction = main_img->direction;
-                        SetFlipping(main_img->flags & 0x2);
+                        SetFlipping(main_img->IsFlipped());
                         UpdateFrameToDirection();
                     }
                 }
@@ -488,13 +488,13 @@ bool Image::IscriptCmd(const Iscript::Command &cmd, IscriptContext *ctx, Rng *rn
         break;
         case NoBrkCodeStart:
             ctx->unit->flags |= UnitStatus::Nobrkcodestart;
-            ctx->unit->sprite->flags |= 0x80;
+            ctx->unit->sprite->flags |= SpriteFlags::Nobrkcodestart;
         break;
         case NoBrkCodeEnd:
         if (ctx->unit)
         {
             ctx->unit->flags &= ~UnitStatus::Nobrkcodestart;
-            ctx->unit->sprite->flags &= ~0x80;
+            ctx->unit->sprite->flags &= ~SpriteFlags::Nobrkcodestart;
             if (ctx->unit->order_queue_begin && ctx->unit->order_flags & 0x1)
             {
                 ctx->unit->IscriptToIdle();
@@ -562,7 +562,7 @@ bool Image::IscriptCmd(const Iscript::Command &cmd, IscriptContext *ctx, Rng *rn
         }
         break;
         case WarpOverlay:
-            flags |= 0x1;
+            flags |= ImageFlags::Redraw;
             drawfunc_param = (void *)cmd.val;
         break;
         case GrdSprOl:

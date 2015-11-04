@@ -20,6 +20,18 @@ Sprite *__stdcall FindBlockingFowResource(int x_tile, int y_tile, int radius);
 
 extern "C" void __stdcall SetSpriteDirection(int direction);
 
+namespace SpriteFlags
+{
+    const int HasSelectionCircle = 0x1;
+    const int HasDashedSelection1 = 0x2;
+    const int HasDashedSelection2 = 0x4;
+    const int HasHealthBar = 0x8;
+    const int Unk10 = 0x10; // Draw sort?
+    const int Hidden = 0x20;
+    const int Unk40 = 0x40; // Became uncloaked?
+    const int Nobrkcodestart = 0x80;
+}
+
 #pragma pack(push)
 #pragma pack(1)
 
@@ -66,7 +78,8 @@ class Sprite
         void SetDirection256(int direction);
         void SetFlipping(bool set);
 
-        bool IsHidden() const { return flags & 0x20; }
+        void Hide();
+        bool IsHidden() const { return flags & SpriteFlags::Hidden; }
 
         bool UpdateVisibilityPoint();
         void UpdateVisibilityArea();
@@ -188,7 +201,7 @@ class Sprite
         ProgressFrame_C ProgressFrame(const IscriptContext &ctx, Rng *rng) { return ProgressFrame_C(this, -1, ctx, rng); }
         ProgressFrame_C SetIscriptAnimation(int anim, bool force, const IscriptContext &ctx, Rng *rng)
         {
-            if (!force && flags & 0x80)
+            if (!force && flags & SpriteFlags::Nobrkcodestart)
                 return ProgressFrame_C(nullptr, -1, ctx, rng);
             return ProgressFrame_C(this, anim, ctx, rng);
         }

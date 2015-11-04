@@ -108,6 +108,12 @@ void Sprite::AddToHlines()
     }
 }
 
+void Sprite::Hide()
+{
+    flags |= SpriteFlags::Hidden;
+    SetVisibility(this, 0);
+}
+
 bool Sprite::Initialize(Sprite *sprite, int sprite_id, const Point &pos, int player)
 {
     sprite->main_image = nullptr;
@@ -170,7 +176,7 @@ Sprite *LoneSpriteSystem::AllocateFow(Sprite *base, int unit_id)
         Image *current = AddOverlayNoIscript(sprite, img->image_id, img->x_off, img->y_off, img->direction);
         current->frame = img->frame;
         current->frameset = img->frameset;
-        current->SetFlipping(img->flags & 0x2);
+        current->SetFlipping(img->IsFlipped());
         PrepareDrawImage(current);
         if (img == base->main_image)
             sprite->main_image = current;
@@ -255,7 +261,8 @@ uint32_t Sprite::GetZCoord() const
     int y = 0;
     if (elevation <= 4)
         y = position.y;
-    return (elevation << 0x1b) | (y << 0xb) | (flags & 0x10); // There would be 11 bits space after flag 0x10 << 6
+    // There would be 11 bits space after flag 0x10 << 6
+    return (elevation << 0x1b) | (y << 0xb) | (flags & SpriteFlags::Unk10);
 }
 
 void Sprite::CreateDrawSpriteList()
@@ -547,13 +554,13 @@ Sprite *Sprite::FindFowTarget(int x, int y)
 
 void Sprite::MarkHealthBarDirty()
 {
-    if (~flags & 0x8)
+    if (~flags & SpriteFlags::HasHealthBar)
         return;
     for (Image *img : first_overlay)
     {
         if (img->drawfunc == Image::HpBar)
         {
-            img->flags |= 0x1;
+            img->flags |= ImageFlags::Redraw;
             return;
         }
     }
@@ -623,7 +630,7 @@ void DrawCursorMarker()
             PrepareDrawImage(img);
         DrawSprite(marker);
         for (Image *img : marker->first_overlay)
-            img->flags |= 0x1;
+            img->flags |= ImageFlags::Redraw;
     }
 }
 
@@ -734,7 +741,7 @@ Sprite *__stdcall FindBlockingFowResource(int x_tile, int y_tile, int radius)
 
 void Sprite::RemoveSelectionOverlays()
 {
-    if (flags & 0x8)
+    if (flags & SpriteFlags::HasHealthBar)
     {
         for (Image *img : first_overlay)
         {
@@ -744,9 +751,9 @@ void Sprite::RemoveSelectionOverlays()
                 break;
             }
         }
-        flags &= ~0x8;
+        flags &= ~SpriteFlags::HasHealthBar;
     }
-    if (flags & 0x6)
+    if (flags & (SpriteFlags::HasDashedSelection1 | SpriteFlags::HasDashedSelection2))
     {
         for (Image *img : first_overlay)
         {
@@ -756,9 +763,9 @@ void Sprite::RemoveSelectionOverlays()
                 break;
             }
         }
-        flags &= ~0x6;
+        flags &= ~(SpriteFlags::HasDashedSelection1 | SpriteFlags::HasDashedSelection2);
     }
-    if (flags & 0x1)
+    if (flags & SpriteFlags::HasSelectionCircle)
     {
         for (Image *img : first_overlay)
         {
@@ -768,7 +775,7 @@ void Sprite::RemoveSelectionOverlays()
                 break;
             }
         }
-        flags &= ~0x1;
+        flags &= ~SpriteFlags::HasSelectionCircle;
     }
 }
 

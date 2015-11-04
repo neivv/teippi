@@ -852,7 +852,7 @@ void Unit::ProgressActiveUnitFrame()
         {
             subunit_img->x_off = lo.x;
             subunit_img->y_off = lo.y;
-            subunit_img->flags |= 0x1;
+            subunit_img->flags |= ImageFlags::Redraw;
         }
         *bw::active_iscript_unit = subunit; // Not changing active iscript flingy?
         if (~flingy_flags & 0x2) // Not moving
@@ -1872,7 +1872,7 @@ void Unit::OrderDone()
 void Unit::IscriptToIdle()
 {
     flags &= ~UnitStatus::Nobrkcodestart;
-    sprite->flags &= ~0x80;
+    sprite->flags &= ~SpriteFlags::Nobrkcodestart;
     auto cmds = sprite->IscriptToIdle(IscriptContext(this), main_rng);
     if (!Empty(cmds))
         Warning("Unit::IscriptToIdle did not handle all iscript commands for unit %x", unit_id);
@@ -2723,7 +2723,8 @@ void TransferMainImage(Sprite *dest, Sprite *src)
     img->list.prev = nullptr;
     img->list.next = first;
     first->list.prev = img;
-    img->flags &= ~0x8;
+    // Why?
+    img->flags &= ~ImageFlags::CanTurn;
     img->parent = dest;
 }
 
@@ -4399,7 +4400,7 @@ void Unit::Order_WarpingArchon(int merge_distance, int close_distance, int resul
         if (was_permamently_cloaked)
             EndInvisibility(this, Sound::Decloak);
 
-        sprite->flags &= ~0x80;
+        sprite->flags &= ~SpriteFlags::Nobrkcodestart;
         SetIscriptAnimation_NoHandling(IscriptAnim::Special1, true, "Order_WarpingArchon", results);
 
         SetButtons(None);
@@ -4449,7 +4450,7 @@ void Unit::Order_SpiderMine(ProgressUnitResults *results)
                 return;
             target = victim;
             SetIscriptAnimation_NoHandling(IscriptAnim::Unburrow, true, "Order_SpiderMine (unburrow)", results);
-            sprite->flags &= ~0x40;
+            sprite->flags &= ~SpriteFlags::Unk40;
             IssueSecondaryOrder(Order::Nothing);
             order_state = 4;
         } // Fall through

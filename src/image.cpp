@@ -126,10 +126,10 @@ void Image::UpdateSpecialOverlayPos()
 
 void Image::SetFlipping(bool set)
 {
-    bool state = ((flags & 0x2) >> 1) != 0;
+    bool state = (flags & ImageFlags::Flipped) != 0;
     if (state != set)
     {
-        flags = flags | (set << 1) | 0x1;
+        flags = flags | (set << 1) | ImageFlags::Redraw;
         SetDrawFunc(drawfunc, drawfunc_param);
     }
 }
@@ -183,33 +183,33 @@ void Image::UpdateFrameToDirection()
     if (frameset + direction != frame)
     {
         frame = frameset + direction;
-        flags |= 0x1;
+        flags |= ImageFlags::Redraw;
     }
 }
 
 void Image::Show()
 {
-    if (flags & 0x40)
+    if (IsHidden())
     {
-        flags &= ~0x40;
-        flags |= 0x1;
+        flags &= ~ImageFlags::Hidden;
+        flags |= ImageFlags::Redraw;
     }
 }
 
 void Image::Hide()
 {
-    if (~flags & 0x40)
+    if (!IsHidden())
     {
         if (~*bw::image_flags & 0x1)
             MarkImageAreaForRedraw(this);
-        flags |= 0x40;
+        flags |= ImageFlags::Hidden;
     }
 }
 
 void Image::SetOffset(int x, int y)
 {
     if (x_off != x || y_off != y)
-        flags |= 0x1;
+        flags |= ImageFlags::Redraw;
     x_off = x;
     y_off = y;
 }
@@ -222,7 +222,7 @@ void Image::SetFrame(int new_frame)
         if (frame != frameset + direction)
         {
             frame = frameset + direction;
-            flags |= 0x1;
+            flags |= ImageFlags::Redraw;
         }
     }
 }
@@ -235,12 +235,11 @@ void Image::SetDrawFunc(int drawfunc_, void *param)
         Render = bw::image_renderfuncs[drawfunc].flipped;
     else
         Render = bw::image_renderfuncs[drawfunc].nonflipped;
-    Update = bw::image_updatefuncs[drawfunc].func;
     if (drawfunc == WarpFlash)
         drawfunc_param = (void *)0x230;
-    if (flags & 0x80)
+    if (flags & ImageFlags::UseParentLo)
         UpdateSpecialOverlayPos();
-    flags |= 0x1;
+    flags |= ImageFlags::Redraw;
 }
 
 void Image::MakeDetected()
@@ -267,7 +266,7 @@ void Image::DrawFunc_ProgressFrame(IscriptContext *ctx, Rng *rng)
             return;
         }
         drawfunc_param = (void *)((state + 1) | 0x300);
-        flags |= 0x1;
+        flags |= ImageFlags::Redraw;
         if (state + 1 >= 8)
         {
             SetDrawFunc(drawfunc + 1, 0);
@@ -286,7 +285,7 @@ void Image::DrawFunc_ProgressFrame(IscriptContext *ctx, Rng *rng)
             return;
         }
         drawfunc_param = (void *)((state - 1) | 0x300);
-        flags |= 0x1;
+        flags |= ImageFlags::Redraw;
         if (state - 1 == 0)
         {
             SetDrawFunc(DrawFunc::Normal, 0);
@@ -304,7 +303,7 @@ void Image::DrawFunc_ProgressFrame(IscriptContext *ctx, Rng *rng)
             drawfunc_param = (void *)((counter << 8) | state);
             return;
         }
-        flags |= 0x1;
+        flags |= ImageFlags::Redraw;
         if (state < 0x3f)
         {
             drawfunc_param = (void *)((state + 1) | 0x300);

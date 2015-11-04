@@ -25,6 +25,18 @@ void __fastcall DrawWarpTexture_Flipped(int x, int y, GrpFrameHeader *frame_head
 void __fastcall DrawShadow_NonFlipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *unused);
 void __fastcall DrawShadow_Flipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *unused);
 
+namespace ImageFlags
+{
+    const int Redraw = 0x1;
+    const int Flipped = 0x2;
+    const int FreezeY = 0x4;
+    const int CanTurn = 0x8;
+    const int FullIscript = 0x10;
+    const int Clickable = 0x20;
+    const int Hidden = 0x40;
+    const int UseParentLo = 0x80;
+}
+
 #pragma pack(push)
 #pragma pack(1)
 
@@ -116,10 +128,10 @@ class Image
         void SingleDelete();
 
         void SetFlipping(bool set);
-        bool IsFlipped() const { return flags & 0x2; }
-        bool IsHidden() const { return flags & 0x40; }
-        void FreezeY() { flags |= 0x4; }
-        void ThawY() { flags &= ~0x4; }
+        bool IsFlipped() const { return flags & ImageFlags::Flipped; }
+        bool IsHidden() const { return flags & ImageFlags::Hidden; }
+        void FreezeY() { flags |= ImageFlags::FreezeY; }
+        void ThawY() { flags &= ~ImageFlags::FreezeY; }
         void UpdateFrameToDirection();
         void Show();
         void Hide();
