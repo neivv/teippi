@@ -253,6 +253,9 @@ class Bullet
         ~Bullet() {}
         Bullet(Bullet &&other) = default;
 
+        void WarnUnhandledIscriptCommand(const Iscript::Command &cmd, const char *func) const;
+        std::string DebugStr() const;
+
     private:
         Bullet() {}
         void NormalHit(ProgressBulletBufs *bufs);
@@ -268,7 +271,9 @@ class Bullet
         bool Initialize(Unit *parent_, int player_, int direction, int weapon, const Point &pos);
 
         static vector<std::pair<Unit *, Point>> broodling_spawns;
-        Sprite::ProgressFrame_C SetIscriptAnimation(int anim, bool force);
+
+        // Results must not be null
+        void SetIscriptAnimation(int anim, bool force, const char *caller, BulletStateResults *results);
 };
 
 /// Contains and controls bullets of the game

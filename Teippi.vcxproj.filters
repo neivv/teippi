@@ -288,6 +288,9 @@
     <ClInclude Include="src\draw.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="src\entity.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
     <ClInclude Include="src\flingy.h">
       <Filter>Headers</Filter>
     </ClInclude>

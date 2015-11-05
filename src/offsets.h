@@ -372,8 +372,6 @@ namespace bw
 
     const offset<uint8_t *> iscript = 0x006D1200;
     const offset<Unit *> active_iscript_unit = 0x006D11FC;
-    const offset<void *> active_iscript_flingy = 0x006D11F4;
-    const offset<Bullet *> active_iscript_bullet = 0x006D11F8;
 
     const offset<RevListHead<Unit, 0x0>> first_active_unit = 0x00628430;
     const offset<RevListHead<Unit, 0x0>> first_hidden_unit = 0x006283EC;
@@ -638,12 +636,14 @@ namespace bw
         const weapons_dat<uint8_t> weapons_dat_death_time = 0x00657040;
         const weapons_dat<uint8_t> weapons_dat_launch_spin = 0x00657888;
         const weapons_dat<uint8_t> weapons_dat_attack_angle = 0x00656990;
+        const weapons_dat<uint16_t> weapons_dat_label = 0x006572E0;
 
         const flingy_dat<int32_t> flingy_dat_top_speed = 0x006C9EF8;
         const flingy_dat<uint32_t> flingy_dat_halt_distance = 0x006C9930;
         const flingy_dat<uint16_t> flingy_dat_acceleration = 0x006C9C78;
         const flingy_dat<uint16_t> flingy_dat_sprite = 0x006CA318;
         const flingy_dat<uint8_t> flingy_dat_movement_type = 0x006C9858;
+        const flingy_dat<uint8_t> flingy_dat_turn_speed = 0x006C9E20;
 
         const sprites_dat<uint16_t> sprites_dat_image = 0x00666160;
         const sprites_dat<uint8_t> sprites_dat_start_as_visible = 0x00665C48;

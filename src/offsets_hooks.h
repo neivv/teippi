@@ -129,6 +129,7 @@ namespace bw
     const hook_offset InitSpriteSystem = 0x00499900;
 
     const hook_offset SetIscriptAnimation = 0x004D8470;
+    const hook_offset ProgressIscriptFrame = 0x004D74C0;
 
     const hook_offset Order_AttackMove_ReactToAttack = 0x00478370;
     const hook_offset Order_AttackMove_TryPickTarget = 0x00477820;

@@ -35,6 +35,8 @@ namespace Sound
 
     const int Irradiate = 0x15f;
 
+    const int ProtossBuildingFinishing = 0x211;
+
     const int Recall = 0x226;
     const int Recalled = 0x228;
     const int InterceptorLaunch = 0x268;

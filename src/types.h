@@ -65,11 +65,11 @@ class Unit;
 class Sprite;
 class LoneSpriteSystem;
 class Image;
-class Iscript;
 class Bullet;
 class BulletSystem;
 class DamagedUnit;
 class Flingy;
+class Entity;
 class Tbl;
 class Path;
 class Order;
@@ -143,5 +143,13 @@ namespace Pathing
     struct Region;
     struct PathingSystem;
 }
+
+namespace Iscript
+{
+    class Script;
+}
+class UnitIscriptContext;
+class BulletIscriptContext;
+
 #endif // TYPES_H
 

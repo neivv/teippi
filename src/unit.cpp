@@ -33,6 +33,7 @@
 #include "scthread.h"
 #include "strings.h"
 #include "unit_cache.h"
+#include "entity.h"
 
 using std::get;
 using std::max;
@@ -50,7 +51,6 @@ const int UNIT_ID_LOOKUP_SIZE = 0x2000;
 
 static bool late_unit_frames_in_progress = false;
 
-
 #ifdef SYNC
 void *Unit::operator new(size_t size)
 {
@@ -60,6 +60,64 @@ void *Unit::operator new(size_t size)
     return ret;
 }
 #endif
+
+void UnitIscriptContext::IscriptToIdle()
+{
+    unit->sprite->IscriptToIdle(this);
+}
+
+void UnitIscriptContext::ProgressIscript()
+{
+    unit->sprite->ProgressFrame(this);
+    unit->order_signal |= order_signal;
+    if (cloak_state == Iscript::Context::Cloaked)
+        unit->flags |= (UnitStatus::InvisibilityDone | UnitStatus::BeginInvisibility);
+    else if (cloak_state == Iscript::Context::Decloaked)
+        unit->flags &= ~(UnitStatus::InvisibilityDone | UnitStatus::BeginInvisibility);
+}
+
+void UnitIscriptContext::SetIscriptAnimation(int anim, bool force)
+{
+    unit->sprite->SetIscriptAnimation(this, anim, force);
+}
+
+Iscript::CmdResult UnitIscriptContext::HandleCommand(Image *img, Iscript::Script *script,
+                                                     const Iscript::Command &cmd)
+{
+    Iscript::CmdResult result = unit->HandleIscriptCommand(this, img, script, cmd);
+    if (result == Iscript::CmdResult::NotHandled)
+        unit->WarnUnhandledIscriptCommand(cmd, caller);
+    return result;
+}
+
+void UnitIscriptContext::NewOverlay(Image *img)
+{
+    if (img->drawfunc == Image::Normal && unit->flags & UnitStatus::Hallucination)
+    {
+        if (unit->CanLocalPlayerControl() || IsReplay())
+            img->SetDrawFunc(Image::Hallucination, nullptr);
+    }
+    if (unit->IsInvisible())
+    {
+        if (images_dat_draw_if_cloaked[img->image_id])
+        {
+            // Note: main_img may be null if this is some death anim overlay
+            // Related to comment in Image::SingleDelete
+            auto main_img = img->parent->main_image;
+            if (img->drawfunc == Image::Normal && main_img != nullptr)
+            {
+                if (main_img->drawfunc >= Image::Cloaking &&
+                        main_img->drawfunc <= Image::DetectedDecloaking)
+                {
+                    img->SetDrawFunc(main_img->drawfunc, main_img->drawfunc_param);
+                }
+            }
+        }
+        else
+            img->Hide();
+    }
+}
+
 
 Unit::Unit(bool) { }
 
@@ -418,7 +476,7 @@ void Unit::ProgressOrder(ProgressUnitResults *results)
     switch (order)
     {
         case Order::ProtossBuildSelf:
-            Order_ProtossBuildSelf(this);
+            Order_ProtossBuildSelf(results);
             return;
         case Order::WarpIn:
             Order_WarpIn(this);
@@ -779,39 +837,18 @@ void Unit::ProgressFrame(ProgressUnitResults *results)
 void Unit::ProgressFrame_Late(ProgressUnitResults *results)
 {
     // Has to be set if order calls SetIscriptAnimation
-    *bw::active_iscript_flingy = this;
     *bw::active_iscript_unit = this;
     ProgressOrder_Late(results);
     if (HasSubunit())
     {
         subunit->ProgressFrame_Late(results);
-        *bw::active_iscript_flingy = this;
         *bw::active_iscript_unit = this;
     }
     // ProgressFrame has to be after progressing orders, as iscript may override certain movement values
     // set by order. However, this function is after hidden unit frames. Does it change anything?
-    if (sprite)
+    if (sprite != nullptr)
     {
-        for (auto &cmd : sprite->ProgressFrame(IscriptContext(this), main_rng))
-        {
-            switch (cmd.opcode)
-            {
-                case IscriptOpcode::End:
-                    sprite->Remove();
-                    sprite.reset(nullptr);
-                break;
-                case IscriptOpcode::AttackMelee:
-                    AttackMelee(cmd.data[0], (uint16_t *)(cmd.data + 1), results);
-                break;
-                default:
-                {
-                    auto cmd_str = cmd.DebugStr();
-                    auto unit_str = DebugStr();
-                    Warning("Unhandled iscript command %s in Unit::ProgressFrame_Late, unit %s", cmd_str.c_str(), unit_str.c_str());
-                }
-                break;
-            }
-        }
+        ProgressIscript("ProgressFrame_Late", results);
     }
 }
 
@@ -861,14 +898,14 @@ void Unit::ProgressActiveUnitFrame()
             {
                 subunit->flags &= ~UnitStatus::Unk01000000;
                 if (flags & UnitStatus::Reacts && ~subunit->flingy_flags & 0x8)
-                    subunit->SetIscriptAnimation_NoHandling(IscriptAnim::Idle, true, "ProgressActiveUnitFrame idle", nullptr);
+                    subunit->SetIscriptAnimation(Iscript::Animation::Idle, true, "ProgressActiveUnitFrame idle", nullptr);
             }
         }
         else if (~subunit->flags & UnitStatus::Unk01000000)
         {
             subunit->flags |= UnitStatus::Unk01000000;
             if (flags & UnitStatus::Reacts && ~subunit->flingy_flags & 0x8)
-                subunit->SetIscriptAnimation_NoHandling(IscriptAnim::Walking, true, "ProgressActiveUnitFrame walking", nullptr);
+                subunit->SetIscriptAnimation(Iscript::Animation::Walking, true, "ProgressActiveUnitFrame walking", nullptr);
         }
         subunit->ProgressActiveUnitFrame<flyers>();
         *bw::active_iscript_unit = this;
@@ -887,22 +924,13 @@ void Unit::ProgressFrame_Hidden(ProgressUnitResults *results)
     ProgressTimers(results);
     ProgressOrder_Hidden(results);
     ProgressSecondaryOrder_Hidden(this);
-    if (sprite)
+    if (sprite != nullptr)
     {
-        for (auto &cmd : sprite->ProgressFrame(IscriptContext(this), main_rng))
-        {
-            if (cmd.opcode == IscriptOpcode::End)
-            {
-                sprite->Remove();
-                sprite = nullptr;
-            }
-            else
-                Warning("Unhandled iscript command %x in Unit::ProgressFrame_Hidden, unit %x", cmd.opcode, unit_id);
-        }
+        ProgressIscript("ProgressFrame_Late", results);
     }
 }
 
-bool Unit::ProgressFrame_Dying()
+bool Unit::ProgressFrame_Dying(ProgressUnitResults *results)
 {
     if (sprite)
     {
@@ -913,16 +941,7 @@ bool Unit::ProgressFrame_Dying()
         }
         else
         {
-            for (auto &cmd : sprite->ProgressFrame(IscriptContext(this), main_rng))
-            {
-                if (cmd.opcode == IscriptOpcode::End)
-                {
-                    sprite->Remove();
-                    sprite = nullptr;
-                }
-                else
-                    Warning("Unhandled iscript command %x in Unit::ProgressFrame_Dying, unit %x", cmd.opcode, unit_id);
-            }
+            ProgressIscript("ProgressFrame_Late", results);
         }
     }
     if (flags & UnitStatus::HasDisappearingCreep)
@@ -1006,10 +1025,10 @@ void Unit::UpdatePoweredStates()
                 unit->flags &= ~UnitStatus::Disabled;
                 if (unit->flags & UnitStatus::Completed)
                 {
-                    unit->SetIscriptAnimation_NoHandling(IscriptAnim::Enable, true, "UpdatePoweredStates enable", nullptr);
+                    unit->SetIscriptAnimation(Iscript::Animation::Enable, true, "UpdatePoweredStates enable", nullptr);
                     // No, it does not check if there is unit being built
                     if (/*unit->IsBuildingProtossAddon() || */unit->IsUpgrading())
-                        unit->SetIscriptAnimation_NoHandling(IscriptAnim::Working, true, "UpdatePoweredStates working", nullptr);
+                        unit->SetIscriptAnimation(Iscript::Animation::Working, true, "UpdatePoweredStates working", nullptr);
                 }
             }
         }
@@ -1019,8 +1038,9 @@ void Unit::UpdatePoweredStates()
             if (~unit->flags & UnitStatus::Disabled)
             {
                 unit->flags |= UnitStatus::Disabled;
+                // Incomplete buildings become disabled once finished
                 if (unit->flags & UnitStatus::Completed)
-                    unit->SetIscriptAnimation_NoHandling(IscriptAnim::Disable, true, "UpdatePoweredStates disable", nullptr);
+                    unit->SetIscriptAnimation(Iscript::Animation::Disable, true, "UpdatePoweredStates disable", nullptr);
             }
         }
     }
@@ -1064,9 +1084,8 @@ ProgressUnitResults Unit::ProgressFrames()
     {
         Unit *unit = next;
         next = unit->list.next;
-        *bw::active_iscript_flingy = unit;
         *bw::active_iscript_unit = unit;
-        bool deleted = unit->ProgressFrame_Dying();
+        bool deleted = unit->ProgressFrame_Dying(&results);
         // If unit has disappearing creep it will not be deleted even if sprite has been
         if (!deleted && unit->sprite)
         {
@@ -1079,14 +1098,12 @@ ProgressUnitResults Unit::ProgressFrames()
     auto pre_time = klokki.GetTime();
     for (Unit *unit : *bw::first_active_unit)
     {
-        *bw::active_iscript_flingy = unit;
         *bw::active_iscript_unit = unit;
         unit->ProgressActiveUnitFrame<false>(); // This does movement as well
     }
     // Flyer optimization as their movement is slow when there's large stack of them
     for (Unit *unit : first_movementstate_flyer)
     {
-        *bw::active_iscript_flingy = unit;
         *bw::active_iscript_unit = unit;
         unit->ProgressActiveUnitFrame<true>();
     }
@@ -1122,7 +1139,6 @@ ProgressUnitResults Unit::ProgressFrames()
     {
         Unit *unit = next;
         next = unit->list.next;
-        *bw::active_iscript_flingy = unit;
         *bw::active_iscript_unit = unit;
         unit->ProgressFrame(&results);
     }
@@ -1134,7 +1150,6 @@ ProgressUnitResults Unit::ProgressFrames()
         if (unit->IsInvisible())
             unit->invisibility_effects = 0;
 
-        *bw::active_iscript_flingy = unit;
         *bw::active_iscript_unit = unit;
         unit->ProgressFrame_Hidden(&results);
     }
@@ -1146,7 +1161,6 @@ ProgressUnitResults Unit::ProgressFrames()
     {
         Unit *unit = next;
         next = unit->list.next;
-        *bw::active_iscript_flingy = unit;
         *bw::active_iscript_unit = unit;
         unit->ProgressFrame(&results);
     }
@@ -1180,7 +1194,6 @@ ProgressUnitResults Unit::ProgressFrames()
     late_unit_frames_in_progress = false;
     auto post_time = klokki.GetTime();
 
-    *bw::active_iscript_flingy = nullptr;
     *bw::active_iscript_unit = nullptr;
 
     post_time -= active_frames_time;
@@ -1821,7 +1834,7 @@ void Unit::LoadUnit(Unit *unit)
     unit->related = this;
     unit->flags |= UnitStatus::InTransport;
     HideUnit(unit);
-    unit->SetIscriptAnimation_NoHandling(IscriptAnim::Idle, true, "LoadUnit", nullptr);
+    unit->SetIscriptAnimation(Iscript::Animation::Idle, true, "LoadUnit", nullptr);
     RefreshUi();
 
     if (flags & UnitStatus::Building)
@@ -1867,16 +1880,6 @@ void Unit::OrderDone()
     {
         IssueOrderTargetingNothing(this, GetIdleOrder());
     }
-}
-
-void Unit::IscriptToIdle()
-{
-    flags &= ~UnitStatus::Nobrkcodestart;
-    sprite->flags &= ~SpriteFlags::Nobrkcodestart;
-    auto cmds = sprite->IscriptToIdle(IscriptContext(this), main_rng);
-    if (!Empty(cmds))
-        Warning("Unit::IscriptToIdle did not handle all iscript commands for unit %x", unit_id);
-    flingy_flags &= ~0x8;
 }
 
 bool Unit::UnloadUnit(Unit *unit)
@@ -2448,11 +2451,9 @@ void Unit::KillChildren(ProgressUnitResults *results)
                 RemoveFromHangar();
             return;
         case Unit::Ghost:
-            if (ghost.nukedot)
+            if (ghost.nukedot != nullptr)
             {
-                auto cmds = ghost.nukedot->SetIscriptAnimation(IscriptAnim::Death, true);
-                if (!Empty(cmds))
-                    Warning("Unit::KillChildren did not handle all iscript commands for nukedot (%x)", ghost.nukedot->sprite_id);
+                ghost.nukedot->SetIscriptAnimation_Lone(Iscript::Animation::Death, true, main_rng, "Unit::KillChildren");
             }
             return;
         case Unit::NuclearSilo:
@@ -2762,7 +2763,7 @@ void Unit::Order_Die(ProgressUnitResults *results)
     {
         if (~flags & UnitStatus::Hallucination || flags & UnitStatus::SelfDestructing)
         {
-            SetIscriptAnimation_NoHandling(IscriptAnim::Death, true, "Order_Die", results);
+            SetIscriptAnimation(Iscript::Animation::Death, true, "Order_Die", results);
             Die(results);
             return;
         }
@@ -2818,7 +2819,7 @@ void Unit::CancelConstruction(ProgressUnitResults *results)
         int old_image = sprites_dat_image[flingy_dat_sprite[units_dat_flingy[previous_unit_id]]];
         ReplaceSprite(old_image, 0, sprite.get());
         order_signal &= ~0x4;
-        SetIscriptAnimation_NoHandling(IscriptAnim::Special2, true, "CancelConstruction", results);
+        SetIscriptAnimation(Iscript::Animation::Special2, true, "CancelConstruction", results);
         IssueOrderTargetingNothing(this, Order::Birth);
     }
     else
@@ -3600,16 +3601,6 @@ void Unit::ClearTempFlags()
     temp_flagged.clear();
 }
 
-bool Unit::MoveFlingy()
-{
-    return ((Flingy *)this)->Move(IscriptContext(this));
-}
-
-Sprite::ProgressFrame_C Unit::SetIscriptAnimation(int anim, bool force)
-{
-    return sprite->SetIscriptAnimation(anim, force, IscriptContext(this), main_rng);
-}
-
 const char *Unit::GetName() const
 {
     return (*bw::stat_txt_tbl)->GetTblString(unit_id + 1);
@@ -3620,33 +3611,6 @@ std::string Unit::DebugStr() const
     char buf[256];
     snprintf(buf, sizeof buf, "%s (id %x)", GetName(), unit_id);
     return std::string(buf);
-}
-
-void Unit::SetIscriptAnimation_NoHandling(int anim, bool force, const char *caller, ProgressUnitResults *results)
-{
-    for (auto &cmd : SetIscriptAnimation(anim, force))
-    {
-        if (!results)
-        {
-            auto cmd_str = cmd.DebugStr();
-            auto unit_str = DebugStr();
-            Warning("%s did not handle all iscript commands for unit %s, command %s", caller, unit_str.c_str(), cmd_str.c_str());
-            break;
-        }
-        switch (cmd.opcode)
-        {
-            case IscriptOpcode::AttackMelee:
-                AttackMelee(cmd.data[0], (uint16_t *)(cmd.data + 1), results);
-            break;
-            default:
-            {
-                auto cmd_str = cmd.DebugStr();
-                auto unit_str = DebugStr();
-                Warning("%s did not handle all iscript commands for unit %s, command %s", caller, unit_str.c_str(), cmd_str.c_str());
-            }
-            break;
-        }
-    }
 }
 
 void Unit::DoNextQueuedOrder()
@@ -3762,7 +3726,8 @@ void Unit::ShowShieldHitOverlay(int direction)
     direction = ((direction - 0x7c) >> 3) & 0x1f;
     int8_t *shield_los = images_dat_shield_overlay[img->image_id];
     shield_los = shield_los + *(uint32_t *)(shield_los + 8 + img->direction * 4) + direction * 2; // sigh
-    sprite->AddOverlayAboveMain(Image::ShieldOverlay, shield_los[0], shield_los[1], direction);
+    UnitIscriptContext ctx(this, nullptr, "ShowShieldHitOverlay", main_rng, false);
+    sprite->AddOverlayAboveMain(&ctx, Image::ShieldOverlay, shield_los[0], shield_los[1], direction);
 }
 
 void Unit::DamageShields(int32_t dmg, int direction)
@@ -3824,7 +3789,7 @@ void Unit::Order_SapUnit(ProgressUnitResults *results)
                     return;
                 }
                 target = this;
-                SetIscriptAnimation_NoHandling(IscriptAnim::Special1, true, "Order_SapLocation", results);
+                SetIscriptAnimation(Iscript::Animation::Special1, true, "Order_SapLocation", results);
                 flags |= UnitStatus::UninterruptableOrder;
                 order_state = 2;
             } // Fall through
@@ -3868,7 +3833,7 @@ void Unit::Order_SapLocation(ProgressUnitResults *results)
         }
         {
             target = this;
-            SetIscriptAnimation_NoHandling(IscriptAnim::Special1, true, "Order_SapLocation", results);
+            SetIscriptAnimation(Iscript::Animation::Special1, true, "Order_SapLocation", results);
             flags |= UnitStatus::UninterruptableOrder;
             order_state = 2;
         }
@@ -4009,7 +3974,7 @@ void Unit::Order_AttackUnit(ProgressUnitResults *results)
                 order_state += 1;
                 if (ai != nullptr)
                     Ai_StimIfNeeded(this);
-                DoAttack(results, IscriptAnim::GndAttkRpt);
+                DoAttack(results, Iscript::Animation::GndAttkRpt);
             break;
             // Have multiple states to prevent units from getting stuck, kind of messy
             // State 1 = Out of range started, 2 = Inside range started - may need to stop, 3 = Continuing
@@ -4071,7 +4036,7 @@ void Unit::Order_AttackUnit(ProgressUnitResults *results)
                         StopMoving(this);
                     if (ai != nullptr)
                         Ai_StimIfNeeded(this);
-                    DoAttack(results, IscriptAnim::GndAttkRpt);
+                    DoAttack(results, Iscript::Animation::GndAttkRpt);
                 }
             }
             break;
@@ -4104,18 +4069,7 @@ void Unit::DoAttack_Main(int weapon, int iscript_anim, bool air, ProgressUnitRes
         return;
     flingy_flags |= 0x8;
     cooldown = GetCooldown(weapon) + main_rng->Rand(3) - 1;
-    for (auto &cmd : SetIscriptAnimation(iscript_anim, true))
-    {
-        switch (cmd.opcode)
-        {
-            case IscriptOpcode::AttackMelee:
-                AttackMelee(cmd.data[0], (uint16_t *)(cmd.data + 1), results);
-            break;
-            default:
-                Warning("Unhandled iscript command %x in Unit::DoAttack_Main, unit %x", cmd.opcode, unit_id);
-            break;
-        }
-    }
+    SetIscriptAnimation(iscript_anim, true, "DoAttack_Main", results);
 }
 
 void Unit::AttackMelee(int sound_amt, uint16_t *sounds, ProgressUnitResults *results)
@@ -4222,7 +4176,7 @@ void Unit::Order_HarvestMinerals(ProgressUnitResults *results)
             } // Fall through
             case 4:
             {
-                SetIscriptAnimation_NoHandling(IscriptAnim::AlmostBuilt, true, "Order_HarvestMinerals", results);
+                SetIscriptAnimation(Iscript::Animation::AlmostBuilt, true, "Order_HarvestMinerals", results);
                 order_state = 5;
                 order_timer = 75;
             }
@@ -4230,7 +4184,7 @@ void Unit::Order_HarvestMinerals(ProgressUnitResults *results)
             case 5:
             if (order_timer == 0)
             {
-                SetIscriptAnimation_NoHandling(IscriptAnim::GndAttkToIdle, true, "Order_HarvestMinerals", results);
+                SetIscriptAnimation(Iscript::Animation::GndAttkToIdle, true, "Order_HarvestMinerals", results);
                 AcquireResource(target, results);
                 FinishedMining(target, this);
                 DeleteSpecificOrder(Order::Harvest3);
@@ -4401,7 +4355,7 @@ void Unit::Order_WarpingArchon(int merge_distance, int close_distance, int resul
             EndInvisibility(this, Sound::Decloak);
 
         sprite->flags &= ~SpriteFlags::Nobrkcodestart;
-        SetIscriptAnimation_NoHandling(IscriptAnim::Special1, true, "Order_WarpingArchon", results);
+        SetIscriptAnimation(Iscript::Animation::Special1, true, "Order_WarpingArchon", results);
 
         SetButtons(None);
         kills += target->kills;
@@ -4428,7 +4382,7 @@ void Unit::Order_SpiderMine(ProgressUnitResults *results)
         case 1:
             if (ground_cooldown != 0)
                 return;
-            SetIscriptAnimation_NoHandling(IscriptAnim::Burrow, true, "Order_SpiderMine (burrow)", results);
+            SetIscriptAnimation(Iscript::Animation::Burrow, true, "Order_SpiderMine (burrow)", results);
             flags |= UnitStatus::NoCollision;
             order_state = 2;
             // Fall through
@@ -4449,7 +4403,7 @@ void Unit::Order_SpiderMine(ProgressUnitResults *results)
             if (!victim)
                 return;
             target = victim;
-            SetIscriptAnimation_NoHandling(IscriptAnim::Unburrow, true, "Order_SpiderMine (unburrow)", results);
+            SetIscriptAnimation(Iscript::Animation::Unburrow, true, "Order_SpiderMine (unburrow)", results);
             sprite->flags &= ~SpriteFlags::Unk40;
             IssueSecondaryOrder(Order::Nothing);
             order_state = 4;
@@ -4489,7 +4443,7 @@ void Unit::Order_SpiderMine(ProgressUnitResults *results)
             }
             target = nullptr;
             order_target_pos = sprite->position;
-            SetIscriptAnimation_NoHandling(IscriptAnim::Special1, true, "Order_SpiderMine (explode)", results);
+            SetIscriptAnimation(Iscript::Animation::Special1, true, "Order_SpiderMine (explode)", results);
             order_state = 6;
             // Fall through
         case 6:
@@ -4542,7 +4496,7 @@ void Unit::Order_Scarab(ProgressUnitResults *results)
             if (IsStandingStill())
             {
                 order_target_pos = sprite->position;
-                SetIscriptAnimation_NoHandling(IscriptAnim::Special1, true, "Order_Scarab", results);
+                SetIscriptAnimation(Iscript::Animation::Special1, true, "Order_Scarab", results);
                 order_state = 6;
             }
         }
@@ -4555,7 +4509,7 @@ void Unit::Order_Scarab(ProgressUnitResults *results)
             if (IsInArea(this, weapons_dat_inner_splash[units_dat_ground_weapon[unit_id]] / 2, target))
             {
                 order_target_pos = sprite->position;
-                SetIscriptAnimation_NoHandling(IscriptAnim::Special1, true, "Order_Scarab", results);
+                SetIscriptAnimation(Iscript::Animation::Special1, true, "Order_Scarab", results);
                 order_state = 6;
             }
         }
@@ -4713,7 +4667,7 @@ void Unit::Order_Interceptor(ProgressUnitResults *results)
             {
                 if (IsInAttackRange(target))
                 {
-                    DoAttack(results, IscriptAnim::GndAttkRpt);
+                    DoAttack(results, Iscript::Animation::GndAttkRpt);
                 }
                 if (WillBeInAreaAtStop(target, 50))
                 {
@@ -4832,8 +4786,8 @@ bool Unit::AttackAtPoint(ProgressUnitResults *results)
     flingy_flags |= 0x8;
     *bw::last_bullet_spawner = nullptr;
     ground_cooldown = air_cooldown = GetCooldown(weapon) + main_rng->Rand(3) - 1;
-    int anim = ground ? IscriptAnim::GndAttkRpt : IscriptAnim::AirAttkRpt;
-    SetIscriptAnimation_NoHandling(anim, true, "AttackAtPoint", results);
+    int anim = ground ? Iscript::Animation::GndAttkRpt : Iscript::Animation::AirAttkRpt;
+    SetIscriptAnimation(anim, true, "AttackAtPoint", results);
     return true;
 }
 
@@ -5016,7 +4970,7 @@ void Unit::Order_Land(ProgressUnitResults *results)
         case 2:
             if (position != unk_move_waypoint && GetFacingDirection(sprite->position.x, sprite->position.y, unk_move_waypoint.x, unk_move_waypoint.y) != movement_direction)
                 return;
-            SetIscriptAnimation_NoHandling(IscriptAnim::Landing, true, "Order_Land", results);
+            SetIscriptAnimation(Iscript::Animation::Landing, true, "Order_Land", results);
             order_state = 3;
             // No break
         case 3:
@@ -5108,10 +5062,10 @@ void Unit::Order_SiegeMode(ProgressUnitResults *results)
         {
             if (flingy_flags & 0x2 || subunit->flingy_flags & 0x2 || subunit->flags & UnitStatus::Nobrkcodestart)
                 return;
-            SetMoveTargetToNearbyPoint(units_dat_direction[unit_id], this);
+            SetMoveTargetToNearbyPoint(units_dat_direction[unit_id], (Flingy *)this);
             IssueOrderTargetingUnit2(subunit, Order::Nothing3, this);
-            SetMoveTargetToNearbyPoint(units_dat_direction[subunit->unit_id], subunit);
-            subunit->SetIscriptAnimation_NoHandling(IscriptAnim::Special1, true, "Order_SiegeMode", results);
+            SetMoveTargetToNearbyPoint(units_dat_direction[subunit->unit_id], (Flingy *)subunit);
+            subunit->SetIscriptAnimation(Iscript::Animation::Special1, true, "Order_SiegeMode", results);
             bool killed = false;
             unit_search->ForEachUnitInArea(GetCollisionRect(), [&](Unit *other) {
                 if (other->flags & UnitStatus::Building && ~other->flags & UnitStatus::NoCollision)
@@ -5369,7 +5323,7 @@ void Unit::GiveTo(int new_player, ProgressUnitResults *results)
         if (build_queue[current_build_slot % 5] < CommandCenter)
         {
             CancelTrain(results);
-            SetIscriptAnimation_NoHandling(IscriptAnim::WorkingToIdle, true, "Unit::GiveTo", results);
+            SetIscriptAnimation(Iscript::Animation::WorkingToIdle, true, "Unit::GiveTo", results);
         }
         if (building.tech != Tech::None)
             CancelTech(this);
@@ -5476,7 +5430,7 @@ void Unit::Order_Train(ProgressUnitResults *results)
             if (train_unit_id == None)
             {
                 IssueSecondaryOrder(Order::Nothing);
-                SetIscriptAnimation_NoHandling(IscriptAnim::WorkingToIdle, true, "Unit::Order_Train", results);
+                SetIscriptAnimation(Iscript::Animation::WorkingToIdle, true, "Unit::Order_Train", results);
             }
             else
             {
@@ -5487,7 +5441,7 @@ void Unit::Order_Train(ProgressUnitResults *results)
                 }
                 else
                 {
-                    SetIscriptAnimation_NoHandling(IscriptAnim::Working, true, "Unit::Order_Train", results);
+                    SetIscriptAnimation(Iscript::Animation::Working, true, "Unit::Order_Train", results);
                     secondary_order_state = 2;
                 }
             }
@@ -5544,4 +5498,252 @@ void Unit::Order_Train(ProgressUnitResults *results)
             currently_building = nullptr;
         break;
     }
+}
+
+void Unit::Order_ProtossBuildSelf(ProgressUnitResults *results)
+{
+    switch (order_state)
+    {
+        case 0:
+            if (remaining_build_time == 0)
+            {
+                SetIscriptAnimation(Iscript::Animation::Special1, true, "Order_ProtossBuildSelf", results);
+                PlaySound(Sound::ProtossBuildingFinishing, this, 1, 0);
+                order_state = 1;
+            }
+            else
+            {
+                ProgressBuildingConstruction();
+            }
+        break;
+        case 1:
+            if (order_signal & 0x1)
+            {
+                order_signal &= ~0x1;
+                ReplaceSprite(sprites_dat_image[sprite->sprite_id], 0, sprite.get());
+                Image *image = sprite->main_image;
+                // Bw actually has iscript header hardcoded as 193
+                image->iscript.Initialize(*bw::iscript, images_dat_iscript_header[Image::WarpTexture]);
+                UnitIscriptContext ctx(this, results, "Order_ProtossBuildSelf", main_rng, false);
+                image->SetIscriptAnimation(&ctx, Iscript::Animation::Init);
+                image->iscript.Initialize(*bw::iscript, images_dat_iscript_header[image->image_id]);
+                // Now the image is still executing the warp texture iscript, even though
+                // any future SetIscriptAnimation() calls cause it to use original iscript.
+                image->SetDrawFunc(Image::UseWarpTexture, image->drawfunc_param);
+                // Why?
+                image->iscript.ProgressFrame(&ctx, image);
+                order_state = 2;
+            }
+        break;
+        case 2:
+            if (order_signal & 0x1)
+            {
+                order_signal &= ~0x1;
+                // Wait, why again?
+                ReplaceSprite(sprites_dat_image[sprite->sprite_id], 0, sprite.get());
+                SetIscriptAnimation(Iscript::Animation::WarpIn, true, "Order_ProtossBuildSelf", results);
+                order_state = 3;
+            }
+        break;
+        case 3:
+            if (order_signal & 0x1)
+            {
+                order_signal &= ~0x1;
+                FinishUnit_Pre(this);
+                FinishUnit(this);
+                CheckUnstack(this);
+                if (flags & UnitStatus::Disabled)
+                {
+                    SetIscriptAnimation(Iscript::Animation::Disable, true, "Order_ProtossBuildSelf", results);
+                }
+                // This heals a bit if the buidling was damaged but is otherwise pointless
+                ProgressBuildingConstruction();
+            }
+        break;
+    }
+}
+
+void Unit::ProgressBuildingConstruction()
+{
+    int build_speed = 1;
+    if (IsCheatActive(Cheats::Operation_Cwal))
+        build_speed = 10;
+    remaining_build_time = std::max((int)remaining_build_time - build_speed, 0);
+    SetHp(this, hitpoints + build_hp_gain * build_speed);
+    shields = std::min(units_dat_shields[unit_id] * 256, shields + build_shield_gain * build_speed);
+}
+
+Entity *Unit::AsEntity()
+{
+    return (Entity *)this;
+}
+
+Iscript::CmdResult Unit::HandleIscriptCommand(UnitIscriptContext *ctx, Image *img,
+                                              Iscript::Script *script, const Iscript::Command &cmd)
+{
+    using namespace Iscript::Opcode;
+    using Iscript::CmdResult;
+
+    CmdResult result = CmdResult::Handled;
+    switch (cmd.opcode)
+    {
+        case SetVertPos:
+            // Cloaked air units don't fly up and down..
+            if (!IsInvisible())
+                result = CmdResult::NotHandled;
+        break;
+        case SprUlUseLo:
+        case SprUl:
+            // Similar check like with SetVertPos.
+            // (Spruluselo is a poorly named counterpart to sprul)
+            if (!IsInvisible() || images_dat_draw_if_cloaked[cmd.val])
+                result = CmdResult::NotHandled;
+        break;
+        case Move:
+            // Note that in some cases bw tries to predict the speed,
+            // the handling for that is in a hook
+            SetSpeed_Iscript(this, CalculateSpeedChange(this, cmd.val * 256));
+        break;
+        case LiftoffCondJmp:
+            if (IsFlying())
+                script->pos = cmd.pos;
+        break;
+        case AttackWith:
+            Iscript_AttackWith(this, cmd.val);
+        break;
+        case Iscript::Opcode::Attack:
+            if (target == nullptr || target->IsFlying())
+                Iscript_AttackWith(this, 0);
+            else
+                Iscript_AttackWith(this, 1);
+        break;
+        case CastSpell:
+            if (orders_dat_targeting_weapon[order] != Weapon::None && !ShouldStopOrderedSpell(this))
+                FireWeapon(this, orders_dat_targeting_weapon[order]);
+        break;
+        case UseWeapon:
+            Iscript_UseWeapon(cmd.val, this);
+        break;
+        case GotoRepeatAttk:
+            flingy_flags &= ~0x8;
+        break;
+        case NoBrkCodeStart:
+            flags |= UnitStatus::Nobrkcodestart;
+            sprite->flags |= 0x80;
+        break;
+        case NoBrkCodeEnd:
+            flags &= ~UnitStatus::Nobrkcodestart;
+            sprite->flags &= ~0x80;
+            if (order_queue_begin != nullptr && order_flags & 0x1)
+            {
+                IscriptToIdle();
+                DoNextQueuedOrder();
+            }
+        break;
+        case IgnoreRest:
+            if (target == nullptr)
+                IscriptToIdle();
+            else
+            {
+                script->wait = 10;
+                script->pos -= cmd.Size(); // Loop on this cmd
+                result = CmdResult::Stop;
+            }
+        break;
+        case AttkShiftProj:
+            // Sigh
+            weapons_dat_x_offset[GetGroundWeapon()] = cmd.val;
+            Iscript_AttackWith(this, 1);
+        break;
+        case CreateGasOverlays:
+        {
+            Image *gas_overlay = new Image;
+            if (sprite->first_overlay == img)
+            {
+                Assert(img->list.prev == nullptr);
+                sprite->first_overlay = gas_overlay;
+            }
+            gas_overlay->list.prev = img->list.prev;
+            gas_overlay->list.next = img;
+            if (img->list.prev != nullptr)
+                img->list.prev->list.next = gas_overlay;
+            img->list.prev = gas_overlay;
+            int smoke_img = Image::VespeneSmokeOverlay1 + cmd.val;
+            // Bw can be misused to have this check for loaded nuke and such
+            // Even though resource_amount is word, it won't report incorrect
+            // values as unit array starts from 0x0059CCA8
+            // (The lower word is never 0 if the union contains unit)
+            // But with dynamic allocation, that is not the case
+            if (units_dat_flags[unit_id] & UnitFlags::ResourceContainer)
+            {
+                if (resource.resource_amount == 0)
+                    smoke_img = Image::VespeneSmallSmoke1 + cmd.val;
+            }
+            else
+            {
+                if (silo.nuke == nullptr)
+                    smoke_img = Image::VespeneSmallSmoke1 + cmd.val;
+            }
+            Point pos = LoFile::GetOverlay(img->image_id, Overlay::Special).GetValues(img, cmd.val).ToPoint16();
+            InitializeImageFull(smoke_img, gas_overlay, pos.x + img->x_off, pos.y + img->y_off, sprite.get());
+        }
+        break;
+        case Iscript::Opcode::AttackMelee:
+            if (ctx->results == nullptr)
+                result = CmdResult::NotHandled;
+            else
+                AttackMelee(cmd.data[0], (uint16_t *)(cmd.data + 1), ctx->results);
+        break;
+        default:
+            result = CmdResult::NotHandled;
+        break;
+    }
+
+    // Compilers are able to generate better code when the HandleIscriptCommand is not
+    // called at multiple different switch cases
+    if (result == CmdResult::NotHandled)
+        result = AsEntity()->HandleIscriptCommand(ctx, img, script, cmd);
+    return result;
+}
+
+void Unit::WarnUnhandledIscriptCommand(const Iscript::Command &cmd, const char *caller) const
+{
+    Warning("%s did not handle all iscript commands for unit %s, command %s",
+        caller, DebugStr().c_str(), cmd.DebugStr().c_str());
+}
+
+void Unit::ProgressIscript(const char *caller, ProgressUnitResults *results)
+{
+    UnitIscriptContext ctx(this, results, caller, main_rng, true);
+    ctx.ProgressIscript();
+    ctx.CheckDeleted(); // Safe? No idea, needs tests, but works with dying units
+}
+
+void Unit::SetIscriptAnimation(int anim, bool force, const char *caller, ProgressUnitResults *results)
+{
+    UnitIscriptContext(this, results, caller, main_rng, false).SetIscriptAnimation(anim, force);
+}
+
+void Unit::SetIscriptAnimationForImage(Image *img, int anim)
+{
+    UnitIscriptContext ctx(this, nullptr, "SetIscriptAnimation hook", main_rng, false);
+    img->SetIscriptAnimation(&ctx, anim);
+}
+
+bool Unit::MoveFlingy()
+{
+    bool result = AsEntity()->flingy.Move();
+    if (*bw::show_endwalk_anim)
+        SetIscriptAnimation(Iscript::Animation::Idle, false, "MoveFlingy", nullptr);
+    else if (*bw::show_startwalk_anim)
+        SetIscriptAnimation(Iscript::Animation::Walking, true, "MoveFlingy", nullptr);
+    return result;
+}
+
+void Unit::IscriptToIdle()
+{
+    flags &= ~UnitStatus::Nobrkcodestart;
+    sprite->flags &= ~SpriteFlags::Nobrkcodestart;
+    UnitIscriptContext(this, nullptr, "IscriptToIdle", main_rng, false).IscriptToIdle();
+    flingy_flags &= ~0x8;
 }

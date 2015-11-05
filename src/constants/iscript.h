@@ -1,7 +1,9 @@
 #ifndef CONST_ISCRIPT_H
 #define CONST_ISCRIPT_H
 
-namespace IscriptAnim
+namespace Iscript {
+
+namespace Animation
 {
     const int Init = 0x0;
     const int Death = 0x1;
@@ -29,7 +31,7 @@ namespace IscriptAnim
     const int Enable = 0x1b;
 }
 
-namespace IscriptOpcode
+namespace Opcode
 {
     const int PlayFram = 0x0;
     const int PlayFramTile = 0x1;
@@ -101,4 +103,7 @@ namespace IscriptOpcode
     const int Unused43 = 0x43;
     const int DoGrdDamage = 0x44;
 }
+
+} // namespace Iscript
+
 #endif /* CONST_ISCRIPT_H */

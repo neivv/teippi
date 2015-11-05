@@ -106,10 +106,32 @@ struct struct230
     uint8_t building_was_hit;
 };
 
+class UnitIscriptContext : public Iscript::Context
+{
+    public:
+        constexpr UnitIscriptContext(Unit *unit, ProgressUnitResults *results,
+                                     const char *caller, Rng *rng, bool can_delete) :
+            Iscript::Context(rng, can_delete),
+            unit(unit), results(results), caller(caller) { }
+
+        Unit * const unit;
+        ProgressUnitResults * const results;
+        const char * const caller;
+
+        void IscriptToIdle();
+        void ProgressIscript();
+        void SetIscriptAnimation(int anim, bool force);
+
+        virtual Iscript::CmdResult HandleCommand(Image *img, Iscript::Script *script,
+                                                 const Iscript::Command &cmd) override;
+        virtual void NewOverlay(Image *img) override;
+};
+
  // Derived from BWAPI's unit.h
 
 class Unit
 {
+    friend class UnitIscriptContext;
     public:
         static const size_t offset_of_allocated = 0xb8;
 
@@ -197,7 +219,7 @@ class Unit
         uint8_t secondary_order; // 0xa6
         uint8_t buildingOverlayState; // 0xa7
         uint16_t build_hp_gain; // 0xa8
-        uint16_t unkaa;
+        uint16_t build_shield_gain;
         uint16_t remaining_build_time;
         uint16_t previous_hp;
 
@@ -435,6 +457,7 @@ class Unit
         bool IsUnreachable(const Unit *other) const;
         bool IsCritter() const;
         bool IsWorker() const { return units_dat_flags[unit_id] & UnitFlags::Worker; }
+        bool IsHero() const { return units_dat_flags[unit_id] & UnitFlags::Hero; }
         bool IsFlying() const { return flags & UnitStatus::Air; }
         bool IsInvincible() const { return flags & UnitStatus::Invincible; }
 
@@ -641,11 +664,18 @@ class Unit
         std::string DebugStr() const;
         const char *GetName() const;
 
+        /// Progresses iscript by a frame. Sprite may become nullptr if all images
+        /// are deleted by this function.
+        void ProgressIscript(const char *caller, ProgressUnitResults *results);
+        /// Hack for hooks
+        void SetIscriptAnimationForImage(Image *img, int anim);
+
     private:
         static Unit *RawAlloc();
         Unit(bool); // Raw alloc
 
         void AddToLookup();
+        Entity *AsEntity();
 
         Unit *PickBestTarget(Unit **targets, int amount) const;
         /// These two are used by Ai_IsBetterTarget
@@ -661,7 +691,7 @@ class Unit
         void ProgressFrame(ProgressUnitResults *results);
         void ProgressFrame_Late(ProgressUnitResults *results);
         void ProgressFrame_Hidden(ProgressUnitResults *results);
-        bool ProgressFrame_Dying(); // Return true when deleted
+        bool ProgressFrame_Dying(ProgressUnitResults *results); // Return true when deleted
         void ProgressTimers(ProgressUnitResults *results);
         template <bool flyers> void ProgressActiveUnitFrame();
         void ProgressOrder(ProgressUnitResults *results);
@@ -675,9 +705,6 @@ class Unit
 
         static Unit ** const id_lookup;
         static vector<Unit *>temp_flagged;
-
-        Sprite::ProgressFrame_C SetIscriptAnimation(int anim, bool force);
-        void SetIscriptAnimation_NoHandling(int anim, bool force, const char *caller, ProgressUnitResults *results);
 
         // Returns all attackers with which UnitWasHit has to be called
         vector<Unit *> RemoveFromResults(ProgressUnitResults *results);
@@ -744,6 +771,15 @@ class Unit
         void CancelTrain(ProgressUnitResults *results);
         void TransferTechsAndUpgrades(int new_player);
         void Order_Train(ProgressUnitResults *results);
+        void Order_ProtossBuildSelf(ProgressUnitResults *results);
+        /// Increases hp and reduces build time (if needed).
+        /// Might be only be used for protoss buildings.
+        void ProgressBuildingConstruction();
+
+        Iscript::CmdResult HandleIscriptCommand(UnitIscriptContext *ctx, Image *img,
+                                                Iscript::Script *script, const Iscript::Command &cmd);
+        void WarnUnhandledIscriptCommand(const Iscript::Command &cmd, const char *caller) const;
+        void SetIscriptAnimation(int anim, bool force, const char *caller, ProgressUnitResults *results);
 
     public:
         static uint32_t next_id;

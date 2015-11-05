@@ -25,6 +25,8 @@
 #include "warn.h"
 #include "unit_cache.h"
 #include "damage_calculation.h"
+#include "strings.h"
+#include "entity.h"
 
 using std::get;
 using std::min;
@@ -211,8 +213,15 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
     current_speed = 0;
 
     auto flingy_id = weapons_dat_flingy[weapon];
-    auto result = InitializeFlingy((Flingy *)this, player_, direction, flingy_id, pos.x, pos.y);
-    if (result == 0) { Assert(result != 0); } // Avoids an unused var warning
+
+    // Yes, bw mixes bullet's images with spawner's unit code.
+    // At least wraith's lasers actually depend on this behaviour.
+    const char *desc = "Bullet::Initialize (First frame of bullet's animation modifies the unit who spawned it)";
+    UnitIscriptContext ctx(spawner, nullptr, desc, main_rng, false);
+    bool success = ((Flingy *)this)->Initialize(&ctx, flingy_id, player_, direction, pos);
+    if (!success)
+        return false;
+
     player = player_;
     weapon_id = weapon;
     time_remaining = weapons_dat_death_time[weapon_id];
@@ -385,7 +394,8 @@ Bullet *BulletSystem::AllocateBullet(Unit *parent, int player, int direction, in
     else
     {
         debug_log->Log("Bullet creation failed %x %x.%x\n", weapon, pos.x, pos.y);
-        bullet_ptr->sprite->Remove();
+        if (bullet_ptr->sprite != nullptr)
+            bullet_ptr->sprite->Remove();
         return nullptr;
     }
 }
@@ -704,13 +714,7 @@ BulletState Bullet::State_Bounce(BulletStateResults *results)
             previous_target = target;
             if (new_target)
             {
-                for (auto &cmd : SetIscriptAnimation(IscriptAnim::Special1, true))
-                {
-                    if (cmd.opcode == IscriptOpcode::DoMissileDmg)
-                        results->do_missile_dmgs.emplace(this);
-                    else
-                        Warning("Bullet::State_Bounce did not handle all iscript commands for bullet %x", weapon_id);
-                }
+                SetIscriptAnimation(Iscript::Animation::Special1, true, "Bullet::State_Bounce", results);
                 results->new_bounce_targets.emplace(this, new_target);
                 return BulletState::Bounce;
             }
@@ -720,13 +724,7 @@ BulletState Bullet::State_Bounce(BulletStateResults *results)
         order_fow_unit = Unit::None;
         if (target)
             order_target_pos = target->sprite->position;
-        for (auto &cmd : SetIscriptAnimation(IscriptAnim::Death, true))
-        {
-            if (cmd.opcode == IscriptOpcode::DoMissileDmg)
-                results->do_missile_dmgs.emplace(this);
-            else
-                Warning("Bullet::State_Bounce did not handle all iscript commands for bullet %x", weapon_id);
-        }
+        SetIscriptAnimation(Iscript::Animation::Death, true, "Bullet::State_Bounce", results);
         return BulletState::Die;
     }
     return BulletState::Bounce;
@@ -748,40 +746,34 @@ BulletState Bullet::State_Init(BulletStateResults *results)
         case 0x5:
         case 0x6:
             state = BulletState::Die;
-            anim = IscriptAnim::Death;
+            anim = Iscript::Animation::Death;
         break;
         case 0x1:
             state = BulletState::MoveToTarget;
-            anim = IscriptAnim::GndAttkInit;
+            anim = Iscript::Animation::GndAttkInit;
         break;
         case 0x7:
             state = BulletState::Bounce;
-            anim = IscriptAnim::GndAttkInit;
+            anim = Iscript::Animation::GndAttkInit;
         break;
         case 0x3:
             state = BulletState::GroundDamage;
-            anim = IscriptAnim::Special2;
+            anim = Iscript::Animation::Special2;
         break;
         case 0x8:
             state = BulletState::MoveNearUnit;
-            anim = IscriptAnim::GndAttkInit;
+            anim = Iscript::Animation::GndAttkInit;
         break;
         default:
             state = BulletState::MoveToPoint;
-            anim = IscriptAnim::GndAttkInit;
+            anim = Iscript::Animation::GndAttkInit;
         break;
     }
     if (target)
         order_target_pos = target->sprite->position;
     order_fow_unit = Unit::None;
     order_state = 0;
-    for (auto &cmd : SetIscriptAnimation(anim, true))
-    {
-        if (cmd.opcode == IscriptOpcode::DoMissileDmg)
-            results->do_missile_dmgs.emplace(this);
-        else
-            Warning("Bullet::State_Init did not handle iscript command %x for bullet %x", cmd.opcode, weapon_id);
-    }
+    SetIscriptAnimation(anim, true, "Bullet::State_Init", results);
     return state;
 }
 
@@ -794,13 +786,7 @@ BulletState Bullet::State_GroundDamage(BulletStateResults *results)
             order_target_pos = target->sprite->position;
         order_state = 0;
         order_fow_unit = Unit::None;
-        for (auto &cmd : SetIscriptAnimation(IscriptAnim::Death, true))
-        {
-            if (cmd.opcode == IscriptOpcode::DoMissileDmg)
-                results->do_missile_dmgs.emplace(this);
-            else
-                Warning("Bullet::State_GroundDamage did not handle iscript command %x for bullet %x", cmd.opcode, weapon_id);
-        }
+        SetIscriptAnimation(Iscript::Animation::Death, true, "Bullet::State_GroundDamage", results);
         return BulletState::Die;
     }
     else if (time_remaining % 7 == 0)
@@ -816,13 +802,7 @@ BulletState Bullet::State_MoveToPoint(BulletStateResults *results)
 
     if (target)
         order_target_pos = target->sprite->position;
-    for (auto &cmd : SetIscriptAnimation(IscriptAnim::Death, true))
-    {
-        if (cmd.opcode == IscriptOpcode::DoMissileDmg)
-            results->do_missile_dmgs.emplace(this);
-        else
-            Warning("Bullet::State_MoveToPoint did not handle iscript command %x for bullet %x", cmd.opcode, weapon_id);
-    }
+    SetIscriptAnimation(Iscript::Animation::Death, true, "Bullet::State_MoveToPoint", results);
     return BulletState::Die;
 }
 
@@ -1254,30 +1234,78 @@ void BulletSystem::ProgressBulletsForState(BulletContainer *container, BulletSta
     }
 }
 
+class BulletIscriptContext : public Iscript::Context
+{
+    public:
+        constexpr BulletIscriptContext(Bullet *bullet, BulletStateResults *results,
+                                       const char *caller, Rng *rng, bool can_delete) :
+            Iscript::Context(rng, can_delete),
+            bullet(bullet), results(results), caller(caller) { }
+
+        Bullet * const bullet;
+        BulletStateResults * const results;
+        const char * const caller;
+
+        void ProgressIscript() { bullet->sprite->ProgressFrame(this); }
+        void SetIscriptAnimation(int anim, bool force) { bullet->sprite->SetIscriptAnimation(this, anim, force); }
+
+        virtual Iscript::CmdResult HandleCommand(Image *img, Iscript::Script *script,
+                                                 const Iscript::Command &cmd) override
+        {
+            Iscript::CmdResult result = HandleIscriptCommand(img, script, cmd);
+            if (result == Iscript::CmdResult::NotHandled)
+                bullet->WarnUnhandledIscriptCommand(cmd, caller);
+            return result;
+        }
+
+        /// Calls entity->flingy->sprite->img handlers as needed.
+        Iscript::CmdResult HandleIscriptCommand(Image *img, Iscript::Script *script, const Iscript::Command &cmd)
+        {
+            using Iscript::CmdResult;
+            CmdResult result = CmdResult::Handled;
+            switch (cmd.opcode)
+            {
+                case Iscript::Opcode::DoMissileDmg:
+                    results->do_missile_dmgs.emplace(bullet);
+                break;
+                case Iscript::Opcode::SprOl:
+                    result = CmdResult::NotHandled;
+                    if (bullet->parent != nullptr && bullet->parent->IsGoliath())
+                    {
+                        Unit *goliath = bullet->parent;
+                        bool range_upgrade = GetUpgradeLevel(Upgrade::CharonBooster, goliath->player) != 0;
+                        if (range_upgrade || (goliath->IsHero() && *bw::is_bw))
+                        {
+                            Sprite::Spawn(img, Sprite::HaloRocketsTrail, cmd.point, bullet->sprite->elevation + 1);
+                            result = CmdResult::Handled;
+                        }
+                    }
+                break;
+                default:
+                    result = CmdResult::NotHandled;
+            }
+            if (result == CmdResult::NotHandled)
+                result = ((Entity *)bullet)->HandleIscriptCommand(this, img, script, cmd);
+            return result;
+        }
+};
+
 Claimed<BulletStateResults> BulletSystem::ProgressStates()
 {
     auto results = state_results_buf.Claim();
     results->clear();
+    BulletStateResults *results_ptr = &results.Inner();
     for (BulletContainer::entry bullet_it : ActiveBullets_Entries())
     {
         Bullet *bullet = bullet_it->get();
         bullet->sprite->UpdateVisibilityPoint();
 
-        for (auto &cmd : bullet->sprite->ProgressFrame(IscriptContext(bullet), main_rng))
-        {
-            if (cmd.opcode == IscriptOpcode::End)
-            {
-                bullet->sprite->Remove();
-                DeleteBullet(&bullet_it);
-            }
-            else if (cmd.opcode == IscriptOpcode::DoMissileDmg)
-                results->do_missile_dmgs.emplace(bullet);
-            else
-                Warning("Unhandled iscript command %x in BulletSystem::ProgressStates, weapon %x", cmd.opcode, bullet->weapon_id);
-        }
+        BulletIscriptContext ctx(bullet, results_ptr, "BulletSystem::ProgressStates", main_rng, true);
+        ctx.ProgressIscript();
+        if (ctx.CheckDeleted())
+            DeleteBullet(&bullet_it);
     }
 
-    BulletStateResults *results_ptr = &results.Inner();
     ProgressBulletsForState(&initstate, results_ptr, BulletState::Init, &Bullet::State_Init);
     ProgressBulletsForState(&moving_to_point, results_ptr, BulletState::MoveToPoint, &Bullet::State_MoveToPoint);
     ProgressBulletsForState(&moving_to_unit, results_ptr, BulletState::MoveToTarget, &Bullet::State_MoveToUnit);
@@ -1441,7 +1469,20 @@ void RemoveFromBulletTargets(Unit *unit)
     unit->spawned_bullets = nullptr;
 }
 
-Sprite::ProgressFrame_C Bullet::SetIscriptAnimation(int anim, bool force)
+void Bullet::SetIscriptAnimation(int anim, bool force, const char *caller, BulletStateResults *results)
 {
-    return sprite->SetIscriptAnimation(anim, force, IscriptContext(this), main_rng);
+    BulletIscriptContext(this, results, caller, main_rng, false).SetIscriptAnimation(anim, force);
+}
+
+void Bullet::WarnUnhandledIscriptCommand(const Iscript::Command &cmd, const char *func) const
+{
+    Warning("Unhandled iscript command %s in %s (Bullet %s)", cmd.DebugStr().c_str(), func, DebugStr().c_str());
+}
+
+std::string Bullet::DebugStr() const
+{
+    char buf[64];
+    const char *name = (*bw::stat_txt_tbl)->GetTblString(weapons_dat_label[weapon_id]);
+    snprintf(buf, sizeof buf / sizeof(buf[0]), "%x [%s]", weapon_id, name);
+    return buf;
 }

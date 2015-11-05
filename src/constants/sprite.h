@@ -1,6 +1,7 @@
 
 enum
 {
+    LastScDoodad = 0x81,
     Drone = 0x8c,
     ZergBuildingSpawn_Small = 0xb6,
     Probe = 0xc2,
@@ -14,6 +15,8 @@ enum
     BunkerOverlay = 0x179,
     FlameThrower = 0x17a,
     Recall = 0x17b,
+    FirstBwDoodad = 0x182,
+    LastBwDoodad = 0x1e0,
     Medic = 0x1e9,
     FeedbackHit_Small = 0x1f4,
     HaloRocketsTrail = 0x1f9,

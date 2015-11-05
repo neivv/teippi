@@ -178,7 +178,7 @@
 
 004D57B0 = void PrepareDrawImage(), eax Image *
 004970A0 = void MarkImageAreaForRedraw(), eax Image *
-004D74C0 = void ProgressIscriptFrame(), ecx Image *, arg 1 Iscript *, arg 2 int, arg 3 int
+004D74C0 = void ProgressIscriptFrame(), ecx Image *, arg 1 Iscript::Script *, arg 2 int, arg 3 int
 004D5EA0 = void SetImageDirection32(), eax Image *, arg 1 int
 004D5F80 = void SetImageDirection256(), esi Image *, arg 1 int
 
@@ -412,7 +412,6 @@
 0043FF00 = void Ai_FocusUnit(), eax Unit *
 0043FF90 = void Ai_FocusUnit2(), eax Unit *
 
-004E4F40 = void Order_ProtossBuildSelf(), eax Unit *
 0047C210 = void Order_JunkYardDog(), eax Unit *
 00463900 = void Order_Medic(), eax Unit *
 004F6FA0 = void Order_Obscured(), eax Unit *
@@ -546,10 +545,9 @@
 00479D60 = Iscript_AttackWith(), eax Unit *unit, arg 1 ground
 00479C30 = Iscript_UseWeapon(), arg 1 weapon_id, esi Unit *unit
 004762C0 = GetClosestPointOfTarget(), arg 1 Unit *unit, arg 2 dword *out_x, arg 3 dword *out_y
-004011A0 = SetMoveTargetToNearbyPoint(), eax direction, edx Unit *unit
+004011A0 = SetMoveTargetToNearbyPoint(), eax direction, edx Flingy *flingy
 00479D40 = FireWeapon(), eax Unit *parent, ebx weapon_id
 004010E0 = InitializeImageFull(), arg 1 image_id, ebx Image *img, ecx x, eax y, edi Sprite *parent
-00496360 = bool InitializeFlingy(), arg 1 Flingy *flingy, arg 2 player, arg 3 direction, eax flingy_id, ecx x, edx y
 004D5A00 = SetOffsetToParentsSpecialOverlay(), ecx Image *img
 
 00473920 = dword GetPsiPlacementState(), arg 1 x_tile, arg 2 y_tile, esi unit_id, eax player

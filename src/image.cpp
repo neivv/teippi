@@ -1,6 +1,7 @@
 #include "image.h"
 
 #include "offsets.h"
+#include "bullet.h"
 #include "sprite.h"
 #include "log.h"
 #include "lofile.h"
@@ -111,22 +112,17 @@ Image::Image(Sprite *parent, int image_id, int x, int y) : image_id(image_id), x
         drawfunc_param = bw::blend_palettes[images_dat_remapping[image_id]].data;
 }
 
-bool Image::InitIscript()
+bool Image::InitIscript(Iscript::Context *ctx)
 {
     int iscript_header = images_dat_iscript_header[image_id];
-    bool success = iscript.Initialize(iscript_header);
+    bool success = iscript.Initialize(ctx->iscript, iscript_header);
     if (!success)
     {
         Warning("Image %s has an invalid iscript header: %d (0x%x)",
                 DebugStr().c_str(), iscript_header, iscript_header);
         return false;
     }
-    IscriptContext ctx;
-    ctx.bullet = *bw::active_iscript_bullet;
-    ctx.unit = *bw::active_iscript_unit;
-    auto cmds = SetIscriptAnimation(IscriptAnim::Init, &ctx, main_rng);
-    if (!Empty(cmds))
-        Warning("Image::InitIscript did not handle all iscript commands for image %x", image_id);
+    SetIscriptAnimation(ctx, Iscript::Animation::Init);
     PrepareDrawImage(this);
     return true;
 }
@@ -185,50 +181,6 @@ void Image::SetFlipping(bool set)
         flags = flags | (set << 1) | ImageFlags::Redraw;
         SetDrawFunc(drawfunc, drawfunc_param);
     }
-}
-
-Image::ProgressFrame_C Image::SetIscriptAnimation(int anim, IscriptContext *ctx, Rng *rng)
-{
-    if (anim == IscriptAnim::Death && iscript.animation == IscriptAnim::Death)
-        return ProgressFrame_C();
-    if (~flags & 0x10 && anim != IscriptAnim::Death && anim != IscriptAnim::Init) // 0x10 = full iscript
-        return ProgressFrame_C();
-    if (anim == iscript.animation && (anim == IscriptAnim::Walking || anim == IscriptAnim::Working))
-        return ProgressFrame_C();
-    if (anim == IscriptAnim::GndAttkRpt)
-    {
-        if (iscript.animation != IscriptAnim::GndAttkRpt && iscript.animation != IscriptAnim::GndAttkInit)
-            anim = IscriptAnim::GndAttkInit;
-    }
-    else if (anim == IscriptAnim::AirAttkRpt)
-    {
-        if (iscript.animation != IscriptAnim::AirAttkRpt && iscript.animation != IscriptAnim::AirAttkInit)
-            anim = IscriptAnim::AirAttkInit;
-    }
-    uint8_t *pos = *bw::iscript + iscript.header;
-    if (*(int32_t *)(pos + 4) >= anim)
-    {
-        int anim_off = *(uint16_t *)(pos + 8 + anim * sizeof(uint16_t));
-        if (anim_off != 0)
-        {
-            iscript.animation = anim;
-            iscript.pos = anim_off;
-            iscript.return_pos = 0;
-            iscript.wait = 0;
-            return ProgressFrame(ctx, rng, false, nullptr);
-        }
-    }
-    Warning("SetIscriptAnimation: Image %x does not have animation %x", image_id, anim);
-    return ProgressFrame_C();
-}
-
-Image::ProgressFrame_C Image::ProgressFrame()
-{
-    IscriptContext ctx;
-    ctx.unit = *bw::active_iscript_unit;
-    ctx.bullet = *bw::active_iscript_bullet;
-    ctx.iscript = *bw::iscript;
-    return ProgressFrame(&ctx, main_rng, false, nullptr);
 }
 
 void Image::UpdateFrameToDirection()
@@ -306,36 +258,308 @@ void Image::MakeDetected()
         SetDrawFunc(drawfunc + 3, drawfunc_param);
 }
 
-static std::atomic<Tbl *> images_tbl;
-/// Thread-safely loads/gives loaded images.tbl and keeps it in memory forever.
-static Tbl *GetImagesTbl()
+void Image::FollowMainImage()
 {
-    const auto release = std::memory_order_release;
-    const auto acquire = std::memory_order_acquire;
-    Tbl *tbl = images_tbl.load(acquire);
-    if (tbl == nullptr)
+    direction = parent->main_image->direction;
+    SetFlipping(parent->main_image->IsFlipped());
+    UpdateFrameToDirection();
+}
+
+Image *Image::Iscript_AddOverlay(Iscript::Context *ctx, int image_id_, int x, int y, bool above)
+{
+    Image *img = new Image;
+    if (above)
     {
-        uint32_t size;
-        Tbl *read_tbl = (Tbl *)ReadMpqFile("arr\\images.tbl", 0, 0, "storm", 0, 0, &size);
-        Assert(read_tbl != nullptr);
-        if (images_tbl.compare_exchange_strong(tbl, read_tbl, release, acquire) == false)
-            SMemFree(read_tbl, __FILE__, __LINE__, 0);
-        else
-            tbl = read_tbl;
+        img->list.prev = nullptr;
+        img->list.next = parent->first_overlay;
+        parent->first_overlay->list.prev = img;
+        parent->first_overlay = img;
     }
-    return tbl;
+    else
+    {
+        img->list.next = nullptr;
+        img->list.prev = parent->last_overlay;
+        parent->last_overlay->list.next = img;
+        parent->last_overlay = img;
+    }
+    InitializeImageFull(image_id_, img, x, y, parent);
+    if (img->flags & ImageFlags::CanTurn)
+    {
+        if (IsFlipped())
+            SetImageDirection32(img, 32 - direction);
+        else
+            SetImageDirection32(img, direction);
+    }
+    if (img->frame != img->frameset + img->direction)
+    {
+        img->frame = img->frameset + img->direction;
+        img->flags |= ImageFlags::Redraw;
+    }
+    ctx->NewOverlay(img);
+    return img;
 }
 
-std::string Image::DebugStr() const
+Iscript::CmdResult Image::HandleIscriptCommand(Iscript::Context *ctx, Iscript::Script *script,
+                                               const Iscript::Command &cmd)
 {
-    Tbl *tbl = GetImagesTbl();
-    int grp_id = images_dat_grp[image_id];
-    char buf[128];
-    snprintf(buf, sizeof buf / sizeof(buf[0]), "%x [unit\\%s]", image_id, tbl->GetTblString(grp_id));
-    return buf;
+    using namespace Iscript::Opcode;
+    switch (cmd.opcode)
+    {
+        case PlayFram:
+            if (cmd.val + direction < grp->frame_count)
+                SetFrame(cmd.val);
+            else
+                Warning("Iscript for image %s sets image to invalid frame %x", DebugStr().c_str(), cmd.val);
+        break;
+        case PlayFramTile:
+            if (cmd.val + *bw::tileset < grp->frame_count)
+                SetFrame(cmd.val + *bw::tileset);
+        break;
+        case SetHorPos:
+            SetOffset(cmd.point.x, y_off);
+        break;
+        case SetVertPos:
+            SetOffset(x_off, cmd.point.y);
+        break;
+        case SetPos:
+            SetOffset(cmd.point.x, cmd.point.y);
+        break;
+        case ImgOl:
+            Iscript_AddOverlay(ctx, cmd.val, x_off + cmd.point.x, y_off + cmd.point.y, true);
+        break;
+        case ImgUl:
+            Iscript_AddOverlay(ctx, cmd.val, x_off + cmd.point.x, y_off + cmd.point.y, false);
+        break;
+        case ImgOlOrig:
+        case SwitchUl:
+        {
+            Image *other = Iscript_AddOverlay(ctx, cmd.val, 0, 0, cmd.opcode == ImgOlOrig);
+            if (other && ~other->flags & ImageFlags::UseParentLo)
+            {
+                other->flags |= ImageFlags::UseParentLo;
+                SetOffsetToParentsSpecialOverlay(other);
+            }
+        }
+        break;
+        case ImgOlUseLo:
+        case ImgUlUseLo:
+        {
+            // Yeah, it's not actually point
+            Point32 point = LoFile::GetOverlay(image_id, cmd.point.x).GetValues(this, cmd.point.y);
+            Iscript_AddOverlay(ctx, cmd.val, point.x + x_off, point.y + y_off, cmd.opcode == ImgOlUseLo);
+        }
+        break;
+        case ImgUlNextId:
+            Iscript_AddOverlay(ctx, image_id + 1, cmd.point.x + x_off, cmd.point.y + y_off, false);
+        break;
+        case SprOl:
+            // Bullet's iscript handler has an override for goliath range upgrade
+            Sprite::Spawn(this, cmd.val, cmd.point, parent->elevation + 1);
+        break;
+        case HighSprOl:
+            Sprite::Spawn(this, cmd.val, cmd.point, parent->elevation - 1);
+        break;
+        case LowSprUl:
+            Sprite::Spawn(this, cmd.val, cmd.point, 1);
+        break;
+        case UflUnstable:
+        {
+            Warning("Flingy creation not implemented (image %s)", DebugStr().c_str());
+            /*Flingy *flingy = CreateFlingy(cmd.val, parent->player, cmd.point);
+            if (flingy)
+            {
+                flingy->GiveRandomMoveTarget(ctx->rng);
+                flingy->sprite->UpdateVisibilityPoint();
+            }*/
+        }
+        break;
+        case SprUlUseLo:
+        case SprUl:
+        {
+            int elevation = parent->elevation;
+            if (cmd.opcode == SprUl)
+                elevation -= 1;
+            Sprite *sprite = Sprite::Spawn(this, cmd.val, cmd.point, elevation);
+            if (sprite != nullptr)
+            {
+                if (IsFlipped())
+                    sprite->SetDirection32(32 - direction);
+                else
+                    sprite->SetDirection32(direction);
+            }
+        }
+        break;
+        case SprOlUseLo:
+        {
+            // Again using the "point" for additional storage
+            Point32 point = LoFile::GetOverlay(image_id, cmd.point.x).GetValues(this, 0);
+            Sprite *sprite = Sprite::Spawn(this, cmd.val, point.ToPoint16(), parent->elevation + 1);
+            if (sprite)
+            {
+                if (IsFlipped())
+                    sprite->SetDirection32(32 - direction);
+                else
+                    sprite->SetDirection32(direction);
+            }
+        }
+        break;
+        case SetFlipState:
+            SetFlipping(cmd.val);
+        break;
+        case PlaySnd:
+        case PlaySndRand:
+        case PlaySndBtwn:
+        {
+            int sound_id;
+            if (cmd.opcode == PlaySnd)
+                sound_id = cmd.val;
+            else if (cmd.opcode == PlaySndRand)
+                sound_id = *(uint16_t *)(cmd.data + 1 + ctx->rng->Rand(cmd.data[0]) * 2);
+            else // PlaySndBtwn
+                sound_id = cmd.val1() + ctx->rng->Rand(cmd.val2() - cmd.val1() + 1);
+            PlaySoundAtPos(sound_id, parent->position.AsDword(), 1, 0);
+        }
+        break;
+        case FollowMainGraphic:
+            if (parent->main_image != nullptr)
+            {
+                Image *main_img = parent->main_image;
+                if (main_img->frame != frame || main_img->IsFlipped() != IsFlipped())
+                {
+                    int new_frame = main_img->frameset + main_img->direction;
+                    if (new_frame >= grp->frame_count)
+                    {
+                        Warning("Iscript for image %s requested to play frame %x with followmaingraphic",
+                                DebugStr().c_str(), new_frame);
+                    }
+                    else
+                    {
+                        frameset = main_img->frameset;
+                        FollowMainImage();
+                    }
+                }
+            }
+        break;
+        case EngFrame:
+        case EngSet:
+            if (cmd.opcode == EngFrame)
+                frameset = cmd.val;
+            else // EndSet
+                frameset = parent->main_image->frameset + parent->main_image->grp->frame_count * cmd.val;
+            FollowMainImage();
+        break;
+        case HideCursorMarker:
+            *bw::draw_cursor_marker = 0;
+        break;
+        case TmpRmGraphicStart:
+            Hide();
+        break;
+        case TmpRmGraphicEnd:
+            Show();
+        break;
+        case WarpOverlay:
+            flags |= ImageFlags::Redraw;
+            drawfunc_param = (void *)cmd.val;
+        break;
+        case GrdSprOl:
+        {
+            int x = parent->position.x + x_off + cmd.point.x;
+            int y = parent->position.y + y_off + cmd.point.y;
+            // Yes, it checks if unit id 0 can fit there
+            if (DoesFitHere(Unit::Marine, x, y))
+                Sprite::Spawn(this, cmd.val, cmd.point, parent->elevation + 1);
+        }
+        break;
+        default:
+            return ConstIscriptCommand(ctx, script, cmd);
+        break;
+    }
+    return Iscript::CmdResult::Handled;
 }
 
-void Image::DrawFunc_ProgressFrame(IscriptContext *ctx, Rng *rng)
+Iscript::CmdResult Image::ConstIscriptCommand(Iscript::Context *ctx, Iscript::Script *script,
+                                              const Iscript::Command &cmd) const
+{
+    using namespace Iscript::Opcode;
+    using Iscript::CmdResult;
+    switch (cmd.opcode)
+    {
+        case Goto:
+            script->pos = cmd.pos;
+        break;
+        case Call:
+            script->return_pos = script->pos;
+            script->pos = cmd.pos;
+        break;
+        case Return:
+            script->pos = script->return_pos;
+        break;
+        case RandCondJmp:
+            if (cmd.val > ctx->rng->Rand(256))
+                script->pos = cmd.pos;
+        break;
+        case Wait:
+            script->wait = cmd.val - 1;
+            return CmdResult::Stop;
+        break;
+        case WaitRand:
+            script->wait = cmd.val1() + ctx->rng->Rand(cmd.val2() - cmd.val1() + 1);
+            return CmdResult::Stop;
+        break;
+        case End:
+            // This generally gets handled by sprite, but needs to be doen here as well
+            // for the speed prediction.
+            return CmdResult::Stop;
+        break;
+        case PwrupCondJmp:
+            if (parent && parent->main_image != this)
+                script->pos = cmd.pos;
+        break;
+        default:
+            return CmdResult::NotHandled;
+        break;
+    }
+    return CmdResult::Handled;
+}
+
+void Image::SetIscriptAnimation(Iscript::Context *ctx, int anim)
+{
+    using namespace Iscript::Animation;
+    if (anim == Death && iscript.animation == Death)
+        return;
+    if (~flags & ImageFlags::FullIscript && anim != Death && anim != Init) // 0x10 = full iscript
+        return;
+    if (anim == iscript.animation && (anim == Walking || anim == Working))
+        return;
+    if (anim == GndAttkRpt)
+    {
+        if (iscript.animation != GndAttkRpt && iscript.animation != GndAttkInit)
+            anim = GndAttkInit;
+    }
+    else if (anim == AirAttkRpt)
+    {
+        if (iscript.animation != AirAttkRpt && iscript.animation != AirAttkInit)
+            anim = AirAttkInit;
+    }
+    uint8_t *pos = *bw::iscript + iscript.header;
+    if (*(int32_t *)(pos + 4) >= anim)
+    {
+        int anim_off = *(uint16_t *)(pos + 8 + anim * sizeof(uint16_t));
+        if (anim_off != 0)
+        {
+            iscript.animation = anim;
+            iscript.pos = anim_off;
+            iscript.return_pos = 0;
+            iscript.wait = 0;
+            ProgressFrame(ctx);
+            return;
+        }
+    }
+    Warning("SetIscriptAnimation: Image %s does not have animation %s",
+            DebugStr().c_str(), Iscript::Script::AnimationName(anim));
+}
+
+void Image::DrawFunc_ProgressFrame(Iscript::Context *ctx)
 {
     if (drawfunc == DrawFunc::Cloaking || drawfunc == DrawFunc::DetectedCloaking)
     {
@@ -352,8 +576,7 @@ void Image::DrawFunc_ProgressFrame(IscriptContext *ctx, Rng *rng)
         if (state + 1 >= 8)
         {
             SetDrawFunc(drawfunc + 1, 0);
-            if (ctx->unit)
-                ctx->unit->flags |= (UnitStatus::InvisibilityDone | UnitStatus::BeginInvisibility);
+            ctx->cloak_state = Iscript::Context::Cloaked;
         }
     }
     else if (drawfunc == DrawFunc::Decloaking || drawfunc == DrawFunc::DetectedDecloaking)
@@ -371,8 +594,7 @@ void Image::DrawFunc_ProgressFrame(IscriptContext *ctx, Rng *rng)
         if (state - 1 == 0)
         {
             SetDrawFunc(DrawFunc::Normal, 0);
-            if (ctx->unit)
-                ctx->unit->flags &= ~(UnitStatus::InvisibilityDone | UnitStatus::BeginInvisibility);
+            ctx->cloak_state = Iscript::Context::Decloaked;
         }
     }
     else if (drawfunc == DrawFunc::WarpFlash)
@@ -391,13 +613,37 @@ void Image::DrawFunc_ProgressFrame(IscriptContext *ctx, Rng *rng)
             drawfunc_param = (void *)((state + 1) | 0x300);
             return;
         }
-        auto cmds = SetIscriptAnimation(IscriptAnim::Death, ctx, rng);
-        if (!Empty(cmds))
-            Warning("Image warp flash drawfunc progress did not handle all iscript commands for image %x", image_id);
-        Unit *entity = ctx->unit != nullptr ? ctx->unit : (Unit *)ctx->bullet;
-        if (entity)
-            entity->order_signal |= 0x1;
+        ctx->order_signal |= 0x1;
+        SetIscriptAnimation(ctx, Iscript::Animation::Death);
     }
+}
+
+static std::atomic<Tbl *> images_tbl;
+/// Thread-safely loads/gives loaded images.tbl and keeps it in memory forever.
+static Tbl *GetImagesTbl()
+{
+    const auto release = std::memory_order_release;
+    const auto acquire = std::memory_order_acquire;
+    Tbl *tbl = images_tbl.load(acquire);
+    if (tbl == nullptr)
+    {
+        uint32_t size;
+            Tbl *read_tbl = (Tbl *)ReadMpqFile("arr\\images.tbl", 0, 0, "storm", 0, 0, &size);
+        Assert(read_tbl != nullptr);
+        if (images_tbl.compare_exchange_strong(tbl, read_tbl, release, acquire) == false)
+            SMemFree(read_tbl, __FILE__, __LINE__, 0);
+        else
+            tbl = read_tbl;
+    }
+    return tbl;
+}
+std::string Image::DebugStr() const
+{
+    Tbl *tbl = GetImagesTbl();
+    int grp_id = images_dat_grp[image_id];
+    char buf[128];
+    snprintf(buf, sizeof buf / sizeof(buf[0]), "%x [unit\\%s]", image_id, tbl->GetTblString(grp_id));
+    return buf;
 }
 
 // Could only have one padding between lines,
