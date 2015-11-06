@@ -319,11 +319,11 @@ namespace Ai
             {
                 if (check == nullptr)
                     return nullptr;
-                else if (must_reach && unit->IsUnreachable(check))
+                if (must_reach && unit->IsUnreachable(check))
                     return nullptr;
-                else if (!unit->CanAttackUnit(check, true))
+                if (!unit->CanAttackUnit(check, true))
                     return nullptr;
-                else if (!accept_critters && check->IsCritter())
+                if (!accept_critters && check->IsCritter())
                     return nullptr;
                 return check;
             }
@@ -332,18 +332,18 @@ namespace Ai
             {
                 if (check == nullptr)
                     return nullptr;
-                else if (must_reach && unit->IsUnreachable(check))
+                if (must_reach && unit->IsUnreachable(check))
                     return nullptr;
-                else if (check->IsDisabled()) // Why???
+                if (check->IsDisabled()) // Why???
                     return check;
-                else if (check->unit_id != Unit::Bunker)
+                if (check->unit_id != Unit::Bunker)
                 {
                     if (check->target == nullptr || check->target->player != unit->player)
                         return nullptr;
                 }
-                else if (!unit->CanAttackUnit(check, true))
+                if (!unit->CanAttackUnit(check, true))
                     return nullptr;
-                else if (!accept_critters && check->IsCritter())
+                if (!accept_critters && check->IsCritter())
                     return nullptr;
                 return check;
             }

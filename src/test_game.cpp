@@ -1765,6 +1765,33 @@ struct Test_AiTargetPriority : public GameTest {
                 ClearUnits();
                 state++;
             } break; case 3: {
+                /// Test some of the internal logic
+                Unit *ai = CreateUnitForTestAt(Unit::Zergling, 1, Point(100, 100));
+                Ai::UpdateAttackTargetContext uat(ai, false, false);
+                Ai::UpdateAttackTargetContext allowing_critters(ai, true, false);
+                // The unit is not targeting ai's units
+                // So other fails and other succeeds
+                Unit *other = CreateUnitForTestAt(Unit::Marine, 0, Point(100, 100));
+                TestAssert(other->target == nullptr);
+                TestAssert(uat.CheckPreviousAttackerValid(other) == nullptr);
+                TestAssert(uat.CheckValid(other) == other);
+                // The unit is targeting ai's units
+                other = CreateUnitForTestAt(Unit::Marine, 0, Point(100, 100));
+                IssueOrderTargetingUnit_Simple(other, Order::AttackUnit, ai);
+                TestAssert(other->target == ai);
+                TestAssert(uat.CheckPreviousAttackerValid(other) == other);
+                TestAssert(uat.CheckValid(other) == other);
+                // Can't attack that unit
+                other = CreateUnitForTestAt(Unit::Wraith, 0, Point(100, 100));
+                IssueOrderTargetingUnit_Simple(other, Order::AttackUnit, ai);
+                TestAssert(other->target == ai);
+                TestAssert(uat.CheckPreviousAttackerValid(other) == nullptr);
+                TestAssert(uat.CheckValid(other) == nullptr);
+                // Test critter bool
+                other = CreateUnitForTestAt(Unit::Bengalaas, 0, Point(100, 100));
+                TestAssert(uat.CheckValid(other) == nullptr);
+                TestAssert(allowing_critters.CheckValid(other) == other);
+                TestAssert(allowing_critters.CheckPreviousAttackerValid(other) == nullptr);
                 Pass();
             }
         }
