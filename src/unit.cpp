@@ -4843,7 +4843,7 @@ Unit **FindNearbyHelpingUnits(Unit *unit, TempMemoryPool *allocation_pool)
             search_radius *= 2;
         area = Rect16(unit->sprite->position, search_radius);
     }
-    return unit_search->FindHelpingUnits(unit, area, allocation_pool, unit->ai != nullptr);
+    return unit_search->FindHelpingUnits(unit, area, allocation_pool);
 }
 
 void FindNearbyHelpingUnits_Threaded(ScThreadVars *tvars, Unit *unit)

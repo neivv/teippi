@@ -694,6 +694,8 @@
 004679A0 = dword ProgressBuild(), eax Unit *unit, edx hp_gain, arg 1 unk
 00466F50 = RallyUnit(), ecx Unit *parent, eax Unit *created
 
+00434220 = AiScript_StartTown(), arg 1 x, arg 2 y, arg 3 unk, eax player
+
 ### storm (15000000)
 
 15020ED0 = void *SMemAlloc(), arg 1 dword amt, arg 2 const char *file, arg 3 dword line, arg 4 dword fill

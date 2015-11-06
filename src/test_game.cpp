@@ -1826,6 +1826,93 @@ struct Test_Transmission : public GameTest {
     }
 };
 
+
+/// There was a bug where attackking interceptor caused workers to come help.
+/// Test that it no longer happens, but that attacking a building with a
+/// worker still works.
+struct Test_NearbyHelpers : public GameTest {
+    Unit *helper;
+    Unit *target;
+    Unit *enemy;
+    const TransmissionTest *variant;
+    void Init() override {
+        AiPlayer(1);
+        SetEnemy(0, 1);
+        SetEnemy(1, 0);
+    }
+    void CreateAiTown(const Point &pos, int player) {
+        CreateUnitForTestAt(Unit::Nexus, player, pos);
+        helper = CreateUnitForTestAt(Unit::Probe, player, pos + Point(0, 100));
+        Unit *mineral = CreateUnitForTestAt(Unit::MineralPatch1, NeutralPlayer, pos + Point(0, 200));
+        mineral->resource.resource_amount = 1500;
+        AiScript_StartTown(pos.x, pos.y, 1, player);
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                CreateAiTown(Point(100, 100), 1);
+                target = CreateUnitForTestAt(Unit::Carrier, 1, Point(100, 100));
+                enemy = CreateUnitForTestAt(Unit::Hydralisk, 0, Point(100, 600));
+                target->IssueSecondaryOrder(Order::TrainFighter);
+                target->build_queue[target->current_build_slot] = Unit::Interceptor;
+                state++;
+            } break; case 1: {
+                if (target->carrier.in_child != nullptr) {
+                    IssueOrderTargetingGround(enemy, Order::Move, 100, 100);
+                    state++;
+                }
+            } break; case 2: {
+                SetHp(target, target->GetMaxHitPoints() * 256);
+                SetHp(enemy, enemy->GetMaxHitPoints() * 256);
+                if (target->carrier.out_child != nullptr) {
+                    IssueOrderTargetingUnit_Simple(enemy, Order::AttackUnit, target->carrier.out_child);
+                    state++;
+                }
+            } break; case 3: {
+                SetHp(target, target->GetMaxHitPoints() * 256);
+                SetHp(enemy, enemy->GetMaxHitPoints() * 256);
+                TestAssert(helper->target != enemy);
+                if (enemy->target == nullptr || enemy->target->unit_id != Unit::Interceptor) {
+                    IssueOrderTargetingGround(enemy, Order::Move, 100, 100);
+                    state--;
+                } else if (enemy->target->GetHealth() != enemy->target->GetMaxHealth()) {
+                    // This test makes only sense if interceptors have no ai
+                    TestAssert(enemy->target->ai == nullptr);
+                    if (IsInArea(enemy->target, CallFriends_Radius, helper)) {
+                        frames_remaining = 50;
+                        state++;
+                    }
+                }
+            } break; case 4: {
+                TestAssert(helper->target != enemy);
+                if (frames_remaining == 1) {
+                    enemy->Kill(nullptr);
+                    frames_remaining = 5000;
+                    enemy = CreateUnitForTestAt(Unit::SCV, 0, Point(100, 500));
+                    target = FindUnit(Unit::Nexus);
+                    IssueOrderTargetingUnit_Simple(enemy, Order::AttackUnit, target);
+                    state++;
+                }
+            } break; case 5: {
+                SetHp(target, target->GetMaxHitPoints() * 256);
+                SetHp(enemy, enemy->GetMaxHitPoints() * 256);
+                if (enemy->target->GetHealth() != enemy->target->GetMaxHealth()) {
+                    if (IsInArea(enemy->target, CallFriends_Radius, helper)) {
+                        frames_remaining = 50;
+                        state++;
+                    }
+                }
+            } break; case 6: {
+                SetHp(target, target->GetMaxHitPoints() * 256);
+                if (frames_remaining == 1) {
+                    TestAssert(helper->target == enemy);
+                    Pass();
+                }
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -1866,6 +1953,7 @@ GameTests::GameTests()
     AddTest("Matrix + storm", new Test_MatrixStorm);
     AddTest("Ai target priority", new Test_AiTargetPriority);
     AddTest("Transmission trigger", new Test_Transmission);
+    AddTest("Nearby helpers", new Test_NearbyHelpers);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)

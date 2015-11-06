@@ -592,8 +592,24 @@ bool UnitWasHit_Actual(Unit *target, Unit *attacker, ProgressBulletBufs *bufs)
         while (!nearby)
             nearby = target->nearby_helping_units.load(std::memory_order_relaxed);
 
+        bool ai_player = IsComputerPlayer(target->player);
+
         for (Unit *unit = *nearby++; unit; unit = *nearby++)
         {
+            const Point &unit_pos = unit->sprite->position;
+            const Point &target_pos = target->sprite->position;
+
+            // Hackfix for units without ai owned by ai players.
+            // Their nearby_helping_units has larger search area than otherwise,
+            // so check for reduced area here.
+            // Yes, some units get Ai_AskForHelp and Unit::AskForHelp for same target then
+            // No idea if it would even change anything to remove this check, but it's
+            // slightly closer to bw behaviour.
+            if (ai_player && (abs(unit_pos.x - target_pos.x) > CallFriends_Radius ||
+                        abs(unit_pos.y - target_pos.y) > CallFriends_Radius))
+            {
+                continue;
+            }
             if (unit->order != Order::Die)
                 unit->AskForHelp(attacker);
         }
