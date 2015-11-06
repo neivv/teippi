@@ -92,6 +92,9 @@ static void SetAttackTarget(Unit *unit, Unit *new_target, bool accept_if_sieged)
 
 bool UpdateAttackTarget(Unit *unit, bool accept_if_sieged, bool accept_critters, bool must_reach)
 {
+    // Unit::GetAutoTarget() requires this, but it is called rarely from here, so copy the
+    // assertion here as well
+    Assert(late_unit_frames_in_progress || bulletframes_in_progress);
     STATIC_PERF_CLOCK(Ai_UpdateAttackTarget);
 
     if (unit->ai == nullptr || !unit->HasWayOfAttacking())

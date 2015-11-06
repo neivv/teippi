@@ -790,6 +790,8 @@ class Unit
 extern DummyListHead<Unit, Unit::offset_of_allocated> first_allocated_unit;
 extern DummyListHead<Unit, Unit::offset_of_allocated> first_movementstate_flyer;
 
+extern bool late_unit_frames_in_progress;
+
 static_assert(Unit::offset_of_allocated == offsetof(Unit, allocated), "Unit::allocated offset");
 
 #pragma pack(pop)

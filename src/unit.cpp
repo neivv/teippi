@@ -49,7 +49,7 @@ DummyListHead<Unit, Unit::offset_of_allocated> first_movementstate_flyer;
 vector<Unit *> Unit::temp_flagged;
 const int UNIT_ID_LOOKUP_SIZE = 0x2000;
 
-static bool late_unit_frames_in_progress = false;
+bool late_unit_frames_in_progress = false;
 
 #ifdef SYNC
 void *Unit::operator new(size_t size)
@@ -3021,7 +3021,16 @@ Unit *Unit::PickBestTarget(Unit **targets, int amount) const
 
 Unit *Unit::GetAutoTarget() const
 {
-    Assert(late_unit_frames_in_progress);
+    // The cache is valid only for so long as:
+    //   - Alliances don't change
+    //   - Units don't move
+    //   - Units don't switch between ground/air
+    //   - Units don't die
+    //   - Units don't switch players
+    //   - Units don't get new weapons
+    // Otherwise some inconsistencies may occur.
+    // Should not be a desyncing issue though.
+    Assert(late_unit_frames_in_progress || bulletframes_in_progress);
     STATIC_PERF_CLOCK(Unit_GetAutoTarget);
     if (player >= Limits::Players)
         return nullptr;

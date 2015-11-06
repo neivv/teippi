@@ -448,6 +448,12 @@ void HitReactions::ProcessUpdateAttackTarget()
         Unit *picked = picked_target.GetPicked();
         if (picked != nullptr)
         {
+            // The picked unit may have become invalid as a previous_attacker
+            // under rare conditions. One such case would be giving attack to
+            // a dropship, but having an ai dropship be hit on the same frame,
+            // so it starts unloading units and loses its target.
+            // Should either delay the unloading, allow UpdateAttackTarget skip
+            // the validity check, or have a way to pick another unit.
             own->SetPreviousAttacker(picked);
             if (own->HasSubunit())
                 own->subunit->SetPreviousAttacker(picked);
