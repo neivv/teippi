@@ -59,10 +59,10 @@ namespace commands
         BuildingMorph = 0x35,
         Stim = 0x36,
         Sync = 0x37,
-        Unk38 = 0x38,
-        Unk39 = 0x39,
-        Unused3a = 0x3a, // These do nothing but have length of 2
-        Unused3b = 0x3b,
+        VoiceEnable1 = 0x38, // Voice commands are unused, taken from beta
+        VoiceEnable2 = 0x39,
+        VoiceSquelch1 = 0x3a, // These two specify a player
+        VoiceSquelch2 = 0x3b,
         StartGame = 0x3c,
         DownloadPercentage = 0x3d,
         ChangeGameSlot = 0x3e,

@@ -34,8 +34,6 @@ static bool IsReplayCommand(uint8_t command)
         case commands::Pause:
         case commands::Resume:
         case commands::Sync:
-        case commands::Unk38:
-        case commands::Unk39:
         case commands::Latency:
         case commands::ReplaySpeed:
             return false;
@@ -288,18 +286,6 @@ static void Command_Unload(uint8_t *buf)
     }
 }
 
-static void Command_Unk3839(uint8_t *buf)
-{
-    unsigned player = *bw::select_command_user;
-    if (player != *bw::local_player_id && bw::net_players[player].state != 1)
-    {
-        if (buf[0] == commands::Unk38)
-            bw::net_players[player].flags &= ~0x2;
-        else
-            bw::net_players[player].flags |= 0x2;
-    }
-}
-
 static void Command_ReplaySpeed(uint8_t *buf)
 {
     bool paused = buf[1];
@@ -370,8 +356,6 @@ int CommandLength(uint8_t *data, int max_length)
         case commands::TrainFighter: return 1;
         case commands::CancelAddon: return 1;
         case commands::Stim: return 1;
-        case commands::Unk38: case commands::Unk39: return 1;
-        case commands::Unused3b: case commands::Unused3a: return 2;
         case commands::Latency: return 2;
         case commands::ReplaySpeed: return 10;
         case commands::LeaveGame: return 2;
@@ -462,7 +446,6 @@ void ProcessCommands(uint8_t *data, int data_length, int replay_process)
             case commands::TrainFighter: Command_TrainFighter(); break;
             case commands::CancelAddon: Command_CancelAddon(); break;
             case commands::Stim: Command_Stim(); break;
-            case commands::Unk38: case commands::Unk39: Command_Unk3839(data); break;
             case commands::Latency: Command_Latency(data); break;
             case commands::ReplaySpeed: Command_ReplaySpeed(data); break;
             case commands::LeaveGame: Command_LeaveGame(data); break;
