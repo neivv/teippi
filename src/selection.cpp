@@ -193,17 +193,15 @@ void Command_SelectionRemove(const uint8_t *buf)
             if (unit->IsDying() || sprite->IsHidden() || unit->player != player)
                 continue;
 
-            if (HasTeamSelection(player) && (sprite->flags & 0x6))
+            if (HasTeamSelection(player))
             {
-                // ???
-                int flag = sprite->flags;
-                int flag2 = flag >> 1;
-                if (flag2 & 3)
+                int ally_selections = (sprite->flags & SpriteFlags::DashedSelectionMask) >> 1;
+                if (ally_selections != 0)
                 {
-                    flag2--;
-                    flag2 = flag2 << 1;
-                    sprite->flags = ((flag2 ^ flag) & 6) ^ flag;
-                    if (sprite->flags & 6)
+                    ally_selections -= 1;
+                    sprite->flags &= ~SpriteFlags::DashedSelectionMask;
+                    sprite->flags |= (ally_selections << 1);
+                    if (ally_selections == 0)
                         RemoveDashedSelectionCircle(sprite);
                 }
             }
@@ -211,7 +209,6 @@ void Command_SelectionRemove(const uint8_t *buf)
         }
         if (remaining > 1)
             AddToRecentSelections();
-
     }
 }
 

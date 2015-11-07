@@ -810,7 +810,7 @@ void Sprite::RemoveSelectionOverlays()
         }
         flags &= ~SpriteFlags::HasHealthBar;
     }
-    if (flags & (SpriteFlags::HasDashedSelection1 | SpriteFlags::HasDashedSelection2))
+    if (flags & SpriteFlags::DashedSelectionMask)
     {
         for (Image *img : first_overlay)
         {
@@ -820,7 +820,7 @@ void Sprite::RemoveSelectionOverlays()
                 break;
             }
         }
-        flags &= ~(SpriteFlags::HasDashedSelection1 | SpriteFlags::HasDashedSelection2);
+        flags &= ~SpriteFlags::DashedSelectionMask;
     }
     if (flags & SpriteFlags::HasSelectionCircle)
     {

@@ -23,8 +23,7 @@ extern "C" void __stdcall SetSpriteDirection(int direction);
 namespace SpriteFlags
 {
     const int HasSelectionCircle = 0x1;
-    const int HasDashedSelection1 = 0x2;
-    const int HasDashedSelection2 = 0x4;
+    const int DashedSelectionMask = 0x6; // Team can have max 4 players, so max 0..3 dashed circles
     const int HasHealthBar = 0x8;
     const int Unk10 = 0x10; // Draw sort?
     const int Hidden = 0x20;
