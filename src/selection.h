@@ -6,13 +6,13 @@
 
 bool ShouldClearOrderTargeting();
 
-int SelectCommandLength(uint8_t *data);
+int SelectCommandLength(const uint8_t *data);
 
 void RemoveFromHotkeyGroups(Unit *unit);
 
-void Command_Select(uint8_t *buf);
-void Command_SelectionAdd(uint8_t *buf);
-void Command_SelectionRemove(uint8_t *buf);
+void Command_Select(const uint8_t *buf);
+void Command_SelectionAdd(const uint8_t *buf);
+void Command_SelectionRemove(const uint8_t *buf);
 
 void StatusScreenButton();
 

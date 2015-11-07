@@ -10,8 +10,8 @@ void SendRightClickCommand(Unit *unit, uint16_t x, uint16_t y, uint16_t unit_id,
 void ClearOrderTargetingIfNeeded();
 void ClearOrderTargeting();
 
-void Command_RightClick(uint8_t *buf);
-void Command_Targeted(uint8_t *buf);
+void Command_RightClick(const uint8_t *buf);
+void Command_Targeted(const uint8_t *buf);
 
 void __fastcall GameScreenRClickEvent(Event *event);
 void __fastcall GameScreenLClickEvent_Targeting(Event *event);

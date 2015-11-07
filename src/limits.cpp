@@ -1004,7 +1004,6 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->JumpHook(bw::StatusScreenButton, StatusScreenButton_Hook);
     patch->JumpHook(bw::LoadReplayMapDirEntry, LoadReplayMapDirEntry);
     patch->JumpHook(bw::LoadReplayData, LoadReplayData_Hook);
-    patch->JumpHook(bw::ExtractNextReplayFrame, ExtractNextReplayFrame);
 
     patch->JumpHook(bw::DoNextQueuedOrder, DoNextQueuedOrder);
     patch->JumpHook(bw::ProcessLobbyCommands, ProcessLobbyCommands);

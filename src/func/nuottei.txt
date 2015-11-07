@@ -270,9 +270,9 @@
 00439500 = void Ai_EndAllMovingToAttack(), arg 1 int
 
 004D9460 = void DrawFlashingSelectionCircles()
-00487100 = void ProgressReplay()
 004DEED0 = void Replay_RefershUiIfNeeded()
 004D9550 = bool ProgressTurns(), ecx dword *
+00461640 = Victory()
 
 0047DF90 = bool UpdateCreepDisappearance_Unit(), arg 1 Unit *
 0047E410 = void TryUpdateCreepDisappear()
@@ -321,49 +321,49 @@
 
 0049E530 = void ShowLastError(), arg 1 int
 
-0047CDD0 = bool Command_Sync_Main(), edi void *
-004CF950 = void Command_Load(), ebx void *
+0047CDD0 = bool Command_Sync_Main(), edi const void *
+004CF950 = void Command_Load(), ebx const void *
 004BFB10 = void Command_Restart()
 004C0BC0 = void Command_Pause()
 004C0B00 = void Command_Resume()
-004C23C0 = void Command_Build(), esi void *
-004BF7A0 = void Command_MinimapPing(), eax void *
-004BF9C0 = void Command_Vision(), eax void *
-004C28A0 = void Command_Ally(), arg 1 void *
-004C0AD0 = void Command_Cheat(), edx void *
-004C2870 = void Command_Hotkey(), ecx void *
+004C23C0 = void Command_Build(), esi const void *
+004BF7A0 = void Command_MinimapPing(), eax const void *
+004BF9C0 = void Command_Vision(), eax const void *
+004C28A0 = void Command_Ally(), arg 1 const void *
+004C0AD0 = void Command_Cheat(), edx const void *
+004C2870 = void Command_Hotkey(), ecx const void *
 004C2EF0 = void Command_CancelBuild()
 004C2EC0 = void Command_CancelMorph()
-004C2190 = void Command_Stop(), edi void *
+004C2190 = void Command_Stop(), edi const void *
 004C1430 = void Command_CarrierStop()
 004C1240 = void Command_ReaverStop()
 004C1050 = void Command_Order_Nothing()
-004C2040 = void Command_ReturnCargo(), edi void *
-004C1C20 = void Command_Train(), eax void *
-004C0100 = void Command_CancelTrain(), arg 1 void *
-004C1BA0 = void Command_Tech(), arg 1 void *
+004C2040 = void Command_ReturnCargo(), edi const void *
+004C1C20 = void Command_Train(), eax const void *
+004C0100 = void Command_CancelTrain(), arg 1 const void *
+004C1BA0 = void Command_Tech(), arg 1 const void *
 004C0070 = void Command_CancelTech()
-004C1B20 = void Command_Upgrade(), arg 1 void *
+004C1B20 = void Command_Upgrade(), arg 1 const void *
 004BFFC0 = void Command_CancelUpgrade()
-004C1FA0 = void Command_Burrow(), arg 1 void *
+004C1FA0 = void Command_Burrow(), arg 1 const void *
 004C1AC0 = void Command_Unburrow()
 004C0720 = void Command_Cloak()
 004C0660 = void Command_Decloak()
-004C1990 = void Command_UnitMorph(), arg 1 void *
-004C1910 = void Command_BuildingMorph(), eax void *
-004C1F10 = void Command_Unsiege(), arg 1 void *
-004C1E80 = void Command_Siege(), arg 1 void *
+004C1990 = void Command_UnitMorph(), arg 1 const void *
+004C1910 = void Command_BuildingMorph(), eax const void *
+004C1F10 = void Command_Unsiege(), arg 1 const void *
+004C1E80 = void Command_Siege(), arg 1 const void *
 004C0E90 = void Command_MergeArchon()
 004C0CD0 = void Command_MergeDarkArchon()
-004C20C0 = void Command_HoldPosition(), edi void *
+004C20C0 = void Command_HoldPosition(), edi const void *
 004BFCD0 = void Command_CancelNuke()
-004C1620 = void Command_Lift(), arg 1 void *
+004C1620 = void Command_Lift(), arg 1 const void *
 004C1800 = void Command_TrainFighter()
 004BFF30 = void Command_CancelAddon()
 004C2F30 = void Command_Stim()
-00485E60 = void Command_Latency(), eax void *
-004C2E90 = void Command_LeaveGame(), arg 1 void *
-004C1CC0 = void Command_UnloadAll(), edi void *
+00485E60 = void Command_Latency(), eax const void *
+004C2E90 = void Command_LeaveGame(), arg 1 const void *
+004C1CC0 = void Command_UnloadAll(), edi const void *
 004DEB90 = void ChangeReplaySpeed(), eax int, ecx int, edx int
 004CDE70 = void AddToReplayData(), eax ReplayData *, arg 1 int, ebx const void *, edi int
 
@@ -604,14 +604,14 @@
 
 00472060 = Command_StartGame(), arg 1 player
 00450210 = DrawDownloadStatuses()
-004713E0 = Command_NewNetPlayer(), arg 1 net_player, edx void *data
-00471460 = Command_ChangeGameSlot(), eax net_player, ecx void *data
-00471300 = Command_ChangeRace(), arg 1 void *data, arg 2 player
-00471750 = Command_TeamGameTeam(), ecx void *data, arg 1 player
-00471670 = Command_UmsTeam(), arg 1 void *data, arg 2 player
-00471570 = Command_MeleeTeam(), ebx void *data, arg 1 player
-00471860 = Command_SwapPlayers(), ebx void *data, arg 1 player
-00472110 = Command_SavedData(), edx void *data, eax player
+004713E0 = Command_NewNetPlayer(), arg 1 net_player, edx const void *data
+00471460 = Command_ChangeGameSlot(), eax net_player, ecx const void *data
+00471300 = Command_ChangeRace(), arg 1 const void *data, arg 2 player
+00471750 = Command_TeamGameTeam(), ecx const void *data, arg 1 player
+00471670 = Command_UmsTeam(), arg 1 const void *data, arg 2 player
+00471570 = Command_MeleeTeam(), ebx const void *data, arg 1 player
+00471860 = Command_SwapPlayers(), ebx const void *data, arg 1 player
+00472110 = Command_SavedData(), edx const void *data, eax player
 004C46E0 = MakeGamePublic()
 00418640 = Ctrl_LeftUp(), esi Control *ctrl
 

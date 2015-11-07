@@ -171,7 +171,7 @@ void SendChangeSelectionCommand(int count, Unit **units)
     }
 }
 
-void Command_SelectionRemove(uint8_t *buf)
+void Command_SelectionRemove(const uint8_t *buf)
 {
     if (buf[1] != 0)
     {
@@ -215,7 +215,7 @@ void Command_SelectionRemove(uint8_t *buf)
     }
 }
 
-void Command_SelectionAdd(uint8_t *buf)
+void Command_SelectionAdd(const uint8_t *buf)
 {
     if (buf[1] != 0)
     {
@@ -265,7 +265,7 @@ void Command_SelectionAdd(uint8_t *buf)
     }
 }
 
-void Command_Select(uint8_t *buf)
+void Command_Select(const uint8_t *buf)
 {
     if (buf[1] != 0)
     {
@@ -499,7 +499,7 @@ int TrySelectRecentHotkeyGroup(Unit *unit)
     return 0;
 }
 
-int SelectCommandLength(uint8_t *data)
+int SelectCommandLength(const uint8_t *data)
 {
     return *(uint32_t *)(data + 2) * 4 + 6;
 }

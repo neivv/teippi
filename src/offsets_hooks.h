@@ -213,7 +213,6 @@ namespace bw
 
     const hook_offset LoadReplayMapDirEntry = 0x004A7C30;
     const hook_offset LoadReplayData = 0x004DF570;
-    const hook_offset ExtractNextReplayFrame = 0x004CDFF0;
 
     const hook_offset UpdateBuildingPlacementState = 0x00473FB0;
 

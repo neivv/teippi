@@ -200,6 +200,7 @@ namespace bw
     const array_offset<Unit *, 0x20, 0x10, 0x2> lurker_hits = 0x0064DEC8;
 
     const offset<uint32_t> game_speed = 0x006CDFD4;
+    const offset<uint32_t> replay_speed_multiplier = 0x0050E058;
     const array_offset<uint32_t, 7> game_speed_waits = 0x005124D8;
 
     const array_offset<Ai::Region *, 8> player_ai_regions = 0x0069A604;
@@ -527,6 +528,7 @@ namespace bw
     const offset<uint32_t> scenario_chk_length = 0x006D0F20;
     const offset<void *> scenario_chk = 0x006D0F24;
     const offset<ReplayHeader> replay_header = 0x006D0F30;
+    const offset<uint32_t> next_replay_command_frame = 0x005136C8;
     const array_offset<char *, 65> campaign_map_names = 0x0059C080;
 
     const offset<Unit *> ai_building_placement_hack = 0x006D5DCC;
