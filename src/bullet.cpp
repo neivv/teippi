@@ -217,7 +217,7 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
     // Yes, bw mixes bullet's images with spawner's unit code.
     // At least wraith's lasers actually depend on this behaviour.
     const char *desc = "Bullet::Initialize (First frame of bullet's animation modifies the unit who spawned it)";
-    UnitIscriptContext ctx(spawner, nullptr, desc, main_rng, false);
+    UnitIscriptContext ctx(spawner, nullptr, desc, MainRng(), false);
     bool success = ((Flingy *)this)->Initialize(&ctx, flingy_id, player_, direction, pos);
     if (!success)
         return false;
@@ -233,7 +233,7 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
     auto spin = weapons_dat_launch_spin[weapon_id];
     if (spin)
     {
-        bool spin_positive = main_rng->Rand(2) == 1;
+        bool spin_positive = MainRng()->Rand(2) == 1;
         // Goliath dual missiles etc, ugh
         static bool last_bullet_spin_positive;
         if (spawner == *bw::last_bullet_spawner)
@@ -290,7 +290,7 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
         case 0x2: case 0x4: // Appear on target unit / site
         if (target && parent)
         {
-            if (main_rng->Rand(0x100) <= GetMissChance(parent, target))
+            if (MainRng()->Rand(0x100) <= GetMissChance(parent, target))
             {
                 int x = sprite->position.x - bw::circle[direction][0] * 30 / 256;
                 int y = sprite->position.y - bw::circle[direction][1] * 30 / 256;
@@ -325,7 +325,7 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
             bounces_remaining = 3; // Won't matter on others
             if (target && parent)
             {
-                if (main_rng->Rand(0x100) <= GetMissChance(parent, target))
+                if (MainRng()->Rand(0x100) <= GetMissChance(parent, target))
                 {
                     int x = order_target_pos.x - bw::circle[direction][0] * 30 / 256;
                     int y = order_target_pos.y - bw::circle[direction][1] * 30 / 256;
@@ -1316,7 +1316,7 @@ Claimed<BulletStateResults> BulletSystem::ProgressStates()
         Bullet *bullet = bullet_it->get();
         bullet->sprite->UpdateVisibilityPoint();
 
-        BulletIscriptContext ctx(bullet, results_ptr, "BulletSystem::ProgressStates", main_rng, true);
+        BulletIscriptContext ctx(bullet, results_ptr, "BulletSystem::ProgressStates", MainRng(), true);
         ctx.ProgressIscript();
         if (ctx.CheckDeleted())
             DeleteBullet(&bullet_it);
@@ -1487,7 +1487,7 @@ void RemoveFromBulletTargets(Unit *unit)
 
 void Bullet::SetIscriptAnimation(int anim, bool force, const char *caller, BulletStateResults *results)
 {
-    BulletIscriptContext(this, results, caller, main_rng, false).SetIscriptAnimation(anim, force);
+    BulletIscriptContext(this, results, caller, MainRng(), false).SetIscriptAnimation(anim, force);
 }
 
 void Bullet::WarnUnhandledIscriptCommand(const Iscript::Command &cmd, const char *func) const

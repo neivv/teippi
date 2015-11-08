@@ -113,14 +113,14 @@ class FlingyIscriptContext : public Iscript::Context
 
 void Flingy::ProgressFrame()
 {
-    FlingyIscriptContext(this, main_rng).ProgressIscript();
+    FlingyIscriptContext(this, MainRng()).ProgressIscript();
 
     ProgressFlingy();
     MoveFlingy(this);
 
     if (sprite->position.x >= *bw::map_width || sprite->position.y >= *bw::map_height || move_target == position)
     {
-        FlingyIscriptContext(this, main_rng).SetIscriptAnimation(Iscript::Animation::Death, true);
+        FlingyIscriptContext(this, MainRng()).SetIscriptAnimation(Iscript::Animation::Death, true);
     }
 }
 

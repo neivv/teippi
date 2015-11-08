@@ -417,7 +417,7 @@ void __stdcall SetIscriptAnimation(int anim)
     else
     {
         // This is unable to handle any unit-specific commands
-        SimpleIscriptContext ctx(main_rng);
+        SimpleIscriptContext ctx(MainRng());
         img->SetIscriptAnimation(&ctx, anim);
     }
 }
@@ -454,7 +454,7 @@ static void __stdcall ProgressIscriptFrame_Hook(Iscript::Script *script, int tes
     if (test_run)
     {
         Assert(out_speed != nullptr);
-        MovementIscriptContext ctx(*bw::active_iscript_unit, out_speed, main_rng);
+        MovementIscriptContext ctx(*bw::active_iscript_unit, out_speed, MainRng());
         script->ProgressFrame(&ctx, image);
     }
     else

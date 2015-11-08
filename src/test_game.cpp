@@ -1714,7 +1714,7 @@ struct Test_AiTargetPriority : public GameTest {
             case 0: case 1: {
                 // Should prioritize the closer one, regardless of the creation order.
                 const Point positions[] = { Point(100, 100), Point(200, 100) };
-                Unit *first;
+                Unit *first = nullptr;
                 if (state == 0)
                     first = CreateUnitForTestAt(Unit::Marine, 0, positions[0]);
                 Unit *second = CreateUnitForTestAt(Unit::Marine, 0, positions[1]);

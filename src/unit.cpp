@@ -2422,7 +2422,7 @@ void Unit::KillHangarUnits(ProgressUnitResults *results)
         child->interceptor.parent = nullptr;
         if (child->unit_id != Scarab)
         {
-            int death_time = 15 + main_rng->Rand(31);
+            int death_time = 15 + MainRng()->Rand(31);
             if (!child->death_timer || child->death_timer > death_time)
                 child->death_timer = death_time;
         }
@@ -2453,7 +2453,7 @@ void Unit::KillChildren(ProgressUnitResults *results)
         case Unit::Ghost:
             if (ghost.nukedot != nullptr)
             {
-                ghost.nukedot->SetIscriptAnimation_Lone(Iscript::Animation::Death, true, main_rng, "Unit::KillChildren");
+                ghost.nukedot->SetIscriptAnimation_Lone(Iscript::Animation::Death, true, MainRng(), "Unit::KillChildren");
             }
             return;
         case Unit::NuclearSilo:
@@ -3735,7 +3735,7 @@ void Unit::ShowShieldHitOverlay(int direction)
     direction = ((direction - 0x7c) >> 3) & 0x1f;
     int8_t *shield_los = images_dat_shield_overlay[img->image_id];
     shield_los = shield_los + *(uint32_t *)(shield_los + 8 + img->direction * 4) + direction * 2; // sigh
-    UnitIscriptContext ctx(this, nullptr, "ShowShieldHitOverlay", main_rng, false);
+    UnitIscriptContext ctx(this, nullptr, "ShowShieldHitOverlay", MainRng(), false);
     sprite->AddOverlayAboveMain(&ctx, Image::ShieldOverlay, shield_los[0], shield_los[1], direction);
 }
 
@@ -4077,7 +4077,7 @@ void Unit::DoAttack_Main(int weapon, int iscript_anim, bool air, ProgressUnitRes
     if (!IsReadyToAttack(this, weapon))
         return;
     flingy_flags |= 0x8;
-    cooldown = GetCooldown(weapon) + main_rng->Rand(3) - 1;
+    cooldown = GetCooldown(weapon) + MainRng()->Rand(3) - 1;
     SetIscriptAnimation(iscript_anim, true, "DoAttack_Main", results);
 }
 
@@ -4096,7 +4096,7 @@ void Unit::AttackMelee(int sound_amt, uint16_t *sounds, ProgressUnitResults *res
             results->weapon_damages.emplace_back(this, player, target, damage, weapon, facing_direction);
         }
     }
-    int sound = sounds[main_rng->Rand(sound_amt)];
+    int sound = sounds[MainRng()->Rand(sound_amt)];
     PlaySoundAtPos(sound, sprite->position.AsDword(), 1, 0);
 }
 
@@ -4558,7 +4558,7 @@ void Unit::Order_Larva(ProgressUnitResults *results)
             return;
         }
     }
-    auto seed = main_rng->Rand(0x8000);
+    auto seed = MainRng()->Rand(0x8000);
     Point new_pos = sprite->position;
     new_pos.x += seed & 8 ? 10 : -10;
     new_pos.y += seed & 0x80 ? 10 : -10;
@@ -4794,7 +4794,7 @@ bool Unit::AttackAtPoint(ProgressUnitResults *results)
         CreateBunkerShootOverlay(this);
     flingy_flags |= 0x8;
     *bw::last_bullet_spawner = nullptr;
-    ground_cooldown = air_cooldown = GetCooldown(weapon) + main_rng->Rand(3) - 1;
+    ground_cooldown = air_cooldown = GetCooldown(weapon) + MainRng()->Rand(3) - 1;
     int anim = ground ? Iscript::Animation::GndAttkRpt : Iscript::Animation::AirAttkRpt;
     SetIscriptAnimation(anim, true, "AttackAtPoint", results);
     return true;
@@ -5533,7 +5533,7 @@ void Unit::Order_ProtossBuildSelf(ProgressUnitResults *results)
                 Image *image = sprite->main_image;
                 // Bw actually has iscript header hardcoded as 193
                 image->iscript.Initialize(*bw::iscript, images_dat_iscript_header[Image::WarpTexture]);
-                UnitIscriptContext ctx(this, results, "Order_ProtossBuildSelf", main_rng, false);
+                UnitIscriptContext ctx(this, results, "Order_ProtossBuildSelf", MainRng(), false);
                 image->SetIscriptAnimation(&ctx, Iscript::Animation::Init);
                 image->iscript.Initialize(*bw::iscript, images_dat_iscript_header[image->image_id]);
                 // Now the image is still executing the warp texture iscript, even though
@@ -5723,19 +5723,19 @@ void Unit::WarnUnhandledIscriptCommand(const Iscript::Command &cmd, const char *
 
 void Unit::ProgressIscript(const char *caller, ProgressUnitResults *results)
 {
-    UnitIscriptContext ctx(this, results, caller, main_rng, true);
+    UnitIscriptContext ctx(this, results, caller, MainRng(), true);
     ctx.ProgressIscript();
     ctx.CheckDeleted(); // Safe? No idea, needs tests, but works with dying units
 }
 
 void Unit::SetIscriptAnimation(int anim, bool force, const char *caller, ProgressUnitResults *results)
 {
-    UnitIscriptContext(this, results, caller, main_rng, false).SetIscriptAnimation(anim, force);
+    UnitIscriptContext(this, results, caller, MainRng(), false).SetIscriptAnimation(anim, force);
 }
 
 void Unit::SetIscriptAnimationForImage(Image *img, int anim)
 {
-    UnitIscriptContext ctx(this, nullptr, "SetIscriptAnimation hook", main_rng, false);
+    UnitIscriptContext ctx(this, nullptr, "SetIscriptAnimation hook", MainRng(), false);
     img->SetIscriptAnimation(&ctx, anim);
 }
 
@@ -5753,6 +5753,6 @@ void Unit::IscriptToIdle()
 {
     flags &= ~UnitStatus::Nobrkcodestart;
     sprite->flags &= ~SpriteFlags::Nobrkcodestart;
-    UnitIscriptContext(this, nullptr, "IscriptToIdle", main_rng, false).IscriptToIdle();
+    UnitIscriptContext(this, nullptr, "IscriptToIdle", MainRng(), false).IscriptToIdle();
     flingy_flags &= ~0x8;
 }

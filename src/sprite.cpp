@@ -214,7 +214,7 @@ ptr<Sprite> Sprite::Allocate(Iscript::Context *ctx, int sprite_id, const Point &
 Sprite *Sprite::AllocateWithBasicIscript(int sprite_id, const Point &pos, int player)
 {
     ptr<Sprite> sprite(new Sprite);
-    SpriteIscriptContext ctx(sprite.get(), main_rng, "Sprite::AllocateWithBasicIscript", false);
+    SpriteIscriptContext ctx(sprite.get(), MainRng(), "Sprite::AllocateWithBasicIscript", false);
     if (!sprite->Initialize(&ctx, sprite_id, pos, player))
         return nullptr;
     return sprite.release();
@@ -223,7 +223,7 @@ Sprite *Sprite::AllocateWithBasicIscript(int sprite_id, const Point &pos, int pl
 Sprite *LoneSpriteSystem::AllocateLone(int sprite_id, const Point &pos, int player)
 {
     ptr<Sprite> sprite(new Sprite);
-    SpriteIscriptContext ctx(sprite.get(), main_rng, "LoneSpriteSystem::AllocateLone", false);
+    SpriteIscriptContext ctx(sprite.get(), MainRng(), "LoneSpriteSystem::AllocateLone", false);
     if (!sprite->Initialize(&ctx, sprite_id, pos, player))
         return nullptr;
 
@@ -234,7 +234,7 @@ Sprite *LoneSpriteSystem::AllocateLone(int sprite_id, const Point &pos, int play
 Sprite *LoneSpriteSystem::AllocateFow(Sprite *base, int unit_id)
 {
     ptr<Sprite> sprite_ptr(new Sprite);
-    SpriteIscriptContext ctx(sprite_ptr.get(), main_rng, "LoneSpriteSystem::AllocateFow", false);
+    SpriteIscriptContext ctx(sprite_ptr.get(), MainRng(), "LoneSpriteSystem::AllocateFow", false);
     if (!sprite_ptr->Initialize(&ctx, base->sprite_id, base->position, base->player))
         return nullptr;
 
@@ -512,7 +512,7 @@ static bool ProgressLoneSpriteFrame(Sprite *sprite)
     else
         UpdateDoodadVisibility(sprite);
 
-    SpriteIscriptContext ctx(sprite, main_rng, "ProgressLoneSpriteFrame", true);
+    SpriteIscriptContext ctx(sprite, MainRng(), "ProgressLoneSpriteFrame", true);
     ctx.ProgressIscript();
     return ctx.CheckDeleted();
 }
@@ -691,14 +691,14 @@ void DrawCursorMarker()
 
 void Sprite::SetIscriptAnimation_Lone(int anim, bool force, Rng *rng, const char *caller)
 {
-    SpriteIscriptContext(this, main_rng, caller, false).SetIscriptAnimation(anim, force);
+    SpriteIscriptContext(this, MainRng(), caller, false).SetIscriptAnimation(anim, force);
 }
 
 void ShowCursorMarker(int x, int y)
 {
     Sprite *marker = *bw::cursor_marker;
     MoveSprite(marker, x, y);
-    marker->SetIscriptAnimation_Lone(Iscript::Animation::GndAttkInit, true, main_rng, "ShowCursorMarker");
+    marker->SetIscriptAnimation_Lone(Iscript::Animation::GndAttkInit, true, MainRng(), "ShowCursorMarker");
     *bw::draw_cursor_marker = 1;
 }
 
@@ -900,7 +900,7 @@ void Sprite::AddDamageOverlay()
     Assert(result_pos <= results.end());
     if (result_pos != results.begin())
     {
-        int variation = results[main_rng->Rand(result_pos - results.begin())];
+        int variation = results[MainRng()->Rand(result_pos - results.begin())];
         Point32 pos = overlay.GetValues(main_image, variation);
         AddOverlayHighest(this, Image::FirstMinorDamageOverlay + variation, pos.x, pos.y, 0);
     }

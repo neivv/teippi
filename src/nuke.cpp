@@ -47,7 +47,7 @@ void Unit::Order_NukeTrack()
         DoNextQueuedOrderIfAble(this);
         SetButtons(unit_id);
         SetIscriptAnimation(Iscript::Animation::Idle, true, "Order_NukeTrack state 6", nullptr);
-        ghost.nukedot->SetIscriptAnimation_Lone(Iscript::Animation::Death, true, main_rng, "Unit::Order_NukeTrack");
+        ghost.nukedot->SetIscriptAnimation_Lone(Iscript::Animation::Death, true, MainRng(), "Unit::Order_NukeTrack");
         ghost.nukedot = nullptr;
         Ai_ReturnToNearestBaseForced(this);
     }

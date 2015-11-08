@@ -32,5 +32,9 @@ inline bool EnableRng(bool enable)
     return prev;
 }
 
-static Rng *main_rng = (Rng *)bw::rng_seed.raw_pointer();
+inline Rng *MainRng()
+{
+    return (Rng *)bw::rng_seed.raw_pointer();
+}
+
 #endif /* RNG_H */
