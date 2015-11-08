@@ -50,6 +50,7 @@ struct Trigger
     uint8_t dc0[0x148];
     TriggerAction actions[0x40];
     uint32_t flags;
+    uint8_t dc94c[0x1c];
 };
 #pragma pack(pop)
 
