@@ -547,7 +547,6 @@
 004762C0 = GetClosestPointOfTarget(), arg 1 Unit *unit, arg 2 dword *out_x, arg 3 dword *out_y
 004011A0 = SetMoveTargetToNearbyPoint(), eax direction, edx Flingy *flingy
 00479D40 = FireWeapon(), eax Unit *parent, ebx weapon_id
-004010E0 = InitializeImageFull(), arg 1 image_id, ebx Image *img, ecx x, eax y, edi Sprite *parent
 004D5A00 = SetOffsetToParentsSpecialOverlay(), ecx Image *img
 
 00473920 = dword GetPsiPlacementState(), arg 1 x_tile, arg 2 y_tile, esi unit_id, eax player

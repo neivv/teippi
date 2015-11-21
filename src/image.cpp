@@ -265,9 +265,9 @@ void Image::FollowMainImage()
     UpdateFrameToDirection();
 }
 
-Image *Image::Iscript_AddOverlay(Iscript::Context *ctx, int image_id_, int x, int y, bool above)
+Image *Image::Iscript_AddOverlay(Iscript::Context *ctx, int overlay_id, int x, int y, bool above)
 {
-    Image *img = new Image;
+    Image *img = new Image(parent, overlay_id, x, y);
     if (above)
     {
         img->list.prev = nullptr;
@@ -282,7 +282,12 @@ Image *Image::Iscript_AddOverlay(Iscript::Context *ctx, int image_id_, int x, in
         parent->last_overlay->list.next = img;
         parent->last_overlay = img;
     }
-    InitializeImageFull(image_id_, img, x, y, parent);
+    bool success = img->InitIscript(ctx);
+    if (!success)
+    {
+        img->SingleDelete();
+        return nullptr;
+    }
     if (img->flags & ImageFlags::CanTurn)
     {
         if (IsFlipped())
@@ -334,7 +339,7 @@ Iscript::CmdResult Image::HandleIscriptCommand(Iscript::Context *ctx, Iscript::S
         case SwitchUl:
         {
             Image *other = Iscript_AddOverlay(ctx, cmd.val, 0, 0, cmd.opcode == ImgOlOrig);
-            if (other && ~other->flags & ImageFlags::UseParentLo)
+            if (other != nullptr && ~other->flags & ImageFlags::UseParentLo)
             {
                 other->flags |= ImageFlags::UseParentLo;
                 SetOffsetToParentsSpecialOverlay(other);

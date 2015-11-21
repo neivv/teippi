@@ -205,6 +205,8 @@ class Image
         void DrawFunc_ProgressFrame(Iscript::Context *ctx);
         void SaveRestore();
         void UpdateSpecialOverlayPos();
+        /// Common function used in iscript code to add overlays.
+        /// May return nullptr if something fails during initialization.
         Image *Iscript_AddOverlay(Iscript::Context *ctx, int image_id, int x, int y, bool above);
 
         /// Sets direction (and flipping) to the one of parent->main_image

@@ -5666,17 +5666,6 @@ Iscript::CmdResult Unit::HandleIscriptCommand(UnitIscriptContext *ctx, Image *im
         break;
         case CreateGasOverlays:
         {
-            Image *gas_overlay = new Image;
-            if (sprite->first_overlay == img)
-            {
-                Assert(img->list.prev == nullptr);
-                sprite->first_overlay = gas_overlay;
-            }
-            gas_overlay->list.prev = img->list.prev;
-            gas_overlay->list.next = img;
-            if (img->list.prev != nullptr)
-                img->list.prev->list.next = gas_overlay;
-            img->list.prev = gas_overlay;
             int smoke_img = Image::VespeneSmokeOverlay1 + cmd.val;
             // Bw can be misused to have this check for loaded nuke and such
             // Even though resource_amount is word, it won't report incorrect
@@ -5694,7 +5683,21 @@ Iscript::CmdResult Unit::HandleIscriptCommand(UnitIscriptContext *ctx, Image *im
                     smoke_img = Image::VespeneSmallSmoke1 + cmd.val;
             }
             Point pos = LoFile::GetOverlay(img->image_id, Overlay::Special).GetValues(img, cmd.val).ToPoint16();
-            InitializeImageFull(smoke_img, gas_overlay, pos.x + img->x_off, pos.y + img->y_off, sprite.get());
+
+            Image *gas_overlay = new Image(sprite.get(), smoke_img, pos.x + img->x_off, pos.y + img->y_off);
+            if (sprite->first_overlay == img)
+            {
+                Assert(img->list.prev == nullptr);
+                sprite->first_overlay = gas_overlay;
+            }
+            gas_overlay->list.prev = img->list.prev;
+            gas_overlay->list.next = img;
+            if (img->list.prev != nullptr)
+                img->list.prev->list.next = gas_overlay;
+            img->list.prev = gas_overlay;
+            bool success = gas_overlay->InitIscript(ctx);
+            if (!success)
+                gas_overlay->SingleDelete();
         }
         break;
         case Iscript::Opcode::AttackMelee:
