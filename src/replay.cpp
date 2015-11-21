@@ -33,7 +33,7 @@ static bool WriteReplay(File *replay)
     if (WriteReplayData(*bw::replay_data, replay) == 0)
         return false;
     uint32_t size;
-    void *chk = ReadChk(&size, &*bw::map_path);
+    void *chk = ReadChk(&size, &bw::map_path[0]);
     if (!chk)
         return false;
     if (WriteCompressed(replay, &size, 4) == 0)

@@ -1818,7 +1818,7 @@ struct Test_Transmission : public GameTest {
         variant = transmission_tests;
     }
     void NextFrame() override {
-        // Maybe is initialized incorrectly, as the structure is incomplete
+        // May be initialized incorrectly, as the structure is incomplete
         Trigger trigger;
         memset(&trigger, 0, sizeof(Trigger));
         trigger.actions[0].location = 1;

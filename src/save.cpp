@@ -981,11 +981,11 @@ void Save::SaveGame(uint32_t time)
     *bw::unk_57F240 = (GetTickCount() - *bw::unk_59CC7C) / 1000 + *bw::unk_6D5BCC;
     WriteCompressed((File *)file, bw::players.raw_pointer(), sizeof(Player) * Limits::Players);
     if (!*bw::campaign_mission)
-        ReplaceWithShortPath(&*bw::map_path, MAX_PATH);
+        ReplaceWithShortPath(&bw::map_path[0], MAX_PATH);
     WriteCompressed((File *)file, bw::minerals.raw_pointer(), 0x17700);
     fwrite(bw::local_player_id.raw_pointer(), 1, 4, file);
     if (!*bw::campaign_mission)
-        ReplaceWithFullPath(&*bw::map_path, MAX_PATH);
+        ReplaceWithFullPath(&bw::map_path[0], MAX_PATH);
 
     bullet_to_id.reserve(bullet_system->BulletCount());
     bullet_system->MakeSaveIdMapping([this] (Bullet *bullet, uintptr_t id) {

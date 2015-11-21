@@ -275,9 +275,9 @@ bool Unit::NeedsToDodge(const Unit *other) const
 int Unit::ProgressUnstackMovement()
 {
     // IsStillMovingToPathWaypoint causes issues with flingy movement when path is really short
-    // Bw decides unit is close enough, and by returning 1 we would just case game calculate
-    // another unstack path, which could be exactly same, causing unit to be stuck
-    // This bug does not usually happen in vanilla bw due to bug in CreateSimplePath
+    // Bw decides unit is close enough, and by returning 1 we would just cause game to calculate
+    // another unstack path, which could be exactly same, causing the unit to be stuck
+    // This bug does not usually happen in vanilla bw due to a bug in CreateSimplePath
     //if (IsStillMovingToPathWaypoint(this) == 0)
     //    return 1;
 
