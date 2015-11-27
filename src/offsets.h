@@ -368,8 +368,8 @@ namespace bw
 
     const offset<uint8_t> image_flags = 0x006CEFB5;
 
-    const array_offset<ImgRenderFuncs, 0x11> image_renderfuncs = 0x005125A0;
-    const array_offset<ImgUpdateFunc, 0x11> image_updatefuncs = 0x00512510;
+    const array_offset<ImgRenderFuncs, 0x12> image_renderfuncs = 0x005125A0;
+    const array_offset<ImgUpdateFunc, 0x12> image_updatefuncs = 0x00512510;
 
     const offset<uint8_t *> iscript = 0x006D1200;
     const offset<Unit *> active_iscript_unit = 0x006D11FC;
