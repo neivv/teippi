@@ -234,9 +234,10 @@ int __fastcall TrigAction_Transmission(TriggerAction *action)
     {
         // Play wav
         bw::trigger_actions[0x8](action);
-        Unit *unit = FindUnitInLocation(action->unit_id, AllPlayers, action->location);
+        Unit *unit = FindUnitInLocation(action->unit_id, AllPlayers, action->location - 1);
         if (unit != nullptr)
         {
+            unit->sprite->selection_flash_timer = 45;
             PingMinimap(unit->sprite->position.x, unit->sprite->position.y, AllPlayers);
             Trigger_Portrait(action->unit_id, time, unit->sprite->position.x, unit->sprite->position.y);
         }

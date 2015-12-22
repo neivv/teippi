@@ -6,10 +6,10 @@
 #include "mainpatch.h"
 
 #ifdef DEBUG
-#define PLUGIN_NAME "Limits v 1.0 (Debug)"
+#define PLUGIN_NAME "Limits v 1.0.2 (Debug)"
 #define PLUGIN_ID 0x4230daec
 #else
-#define PLUGIN_NAME "Limits v 1.0"
+#define PLUGIN_NAME "Limits v 1.0.2"
 #define PLUGIN_ID 0x4230deac
 #endif
 

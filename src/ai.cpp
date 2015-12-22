@@ -53,71 +53,7 @@ static void MedicRemove(Unit *medic)
     }
 }
 
-static uint8_t ai_region_enemy_strength_updates[0x2000 * Limits::ActivePlayers];
-static UnitList<Region *> * react_to_hit_regions[0x2000 * Limits::ActivePlayers];
-static UnitList<uint16_t, 30> react_to_hit_own_regions;
-
-void ReactToHit_Main(HitUnit *own, Unit *attacker, bool main_target_reactions, HelpingUnitVec *helpers);
-
 ListHead<GuardAi, 0x0> needed_guards[0x8];
-
-static inline void UpdateRegionStr(int player, int n)
-{
-    if (ai_region_enemy_strength_updates[n + player * 0x2000] & 0x1)
-    {
-        ai_region_enemy_strength_updates[n + player * 0x2000] = 0;
-        Region *region = bw::player_ai_regions[player] + n;
-        region->enemy_air_strength = GetEnemyAirStrength(n, player);
-        region->enemy_ground_strength = GetEnemyStrength(n, player, false);
-    }
-}
-
-static inline Region *GetAiRegion(int player, const Point &pos)
-{
-    return bw::player_ai_regions[player] + Pathing::GetRegion(pos);
-}
-
-static inline Region *GetAiRegion(Unit *unit)
-{
-    return GetAiRegion(unit->player, unit->sprite->position);
-}
-
-void UpdateRegionEnemyStrengths()
-{
-    uint32_t *pos = (uint32_t *)ai_region_enemy_strength_updates;
-    for (int i = 0; i < 0x800 * 8; i++)
-    {
-        if (pos[i] & 0x01010101)
-        {
-            UpdateRegionStr(i / 0x800, (i & 0x7ff) * 4 + 0);
-            UpdateRegionStr(i / 0x800, (i & 0x7ff) * 4 + 1);
-            UpdateRegionStr(i / 0x800, (i & 0x7ff) * 4 + 2);
-            UpdateRegionStr(i / 0x800, (i & 0x7ff) * 4 + 3);
-            pos[i] = 0; // No need to care about flag 0x2
-        }
-    }
-}
-
-bool IsUsableSpellOrder(int order)
-{
-    switch (order)
-    {
-        case Order::YamatoGun:
-        case Order::Lockdown:
-        case Order::DarkSwarm:
-        case Order::SpawnBroodlings:
-        case Order::EmpShockwave:
-        case Order::PsiStorm:
-        case Order::Irradiate:
-        case Order::Plague:
-        case Order::Ensnare:
-        case Order::StasisField:
-            return true;
-        default:
-            return false;
-    }
-}
-
 
 bool IsInAttack(Unit *unit)
 {
@@ -133,219 +69,6 @@ bool IsInAttack(Unit *unit)
     }
 }
 
-void ClearRegionChangeList()
-{
-    auto it = react_to_hit_own_regions.Begin();
-    for (uint16_t reg_id = *it; reg_id; ++it, reg_id = *it)
-    {
-        react_to_hit_regions[reg_id] = 0;
-    }
-
-    react_to_hit_own_regions.Reset();
-}
-
-static bool AskForHelp_IsGood(Unit *unit, Unit *enemy, bool attacking_units)
-{
-    if (attacking_units)
-    {
-        if (!unit->ai || unit->ai->type != 4 || !IsInAttack(unit))
-            return false;
-        if (!unit->CanAttackUnit(enemy, true))
-        {
-            if ((unit->flags & UnitStatus::Burrowed) && !enemy->CanAttackUnit(unit, true)) // Might reaction spell?
-                return false;
-        }
-        return true;
-    }
-    else
-    {
-        if (unit->ai && unit->ai->type == 1)
-        {
-            if (!unit->CanAttackUnit(enemy, true))
-                return false;
-            // At least have to do this for carrier/reaver
-            if (enemy->IsFlying() && unit->GetAirWeapon() == Weapon::None )
-                return false;
-            if (!enemy->IsFlying() && unit->GetGroundWeapon() == Weapon::None )
-                return false;
-
-            int dist = Distance(enemy->sprite->position, ((Ai::GuardAi *)unit->ai)->home);
-            if (dist > unit->GetWeaponRange(!enemy->IsFlying()) + 0xc0)
-                return false;
-        }
-        return true;
-    }
-}
-
-static bool AskForHelp_CheckRegion(int player, int own_region, int region, Region *enemy_region, UnitList<Region *> *** region_list)
-{
-    if (region == own_region)
-        return false;
-
-    *region_list = &react_to_hit_regions[player * 0x2000 + region];
-    if (**region_list)
-    {
-        auto it = (**region_list)->Begin();
-        for (Region *reg = *it; reg; ++it, reg = *it)
-        {
-            if (reg == enemy_region)
-            {
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-static void AskForHelp_AddRegion(int player, UnitList<Region *> ** region_list, int region, Region *attacker_region)
-{
-    if (!*region_list)
-    {
-        *region_list = pbf_memory.Allocate<UnitList<Region *>>();
-        Region *this_region = bw::player_ai_regions[player] + region;
-        this_region->flags |= 0x20;
-        react_to_hit_own_regions.Add(player * 0x2000 + region, &pbf_memory);
-    }
-    (*region_list)->Add(attacker_region, &pbf_memory);
-}
-
-// ReactToHit_Pre copy
-static bool AskForHelp_CheckIfDoesAnything(Unit *own)
-{
-    if (own->ai)
-    {
-        if (own->ai->type == 4)
-        {
-            if (IsInAttack(own))
-                return false;
-        }
-        else if (own->ai->type != 1 || !(bw::player_ai[own->player].flags & 0x20))
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
-// Should not be called, use AskForHelp() instead
-static void AskForHelp_Internal(Unit *own, Unit *enemy, bool attacking_units, HelpingUnitVec *helpers, Unit **units)
-{
-    STATIC_PERF_CLOCK(Ai_AskForHelp_Internal);
-    Region *attacker_region = GetAiRegion(own->player, enemy->sprite->position);
-    int own_region = own->GetRegion();
-    for (Unit *unit = *units++; unit; unit = *units++)
-    {
-        if (unit->hitpoints == 0)
-            continue;
-
-        int region;
-        UnitList<Region *> ** region_list;
-        bool uninterruptable = unit->IsInUninterruptableState();
-        // Optimization: Calling ReactToHit with uninterruptable state barely does anything, so do it here
-        // Not doing for buildings because there is some unk town stuff in start of ReactToHit
-        if (uninterruptable && (~units_dat_flags[unit->unit_id] & UnitFlags::Building || unit->ai))
-        {
-            region = unit->GetRegion();
-            if (!AskForHelp_CheckRegion(unit->player, own_region, region, attacker_region, &region_list))
-                break;
-
-            if (AskForHelp_IsGood(unit, enemy, attacking_units))
-            {
-                if (unit->ai && unit->ai->type == 4)
-                {
-                    Region *ai_region = ((MilitaryAi *)unit->ai)->region;
-                    if (ai_region->state == 1 && ~units_dat_flags[unit->unit_id] & UnitFlags::Building) // This building check is copied from ReactToHit, dunno if necessary
-                        ChangeAiRegionState(ai_region, 2);
-                }
-                if (AskForHelp_CheckIfDoesAnything(unit))
-                {
-                    AskForHelp_AddRegion(unit->player, region_list, region, attacker_region);
-                    Region *unit_ai_region = bw::player_ai_regions[unit->player] + region;
-                    if (unit_ai_region->state == 4 || unit_ai_region->state == 5)
-                        ChangeAiRegionState(unit_ai_region, 6);
-                    if (attacker_region->state == 0 && unit_ai_region->state != 0 && *bw::elapsed_seconds > 60)
-                        ChangeAiRegionState(attacker_region, 5);
-                }
-            }
-        }
-        else
-        {
-            if (AskForHelp_IsGood(unit, enemy, attacking_units))
-            {
-                helpers->emplace_back(enemy, unit);
-                if (AskForHelp_CheckIfDoesAnything(unit))
-                {
-                    region = unit->GetRegion();
-                    if (AskForHelp_CheckRegion(unit->player, own_region, region, attacker_region, &region_list))
-                        AskForHelp_AddRegion(unit->player, region_list, region, attacker_region);
-                }
-            }
-        }
-    }
-}
-
-// This is kinda different (faster, less bugs), but some unk ai region flags are not set if unit can't attack enemy
-// Also delayed
-void AskForHelp(Unit *own, Unit *enemy, bool attacking_units, HelpingUnitVec *helpers)
-{
-    if (enemy->IsWorker())
-    {
-        int search_radius = CallFriends_Radius;
-        if (units_dat_flags[own->unit_id] & UnitFlags::Building)
-            search_radius *= 2;
-        if (bw::player_ai[own->player].flags & 0x20)
-            search_radius *= 2;
-        vector<Unit *> helping_workers;
-        helping_workers.reserve(32);
-        unit_search->ForEachUnitInArea(Rect16(own->sprite->position, search_radius), [&](Unit *unit) {
-            if (unit->IsWorker() && unit->ai && unit != own && unit->player == own->player)
-                helping_workers.emplace_back(unit);
-            return false;
-        });
-        helping_workers.emplace_back(nullptr);
-        AskForHelp_Internal(own, enemy, attacking_units, helpers, helping_workers.data());
-    }
-    Unit **units = own->nearby_helping_units.load(std::memory_order_relaxed);
-    while (!units)
-    {
-        STATIC_PERF_CLOCK(Ai_AskForHelp_Hang);
-        SwitchToThread(); // Bad?
-        units = own->nearby_helping_units.load(std::memory_order_relaxed);
-    }
-    AskForHelp_Internal(own, enemy, attacking_units, helpers, units);
-}
-
-void AskForHelp_Actual(HitUnit *unit, Unit *attacker)
-{
-    // Todo: ReactToHit without region stuff
-    ReactToHit_Main(unit, attacker, false, nullptr);
-}
-
-vector<HitUnit> ProcessAskForHelp(HelpingUnitVec input)
-{
-    std::sort(input.begin(), input.end(), [](const auto &a, const auto &b) {
-        if (get<1>(a)->lookup_id == get<1>(b)->lookup_id) // Helper
-            return get<0>(a)->lookup_id < get<0>(b)->lookup_id; // Enemy
-        return get<1>(a)->lookup_id < get<1>(b)->lookup_id;
-    });
-    vector<HitUnit> update_attack_target;
-    Unit *previous = nullptr;
-    for (const auto &pair : input.Unique())
-    {
-        Unit *enemy = get<0>(pair);
-        Unit *helper = get<1>(pair);
-        if (helper != previous)
-        {
-            if (!update_attack_target.empty() && update_attack_target.back().Empty())
-                update_attack_target.pop_back();
-            update_attack_target.emplace_back(helper);
-            previous = helper;
-        }
-        AskForHelp_Actual(&update_attack_target.back(), enemy);
-    }
-    return update_attack_target;
-}
-
 static bool IsNotChasing(Unit *unit) // dunno
 {
     if (unit->ai->type != 4)
@@ -356,21 +79,35 @@ static bool IsNotChasing(Unit *unit) // dunno
     return ai->region->state != 7;
 }
 
+static void SetAttackTarget(Unit *unit, Unit *new_target, bool accept_if_sieged)
+{
+    if (unit->flags & UnitStatus::InBuilding)
+        unit->target = new_target;
+    else
+        AttackUnit(unit, new_target, true, accept_if_sieged);
+
+    if (unit->HasHangar() && !unit->IsInAttackRange(new_target))
+        unit->flags |= UnitStatus::Disabled2;
+}
+
 bool UpdateAttackTarget(Unit *unit, bool accept_if_sieged, bool accept_critters, bool must_reach)
 {
+    // Unit::GetAutoTarget() requires this, but it is called rarely from here, so copy the
+    // assertion here as well
+    Assert(late_unit_frames_in_progress || bulletframes_in_progress);
     STATIC_PERF_CLOCK(Ai_UpdateAttackTarget);
 
-    if (!unit->ai || !unit->HasWayOfAttacking())
+    if (unit->ai == nullptr || !unit->HasWayOfAttacking())
         return false;
     if (unit->order_queue_begin && unit->order_queue_begin->order_id == Order::Patrol)
         return false;
     if (unit->order == Order::Pickup4)
     {
         must_reach = true;
-        if (!unit->previous_attacker && unit->order_queue_begin && unit->order_queue_begin->order_id == Order::AttackUnit)
+        if (unit->previous_attacker == nullptr && unit->order_queue_begin && unit->order_queue_begin->order_id == Order::AttackUnit)
             return false;
     }
-    if (unit->target && unit->flags & UnitStatus::Reacts && unit->move_target_unit)
+    if (unit->target != nullptr && unit->flags & UnitStatus::Reacts && unit->move_target_unit != nullptr)
     {
         if (unit->IsEnemy(unit->move_target_unit) && unit->IsStandingStill() == 2)
         {
@@ -383,255 +120,51 @@ bool UpdateAttackTarget(Unit *unit, bool accept_if_sieged, bool accept_critters,
         }
     }
 
-
+    const UpdateAttackTargetContext ctx(unit, accept_critters, must_reach);
     Unit *target;
     if (unit->IsFlying())
-        target = unit->Ai_ChooseAirTarget();
-    else
-        target = unit->Ai_ChooseGroundTarget();
-    if (target != nullptr)
     {
-        if (must_reach && unit->IsUnreachable(target))
-            target = nullptr;
-        else if (!unit->CanAttackUnit(target, true))
-            target = nullptr;
-        else if (!accept_critters && target->IsCritter())
-            target = nullptr;
+        target = ctx.CheckValid(unit->Ai_ChooseAirTarget());
+        if (target == nullptr)
+            target = ctx.CheckValid(unit->Ai_ChooseGroundTarget());
     }
-    if (target == nullptr)
+    else
     {
-        if (unit->IsFlying())
-            target = unit->Ai_ChooseGroundTarget();
-        else
-            target = unit->Ai_ChooseAirTarget();
-        if (target)
-        {
-            if (must_reach && unit->IsUnreachable(target))
-                target = nullptr;
-            else if (!unit->CanAttackUnit(target, true))
-                target = nullptr;
-            else if (!accept_critters && target->IsCritter())
-                target = nullptr;
-        }
+        target = ctx.CheckValid(unit->Ai_ChooseGroundTarget());
+        if (target == nullptr)
+            target = ctx.CheckValid(unit->Ai_ChooseAirTarget());
     }
 
     Unit *previous_attack_target = nullptr;
     if (orders_dat_use_weapon_targeting[unit->order] && unit->target != nullptr)
-    {
-        previous_attack_target = unit->target;
-        if (must_reach && unit->IsUnreachable(previous_attack_target))
-            previous_attack_target = nullptr;
-        else if (!unit->CanAttackUnit(previous_attack_target, true))
-            previous_attack_target = nullptr;
-        else if (!accept_critters && previous_attack_target->IsCritter())
-            previous_attack_target = nullptr;
-    }
-    if (must_reach && unit->previous_attacker && unit->IsUnreachable(unit->previous_attacker))
-        unit->previous_attacker = nullptr;
+        previous_attack_target = ctx.CheckValid(unit->target);
 
-    if (unit->previous_attacker != nullptr && !unit->previous_attacker->IsDisabled())
-    {
-        if ((unit->previous_attacker->unit_id != Unit::Bunker) && (!unit->previous_attacker->target || unit->previous_attacker->target->player != unit->player))
-            unit->previous_attacker = nullptr;
-        else if (!unit->CanAttackUnit(unit->previous_attacker, true))
-            unit->previous_attacker = nullptr;
-        else if (!accept_critters && unit->previous_attacker->IsCritter())
-            unit->previous_attacker = nullptr;
-    }
+    if (unit->previous_attacker != nullptr)
+        unit->previous_attacker = ctx.CheckPreviousAttackerValid(unit->previous_attacker);
 
-    Unit *new_target = unit->ChooseBetterTarget(target, previous_attack_target);
-    new_target = unit->ChooseBetterTarget(unit->previous_attacker, new_target);
+    Unit *new_target = previous_attack_target;
+    if (unit->Ai_IsBetterTarget(target, previous_attack_target))
+        new_target = target;
+    if (unit->Ai_IsBetterTarget(unit->previous_attacker, new_target))
+        new_target = unit->previous_attacker;
 
     if (new_target == nullptr)
     {
         if (!IsNotChasing(unit))
             return false;
-        new_target = nullptr;
-        if (!unit->Ai_TryReturnHome(true))
-        {
-            new_target = unit->GetAutoTarget();
-            if (!new_target)
-                return false;
-            if (must_reach && unit->IsUnreachable(new_target))
-                return false;
-            if (!unit->CanAttackUnit(new_target, true))
-                return false;
-            if (!accept_critters && new_target->IsCritter())
-                return false;
-        }
-        else
+        if (unit->Ai_TryReturnHome(true))
+            return false;
+
+        new_target = ctx.CheckValid(unit->GetAutoTarget());
+        if (new_target == nullptr)
             return false;
     }
     if (new_target != unit->target)
     {
-        if (unit->flags & UnitStatus::InBuilding)
-            unit->target = new_target;
-        else
-            AttackUnit(unit, new_target, true, accept_if_sieged);
-
-        if (unit->HasHangar() && !unit->IsInAttackRange(new_target))
-            unit->flags |= UnitStatus::Disabled2;
+        SetAttackTarget(unit, new_target, accept_if_sieged);
     }
 
     return true;
-}
-
-void ReactToHit(HitUnit *own_base, Unit *attacker, bool main_target_reactions, HelpingUnitVec *helpers)
-{
-    Assert(helpers); // Just making sure.. It seems to be more of an recursive_call and unnecessary here
-    Unit *own = own_base->unit;
-    if (!IsComputerPlayer(own->player))
-        return;
-
-    STATIC_PERF_CLOCK(Ai_ReactToHit);
-    if ((attacker->flags & UnitStatus::FreeInvisibility) && !(attacker->flags & UnitStatus::Burrowed))
-    {
-        attacker = FindNearestUnitOfId(own, Unit::Arbiter); // No danimoth <.<
-        if (!attacker)
-            return;
-    }
-    else
-        attacker = own->GetActualTarget(attacker);
-
-    ReactToHit_Main(own_base, attacker, main_target_reactions, helpers);
-}
-
-void ReactToHit_Pre(Unit *own, Unit *attacker, bool main_target_reactions, HelpingUnitVec *helpers)
-{
-    auto attacker_region = GetAiRegion(own->player, attacker->sprite->position);
-    int player = own->player;
-
-    bool important_hit = true;
-    bool attacking = false;
-    if (own->ai)
-    {
-        if (own->ai->type == 4) // Military
-        {
-            Region *ai_region = ((MilitaryAi *)own->ai)->region;
-            if (ai_region->state == 1 && !(units_dat_flags[own->unit_id] & UnitFlags::Building))
-                ChangeAiRegionState(ai_region, 2);
-            if (IsInAttack(own))
-                attacking = true;
-        }
-
-        if (main_target_reactions && own->IsTransport() && (own->flags & UnitStatus::Reacts))
-        {
-            if (own->HasLoadedUnits())
-            {
-                if (own->order != Order::Unload)
-                    IssueOrderTargetingNothing(own, Order::Unload);
-                return;
-            }
-            else
-            {
-                if (!own->Ai_TryReturnHome(false))
-                {
-                    if (Ai_ReturnToNearestBaseForced(own))
-                        return;
-                }
-                if (bw::player_ai[player].flags & 0x20)
-                    important_hit = false;
-            }
-        }
-    }
-
-    Region *target_region = GetAiRegion(own);
-    if (important_hit)
-    {
-        if (helpers)
-            AskForHelp(own, attacker, attacking, helpers);
-
-        if (!attacking)
-        {
-            if (own->ai && own->ai->type != 4) // || !IsInAttack(own), but it is always false
-            {
-                if (own->ai->type != 1 || !(bw::player_ai[player].flags & 0x20))
-                {
-                    if (target_region->state == 4 || target_region->state == 5)
-                        ChangeAiRegionState(target_region, 6);
-                    if (target_region->state != 0 && attacker_region->state == 0 && *bw::elapsed_seconds > 60)
-                        ChangeAiRegionState(attacker_region, 5);
-                }
-            }
-            if (helpers)
-            {
-                ai_region_enemy_strength_updates[player * 0x2000 + attacker_region->region_id] |= 1;
-                if (target_region->needed_ground_strength < attacker_region->needed_ground_strength)
-                    target_region->needed_ground_strength = attacker_region->needed_ground_strength;
-                if (target_region->needed_air_strength < attacker_region->needed_air_strength)
-                    target_region->needed_air_strength = attacker_region->needed_air_strength;
-            }
-        }
-    }
-    target_region->flags |= 0x20;
-    return;
-}
-
-void ReactToHit_Main(HitUnit *own_base, Unit *attacker, bool main_target_reactions, HelpingUnitVec *helpers)
-{
-    Unit *own = own_base->unit;
-    ReactToHit_Pre(own, attacker, main_target_reactions, helpers);
-
-    bool uninterruptable = own->IsInUninterruptableState();
-    if (uninterruptable && !main_target_reactions)
-        return;
-
-    int order = own->order;
-
-    if (~own->flags & UnitStatus::Completed || order == Order::CompletingArchonSummon ||
-        order == Order::ResetCollision1 || order == Order::ConstructingBuilding)
-    {
-        return;
-    }
-    if (!main_target_reactions && IsUsableSpellOrder(order))
-        return;
-    if (own->unit_id == Unit::Marine && order == Order::EnterTransport) // What?
-        return;
-
-    if (TryReactionSpell(own, main_target_reactions))
-        return;
-
-    if (order == Order::RechargeShieldsUnit || order == Order::Move)
-        return;
-
-    if (main_target_reactions)
-    {
-        if (TryDamagedFlee(own, attacker))
-            return;
-    }
-
-    if (own->target == attacker)
-        return;
-
-    if (main_target_reactions && own->ai && attacker->IsInvisibleTo(own))
-        Ai_Detect(own, attacker);
-    if (uninterruptable)
-        return;
-
-    if (own->CanAttackUnit(attacker, true))
-    {
-        own_base->picked_target = own->ChooseBetterTarget(attacker, own_base->picked_target);
-    }
-    else if (own->ai)
-    {
-        if (order == Order::AiPatrol)
-        {
-            uint32_t flee_pos = PrepareFlee(own, attacker);
-            if ((flee_pos & 0xffff) != own->sprite->position.x || (flee_pos >> 16) != own->sprite->position.y)
-            {
-                IssueOrder(own, Order::Move, flee_pos, 0);
-                return;
-            }
-        }
-        if (main_target_reactions && own->unit_id != Unit::Medic)
-        {
-            if (!own->target || !own->CanAttackUnit(own->target, true))
-            {
-                Flee(own, attacker);
-            }
-        }
-    }
-    return;
 }
 
 Script::Script(uint32_t player_, uint32_t pos_, bool bwscript, Rect32 *area_) : pos(pos_), player(player_)

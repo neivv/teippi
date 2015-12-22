@@ -1017,7 +1017,7 @@ UnitSearchRegionCache::Entry MainUnitSearch::FindUnits_ChooseTarget(int region_i
     return region_cache.FinishEntry(result_beg, region_id, ground, out - result_beg);
 }
 
-Unit **MainUnitSearch::FindHelpingUnits(Unit *own, const Rect16 &rect, TempMemoryPool *allocation_pool, bool ai)
+Unit **MainUnitSearch::FindHelpingUnits(Unit *own, const Rect16 &rect, TempMemoryPool *allocation_pool)
 {
     Unit **out, **result_beg = allocation_pool->Allocate<Unit *>(Size() + 1);
     out = result_beg;
@@ -1036,14 +1036,13 @@ Unit **MainUnitSearch::FindHelpingUnits(Unit *own, const Rect16 &rect, TempMemor
                 Unit *unit = left_to_value[it];
                 if (unit->player != own->player)
                     continue;
-                if (ai)
-                {
-                    if (unit->unit_id == Unit::Arbiter)
-                        continue;
-                    // Workers are searched later if needed, as they are likely a rare case
-                    if (unit->IsWorker())
-                        continue;
-                }
+                // Non-ai danimoths are skipped as well, but ai ones aren't
+                if (unit->unit_id == Unit::Arbiter)
+                    continue;
+                // Workers are searched later if needed, as they are likely a rare case.
+                // (And that is only for ai units)
+                if (unit->IsWorker())
+                    continue;
                 if (unit == own)
                     continue;
                 *out++ = unit;

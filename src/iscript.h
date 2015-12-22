@@ -6,111 +6,103 @@
 #include "constants/iscript.h"
 #include "common/iter.h"
 
-struct IscriptContext
+namespace Iscript {
+
+using OffsetSize = uint16_t;
+
+struct Command
 {
-    IscriptContext()
+    Command() : opcode(0xff), pos(0), val(0) {}
+    Command(uint8_t op) : opcode(op), pos(0), val(0) {}
+    int ParamsLength() const;
+    int Size() const { return 1 + ParamsLength(); }
+
+    std::string DebugStr() const;
+
+    int val1() const { return vals[0]; }
+    int val2() const { return vals[1]; }
+
+    uint8_t opcode;
+    OffsetSize pos;
+    union
     {
-        iscript = *bw::iscript;
-        unit = nullptr;
-        bullet = nullptr;
-    }
-    IscriptContext(Unit *unit_)
-    {
-        iscript = *bw::iscript;
-        unit = unit_;
-        bullet = nullptr;
-    }
-    IscriptContext(Bullet *bullet_)
-    {
-        iscript = *bw::iscript;
-        unit = nullptr;
-        bullet = bullet_;
+        int val;
+        int16_t vals[2];
+        const uint8_t *data;
+    };
+    Point point;
+};
+
+/// Used by the iscript command handlers to determine if the command was handled.
+enum class CmdResult
+{
+    Handled,
+    NotHandled,
+    Stop,
+};
+
+/// Contains state needed by iscript functions:
+///  - Input parameters like rng and iscript that are same for the entire execution
+///  - bools can_delete/deleted to handle script finishing (Practically return values)
+///  - The virtual function HandleCommand actually defines how iscript commands are handled.
+struct Context
+{
+    constexpr Context(Rng *rng, bool can_delete) :
+        iscript(*bw::iscript), rng(rng), can_delete(can_delete), deleted(false),
+        cloak_state(Nothing), order_signal(0) { }
+
+    // See CheckDeleted
+    virtual ~Context() { Assert(!can_delete || !deleted); }
+
+    virtual CmdResult HandleCommand(Image *img, Script *script, const Command &cmd) = 0;
+    /// Called when iscript uses imgol/ul/etc to create another Image.
+    virtual void NewOverlay(Image *img) { }
+
+    /// Returns true if bullet needs to be deleted, and acknowledges
+    /// that the state has been checked.
+    /// Destroying this object while can_delete == true without calling
+    /// CheckDeleted() causes an assertion failure, to make sure that
+    /// functions handle bullet deletion in some way at least.
+    bool CheckDeleted() {
+        bool ret = deleted;
+        deleted = false;
+        return ret;
     }
 
     const uint8_t *iscript;
-    Unit *unit;
-    Bullet *bullet;
-    Image *img;
+    Rng * const rng;
+    const bool can_delete;
+    bool deleted;
+    /// These two are hacks for DrawFunc_ProgressFrame
+    enum CloakState : uint8_t {
+        Nothing,
+        Cloaked,
+        Decloaked,
+    } cloak_state;
+    uint8_t order_signal;
 };
 
-class Iscript
+class Script
 {
     public:
-        uint16_t header;
-        uint16_t pos;
-        uint16_t return_pos;
+        OffsetSize header;
+        OffsetSize pos;
+        OffsetSize return_pos;
         uint8_t animation;
         uint8_t wait;
 
-        typedef uint16_t Offset;
+        void ProgressFrame(Context *ctx, Image *img);
 
-        struct Command
-        {
-            Command() : opcode(0xff), pos(0), val(0) {}
-            Command(uint8_t op) : opcode(op), pos(0), val(0) {}
-            int ParamsLength() const;
-            int Size() const { return 1 + ParamsLength(); }
-            bool IsStoppingCommand() const
-            {
-                switch (opcode)
-                {
-                    case IscriptOpcode::Wait:
-                    case IscriptOpcode::WaitRand:
-                    case IscriptOpcode::End:
-                        return true;
-                    default:
-                        return false;
-                }
-            }
+        /// Returns name of the iscript animation
+        static const char *AnimationName(int anim);
 
-            std::string DebugStr() const;
-
-            int val1() const { return vals[0]; }
-            int val2() const { return vals[1]; }
-
-            uint8_t opcode;
-            Offset pos;
-            union
-            {
-                int val;
-                int16_t vals[2];
-                const uint8_t *data;
-            };
-            Point point;
-        };
-
-        class GetCommands_C : Iterator<GetCommands_C, Command>
-        {
-            public:
-                Optional<Command> next()
-                {
-                    if (stop)
-                        return Optional<Command>();
-                    auto cmd = isc->ProgressUntilCommand(ctx, rng);
-                    if (cmd.IsStoppingCommand() || IgnoreRestCheck(cmd))
-                        stop = true;
-                    return move(cmd);
-                }
-
-                // In source file as it accesses ctx->unit
-                bool IgnoreRestCheck(const Iscript::Command &cmd) const;
-                GetCommands_C(Iscript *i, const IscriptContext *c, Rng *r) : stop(false), isc(i), ctx(c), rng(r) {}
-                void SetContext(const IscriptContext *c) { ctx = c; }
-
-            private:
-                bool stop;
-                Iscript *isc;
-                const IscriptContext *ctx;
-                Rng *rng;
-        };
-        GetCommands_C GetCommands(const IscriptContext *ctx, Rng *rng)
-        {
-            return GetCommands_C(this, ctx, rng);
-        }
+        /// Returns false if header does not exist
+        bool Initialize(const uint8_t *iscript, int iscript_header_id);
 
     private:
-        Command ProgressUntilCommand(const IscriptContext *ctx, Rng *rng);
         Command Decode(const uint8_t *data) const;
 };
+
+} // namespace iscript
 
 #endif // ISCRIPT_H

@@ -57,6 +57,16 @@ def configure(conf):
     conf.env.append_value('CFLAGS', cflags)
     conf.env.append_value('CXXFLAGS', cflags)
 
+# Lazy way to split list of paths, names is input and split_these are paths that are to be
+# moved to a separate list.
+# split_files(['a', 'b', 'c', 'asd'], ['a']) would return (['b', 'c'], ['a', 'asd'])
+def split_files(names, split_these):
+    second = []
+    for name in split_these:
+        second += [path for path in names if name in path.srcpath()]
+        names = [path for path in names if not name in path.srcpath()]
+    return names, second
+
 def build(bld):
     if bld.options.debug and bld.options.nodebug:
         bld.fatal('Both --debug and --nodebug were specified')
@@ -111,6 +121,10 @@ def build(bld):
         noexcept_defines += ['_HAS_EXCEPTIONS=0']
         cxxflags += ['/wd4624'] # Silence a seemingly incorrect warning in game.cpp
         cxxflags += ['/Zi', '/FS']
+        cxxflags += ['/GS-'] # Security cookies break the hooking system
+        linkflags += ['/DEBUG']
+        if not debug:
+            linkflags += ['/OPT:REF', '/OPT:ICF']
 
     if debug:
         defines += ['DEBUG']
@@ -157,23 +171,20 @@ def build(bld):
 
     cxxflags += cflags
 
-    src = ['unit.cpp', 'commands.cpp', 'ai.cpp', 'bullet.cpp', 'bunker.cpp', 'datastream.cpp',
-            'dialog.cpp', 'flingy.cpp', 'game.cpp', 'image.cpp', 'iscript.cpp', 'limits.cpp',
-            'lofile.cpp', 'log.cpp', 'mainpatch.cpp', 'memory.cpp', 'mpqdraft.cpp', 'nuke.cpp',
-            'order.cpp', 'pathing.cpp', 'perfclock.cpp', 'draw.cpp',
-            'player.cpp', 'unitsearch.cpp', 'unitsearch_cache.cpp', 'scthread.cpp',
-            'selection.cpp', 'sprite.cpp', 'strings.cpp', 'targeting.cpp', 'tech.cpp', 'text.cpp',
-            'triggers.cpp', 'unit_ai.cpp', 'unit_movement.cpp', 'upgrade.cpp', 'x86.cpp', 'yms.cpp',
-            'replay.cpp', 'warn.cpp', 'building.cpp', 'console/assert.cpp', 'init.cpp', 'bwlauncher.cpp']
-    if console:
-        src += ['scconsole.cpp', 'console/cmdargs.cpp', 'console/console.cpp',
-                'console/font.cpp', 'console/genericconsole.cpp']
-    if debug:
-        src += ['test_game.cpp']
     src_with_exceptions = ['save.cpp', 'patchmanager.cpp']
 
-    src = ['src/' + file for file in src]
-    src_with_exceptions = ['src/' + file for file in src_with_exceptions]
+    src = bld.path.ant_glob('src/*.cpp')
+    src += bld.path.ant_glob('src/console/*.cpp')
+    src += bld.path.ant_glob('src/common/*.cpp')
+    src, exception_src = split_files(src, ['save', 'patchmanager'])
+    src, debug_src = split_files(src, ['test_game'])
+    # Have to console.cpp as split_files does just a simple substring match atm
+    # and it would match all files in console (No, the files aren't organized logically)
+    src, console_src = split_files(src, ['scconsole', 'console.cpp', 'cmdargs', 'genericconsole', 'font'])
+    if console:
+        src += console_src
+    if debug:
+        src += debug_src
 
     includes += [bld.bldnode.find_dir('src')]
     if msvc:
@@ -192,7 +203,7 @@ def build(bld):
 
     bld.objects(source=src, cflags=cflags, cxxflags=cxxflags + noexcept_cxxflags,
             defines=defines + noexcept_defines, includes=includes, target='obj')
-    bld.objects(source=src_with_exceptions, cxxflags=cxxflags + except_cxxflags, defines=defines, includes=includes, target='obj_with_exceptions')
+    bld.objects(source=exception_src, cxxflags=cxxflags + except_cxxflags, defines=defines, includes=includes, target='obj_with_exceptions')
     if not msvc:
         bld(rule='objcopy -S ${SRC} ${TGT}', source='teippi.qdp', target='teippi_stripped.qdp')
 

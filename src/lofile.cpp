@@ -16,7 +16,7 @@ Point32 LoFile::GetValues(Image *img, int index)
 
     x = addr[offset + index * 2 + 0];
     y = addr[offset + index * 2 + 1];
-    if (img->flags & 0x2)
+    if (img->IsFlipped())
         x = 0 - x;
     return Point32(x, y);
 }
@@ -35,13 +35,8 @@ void LoFile::SetImageOffset(Image *img)
     int offset = *(int *)(addr + 8 + img->parent->main_image->frame * 4);
     x = addr[offset + 0];
     y = addr[offset + 1];
-    if (img->flags & 0x2)
+    if (img->IsFlipped())
         x = 0 - x;
 
-    if (x != img->x_off || y != img->y_off)
-    {
-        img->flags |= 0x1;
-        img->x_off = x;
-        img->y_off = y;
-    }
+    img->SetOffset(x, y);
 }

@@ -44,6 +44,7 @@ namespace Cheats
 {
     const uint32_t Operation_Cwal = 0x2;
     const uint32_t Power_Overwhelming = 0x4;
+    const uint32_t Staying_Alive = 0x100;
     const uint32_t The_Gathering = 0x800;
 }
 

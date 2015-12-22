@@ -41,11 +41,31 @@ DebugLog_Actual::Unlock DebugLog_Actual::Lock()
     return Unlock(this);
 }
 
+/// Path's last component is assumed to be a filename, not a directory name
+static void CreateDirTree(const std::string &path)
+{
+    auto last_separator = path.find_last_of("/\\");
+    if (last_separator == path.npos)
+        return;
+
+    auto dirs = path.substr(0, last_separator);
+    int pos = 0;
+    while (true)
+    {
+        auto end = dirs.find_first_of("/\\", pos);
+        _mkdir(dirs.substr(0, end).c_str());
+        if (end == path.npos)
+            break;
+        pos = end + 1;
+    }
+}
+
 void DebugLog_Actual::Log(const char *format, ...)
 {
     auto unlock = Lock();
     if (log_file == nullptr)
     {
+        CreateDirTree(filename);
         log_file = fopen(filename.c_str(), "w");
         if (log_file == nullptr)
             return;
@@ -96,12 +116,10 @@ void DebugLog_Actual::Indent(int diff)
 
 void InitLogs()
 {
-    _mkdir("Logs");
     CreateEvent(NULL, FALSE, FALSE, "Teippi log multi-instance check");
     if (GetLastError() == ERROR_ALREADY_EXISTS)
     {
         snprintf(log_path, sizeof log_path, "Logs/%lu", GetCurrentProcessId());
-        _mkdir(log_path);
     }
     else
         strncpy(log_path, "Logs", sizeof log_path);
@@ -116,17 +134,21 @@ void InitLogs()
         snprintf(buf, sizeof buf, "%s/performance.txt", log_path);
         perf_log = new PerfLog(buf);
     }
+    // Remove old sync logs
+    for (int i = 0; ; i++)
+    {
+        if (i == 0)
+            snprintf(buf, sizeof buf, "%s/dump/units_%d.txt", log_path, 1);
+        else
+            snprintf(buf, sizeof buf, "%s/dump/units_%d.txt", log_path, i * 1000);
+        if (remove(buf) != 0)
+            break;
+    }
     if (SyncTest)
     {
         snprintf(buf, sizeof buf, "%s/sync.txt", log_path);
         sync_log = new SyncLog(buf);
         snprintf(buf, sizeof buf, "%s/dump", log_path);
-        _mkdir(buf);
-        int i = 1;
-        do {
-            snprintf(buf, sizeof buf, "%s/dump/units_%d.txt", log_path, i * 1000);
-            i++;
-        } while (remove(buf) == 0);
         unit_dump = nullptr;
     }
 }

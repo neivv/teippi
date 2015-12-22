@@ -15,6 +15,8 @@
 #include "dialog.h"
 #include "yms.h"
 #include "ai.h"
+#include "ai_hit_reactions.h"
+#include "triggers.h"
 
 #include "possearch.hpp"
 
@@ -22,10 +24,16 @@
 #include "console/windows_wrap.h"
 
 using std::min;
+using std::get;
 
 #define TestAssert(s) if (!(s)) { if(IsDebuggerPresent()) { INT3(); } Fail(#s); return; }
 
 // This file has special permission for different brace style =)
+
+static void ClearTriggers() {
+    for (int i = 0; i < Limits::ActivePlayers; i++)
+        FreeTriggerList(&bw::triggers[i]);
+}
 
 Unit *GameTest::CreateUnitForTest(int unit_id, int player) {
     return CreateUnitForTestAt(unit_id, player, Point(100, 100));
@@ -838,6 +846,7 @@ struct Test_Liftoff : public GameTest {
             } break; case 3: {
                 if (UnitCount() == 1 && building->order != Order::Land) {
                     TestAssert(building->order == units_dat_return_to_idle_order[building->unit_id]);
+                    TestAssert((building->sprite->last_overlay->flags & 4) == 0);
                     // Test lifting once more
                     IssueOrderTargetingNothing(building, Order::LiftOff);
                     state++;
@@ -855,6 +864,7 @@ struct Test_Liftoff : public GameTest {
             } break; case 6: {
                 if (building->order != Order::Land) {
                     TestAssert(!building->IsFlying());
+                    TestAssert((building->sprite->last_overlay->flags & 4) == 0);
                     building->IssueSecondaryOrder(Order::Train);
                     building->build_queue[building->current_build_slot] = Unit::SCV;
                     state++;
@@ -1194,9 +1204,27 @@ struct Test_MindControl : public GameTest {
             } break; case 2: {
                 if (target->player == da->player) {
                     TestAssert(da->shields == 0);
-                    Pass();
+                    ClearUnits();
+                    da = CreateUnitForTestAt(Unit::DarkArchon, 0, Point(100, 100));
+                    target = CreateUnitForTest(Unit::Carrier, 1);
+                    target->IssueSecondaryOrder(Order::TrainFighter);
+                    target->build_queue[target->current_build_slot] = Unit::Interceptor;
+                    state++;
                 } else {
                     TestAssert(da->order == Order::MindControl);
+                }
+            } break; case 3: {
+                if (target->carrier.in_child != nullptr || target->carrier.out_child != nullptr) {
+                    IssueOrderTargetingUnit_Simple(da, Order::MindControl, target);
+                    state++;
+                }
+            } break; case 4: {
+                if (target->player == da->player) {
+                    Unit *interceptor = target->carrier.in_child;
+                    if (interceptor == nullptr)
+                        interceptor = target->carrier.out_child;
+                    TestAssert(interceptor && interceptor->player == da->player);
+                    Pass();
                 }
             }
         }
@@ -1447,6 +1475,470 @@ struct Test_Death : public GameTest {
     }
 };
 
+/// More ai aggro stuff.. Parasite has barely any reactions, but if the queen's
+/// target at the moment the parasite bullet hits is same player as the unit being
+/// parasited, then the ai will attack it. (As Ai::UpdateAttackTarget() requires
+/// previous_attacker having target of same player) Additionally parasite has such a
+/// long range, that Ai::AskForHelp() may not even bother helping.
+struct Test_ParasiteAggro : public GameTest {
+    Unit *queen;
+    Unit *target;
+    Unit *other;
+    void Init() override {
+        Visions();
+        AiPlayer(1);
+        SetEnemy(1, 0);
+        SetEnemy(0, 1);
+    }
+    void SetupNext(int queen_player, int target_unit, int other_unit)
+    {
+        ClearUnits();
+        int other_player = queen_player == 0 ? 1 : 0;
+        queen = CreateUnitForTestAt(Unit::Queen, queen_player, Point(180, 100));
+        target = CreateUnitForTestAt(target_unit, other_player, Point(600, 100));
+        if (other_unit != Unit::None)
+            other = CreateUnitForTestAt(other_unit, other_player, Point(530, 100));
+            IssueOrderTargetingUnit_Simple(queen, Order::Parasite, target);
+        state++;
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                SetupNext(1, Unit::Marine, Unit::None);
+            } break; case 1: {
+                if (target->parasites == 0)
+                    return;
+                // Human owned units don't care
+                TestAssert(target->target == nullptr);
+                SetupNext(0, Unit::Marine, Unit::None);
+            } break; case 2: {
+                if (target->parasites == 0)
+                    return;
+                // Ai owned units don't care from a single parasite
+                TestAssert(target->target == nullptr);
+                SetupNext(0, Unit::Marine, Unit::Marine);
+            } break; case 3: {
+                if (queen->target == nullptr) {
+                    IssueOrderTargetingUnit_Simple(queen, Order::Parasite, target);
+                    // If it was just parasited, try again as the frames aligned just poorly
+                    // (Should maybe have random variance?)
+                    target->parasites = 0;
+                    queen->energy = 150 * 256;
+                    TestAssert(target->target == nullptr);
+                    return;
+                } else if (target->parasites != 0) {
+                    // Ai cares if queen is targeting its unit at the time of hit
+                    TestAssert(target->target == queen);
+                    // But the queen should be far away enough for the other marine
+                    TestAssert(other->target == nullptr);
+                    SetupNext(0, Unit::Goliath, Unit::Goliath);
+                }
+            } break; case 4: {
+                if (queen->target == nullptr) {
+                    IssueOrderTargetingUnit_Simple(queen, Order::Parasite, target);
+                    target->parasites = 0;
+                    queen->energy = 150 * 256;
+                    TestAssert(target->target == nullptr);
+                    return;
+                } else if (target->parasites != 0) {
+                    TestAssert(target->target == queen);
+                    // Goliaths have range long enough to aggro even from parasite range
+                    TestAssert(other->target == queen);
+                    Pass();
+                }
+            }
+        }
+    }
+};
+
+struct Test_HitChance : public GameTest {
+    void Init() override {
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                for (int i = 0; i < 32; i++) {
+                    Unit *unit = CreateUnitForTestAt(Unit::Marine, 1, Point(100, 100 + 20 * i));
+                    Unit *enemy = CreateUnitForTestAt(Unit::Overlord, 0, Point(120, 100 + 20 * i));
+                    IssueOrderTargetingUnit_Simple(unit, Order::AttackUnit, enemy);
+                }
+                state++;
+            } break; case 1: {
+                for (Bullet *bullet : bullet_system->ActiveBullets()) {
+                    if (bullet->DoesMiss()) {
+                        Pass();
+                    }
+                }
+                for (Unit *unit : *bw::first_active_unit) {
+                    unit->hitpoints = unit->GetMaxHitPoints() * 256;
+                }
+            }
+        }
+    }
+};
+
+struct OverlaySpell {
+    int order;
+    int caster_unit;
+    int target_unit;
+};
+const OverlaySpell overlay_spells[] = {
+    { Order::Lockdown, Unit::Ghost, Unit::Goliath },
+    { Order::Restoration, Unit::Medic, Unit::SiegeTankTankMode },
+    { Order::OpticalFlare, Unit::Medic, Unit::Goliath },
+    { Order::DefensiveMatrix, Unit::ScienceVessel, Unit::SiegeTankTankMode },
+    { Order::Irradiate, Unit::ScienceVessel, Unit::Goliath, },
+    { Order::Ensnare, Unit::Queen, Unit::SiegeTankTankMode },
+    { Order::Plague, Unit::Defiler, Unit::Goliath },
+    // Note: If feedback kills it spawns a sprite instead of a image
+    { Order::Feedback, Unit::DarkArchon, Unit::Battlecruiser },
+    { Order::Maelstrom, Unit::DarkArchon, Unit::Ultralisk },
+    { Order::MindControl, Unit::DarkArchon, Unit::Goliath },
+    { Order::StasisField, Unit::Arbiter, Unit::SiegeTankTankMode },
+};
+
+struct Test_SpellOverlay : public GameTest {
+    vector<tuple<Unit *, int, bool>> targets;
+    void Init() override {
+        targets.clear();
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                int overlay_spell_count = sizeof overlay_spells / sizeof(overlay_spells[0]);
+                Point pos(100, 100);
+                for (int i = 0; i < overlay_spell_count; i++) {
+                    pos.y += 120;
+                    if (pos.y > 32 * 60) {
+                        pos.y = 100;
+                        pos.x += 200;
+                    }
+                    auto spell = &overlay_spells[i];
+                    Unit *spellcaster = CreateUnitForTestAt(spell->caster_unit, 1, pos);
+                    Unit *target = CreateUnitForTestAt(spell->target_unit, 0, pos + Point(30, 0));
+                    IssueOrderTargetingUnit_Simple(spellcaster, spell->order, target);
+                    int default_overlay = target->GetTurret()->sprite->first_overlay->image_id;
+                    targets.emplace_back(target, default_overlay, false);
+                }
+                frames_remaining = 1000;
+                state++;
+            } break; case 1: {
+                for (auto &tp : targets) {
+                    Unit *turret = get<Unit *>(tp)->GetTurret();
+                    if (turret->sprite->first_overlay->image_id != get<int>(tp)) {
+                        get<bool>(tp) = true;
+                    }
+                }
+                if (std::all_of(targets.begin(), targets.end(), [](const auto &t) { return get<bool>(t); })) {
+                    Pass();
+                }
+            }
+        }
+    }
+};
+
+/// Turn1CWise is not supposed to do anything if the unit has a target.
+struct Test_Turn1CWise : public GameTest {
+    Unit *turret;
+    Unit *target;
+    void Init() override {
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                turret = CreateUnitForTestAt(Unit::MissileTurret, 0, Point(100, 100));
+                target = CreateUnitForTestAt(Unit::Scout, 0, Point(100, 150));
+                state++;
+            } break; case 1: {
+                if (turret->facing_direction == 0) {
+                    IssueOrderTargetingUnit_Simple(turret, Order::AttackUnit, target);
+                    frames_remaining = 10;
+                    state++;
+                }
+            } break; case 2: {
+                if (bullet_system->BulletCount() == 1)
+                    Pass();
+            }
+        }
+    }
+};
+
+/// When an attack which ignores armor gets absorbed by defensive matrix, the attack
+/// deals 128 damage to hitpoints, even if the unit had shields.
+struct Test_MatrixStorm : public GameTest {
+    Unit *target;
+    void Init() override {
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                Unit *vessel = CreateUnitForTestAt(Unit::ScienceVessel, 0, Point(100, 100));
+                target = CreateUnitForTestAt(Unit::Scout, 0, Point(100, 150));
+                IssueOrderTargetingUnit_Simple(vessel, Order::DefensiveMatrix, target);
+                state++;
+            } break; case 1: {
+                if (target->matrix_timer != 0) {
+                    Unit *ht = CreateUnitForTestAt(Unit::HighTemplar, 0, Point(100, 100));
+                    IssueOrderTargetingUnit_Simple(ht, Order::PsiStorm, target);
+                    frames_remaining = 250;
+                    state++;
+                }
+            } break; case 2: {
+                int hp_dmg = units_dat_hitpoints[target->unit_id] - target->hitpoints;
+                int shield_dmg = target->GetMaxShields() - target->GetShields();
+                TestAssert(shield_dmg == 0);
+                TestAssert(hp_dmg == 0 || hp_dmg == 128);
+                if (hp_dmg == 128) {
+                    state++;
+                }
+            } break; case 3: {
+                if (bullet_system->BulletCount() == 0)
+                    Pass();
+                // There should not be a shield overlay either
+                for (Image *img : target->sprite->first_overlay) {
+                    TestAssert(img->image_id != Image::ShieldOverlay);
+                }
+            }
+        }
+    }
+};
+
+/// Tests Ai::UpdateAttackTarget and related code
+struct Test_AiTargetPriority : public GameTest {
+    void Init() override {
+        AiPlayer(1);
+        SetEnemy(1, 0);
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: case 1: {
+                // Should prioritize the closer one, regardless of the creation order.
+                const Point positions[] = { Point(100, 100), Point(200, 100) };
+                Unit *first = nullptr;
+                if (state == 0)
+                    first = CreateUnitForTestAt(Unit::Marine, 0, positions[0]);
+                Unit *second = CreateUnitForTestAt(Unit::Marine, 0, positions[1]);
+                if (state == 1)
+                    first = CreateUnitForTestAt(Unit::Marine, 0, positions[0]);
+                Unit *unit = CreateUnitForTestAt(Unit::Zergling, 1, Point(300, 100));
+                IssueOrderTargetingUnit_Simple(first, Order::AttackUnit, unit);
+                IssueOrderTargetingUnit_Simple(second, Order::AttackUnit, unit);
+                TestAssert(Ai::GetBestTarget(unit, { first, second }) == second);
+                ClearUnits();
+                state++;
+            } break; case 2: {
+                // Here the guardian threatens marine (Marine is inside range), and zergling doesn't,
+                // but zergling is inside marine's range and guardian isn't.
+                // As such, the result will be one being active last.
+                // That is bw's logic, but having the decision be consistent regardless of
+                // order wouldn't be bad either. Often hits like these are in different frames,
+                // and the ai could skip back and forth, which may be a "desired feature".
+                //
+                // In fact, hits over a single frame are more consistent than in bw, as
+                // Ai::HitReactions does only one check, and in case of a "tie" like here,
+                // the "best attacker of current frame" beats auto target.
+                // If (x -> y -> z) means (Ai_ChooseBetterTarget(z, Ai_ChooseBetterTarget(y, x))),
+                // vanilla bw would basically compare like this:
+                // old target -> auto target -> attacker -> auto target -> attacker #2 -> auto target -> ...
+                // \ Ai::UpdateAttackTarget #1           / \ Ai::UpdateAttackTarget #2 / \ ... #3
+                // whereas teippi does the following:
+                // old target -> auto target -> (attacker -> attacker #2 -> attacker #3 -> ...)
+                //                              \ #1      / \ #2        /   \ #3      /   \ ...
+                //                              \ Ai::HitReactions::AddHit (UpdatePickedTarget) /
+                // \ Ai::UpdateAttackTarget from Ai::HitReactions::UpdateAttackTargets /
+                // It could be closer to bw's behaviour if Ai::HitReactions cached the auto target,
+                // but bw's behaviour can be considered to be buggy. For example, if auto target
+                // and attacker #1 "tie", but attacker #2 loses to attacker #1 while beating auto target,
+                // bw would pick attacker #2 where we pick attacker #1.
+                //
+                // Anyways, those tie cases are rare, as they require the auto target to be a unit
+                // which cannot attack
+                const Point positions[] = { Point(100, 100), Point(270, 100) };
+                Unit *first;
+                first = CreateUnitForTestAt(Unit::Guardian, 0, positions[0]);
+                Unit *second = CreateUnitForTestAt(Unit::Zergling, 0, positions[1]);
+                Unit *unit = CreateUnitForTestAt(Unit::Marine, 1, Point(350, 100));
+                IssueOrderTargetingUnit_Simple(first, Order::AttackUnit, unit);
+                IssueOrderTargetingUnit_Simple(second, Order::AttackUnit, unit);
+                TestAssert(Ai::GetBestTarget(unit, { first, second }) == second);
+                TestAssert(Ai::GetBestTarget(unit, { second, first }) == first);
+                ClearUnits();
+                state++;
+            } break; case 3: {
+                /// Test some of the internal logic
+                Unit *ai = CreateUnitForTestAt(Unit::Zergling, 1, Point(100, 100));
+                Ai::UpdateAttackTargetContext uat(ai, false, false);
+                Ai::UpdateAttackTargetContext allowing_critters(ai, true, false);
+                // The unit is not targeting ai's units
+                // So other fails and other succeeds
+                Unit *other = CreateUnitForTestAt(Unit::Marine, 0, Point(100, 100));
+                TestAssert(other->target == nullptr);
+                TestAssert(uat.CheckPreviousAttackerValid(other) == nullptr);
+                TestAssert(uat.CheckValid(other) == other);
+                // The unit is targeting ai's units
+                other = CreateUnitForTestAt(Unit::Marine, 0, Point(100, 100));
+                IssueOrderTargetingUnit_Simple(other, Order::AttackUnit, ai);
+                TestAssert(other->target == ai);
+                TestAssert(uat.CheckPreviousAttackerValid(other) == other);
+                TestAssert(uat.CheckValid(other) == other);
+                // Can't attack that unit
+                other = CreateUnitForTestAt(Unit::Wraith, 0, Point(100, 100));
+                IssueOrderTargetingUnit_Simple(other, Order::AttackUnit, ai);
+                TestAssert(other->target == ai);
+                TestAssert(uat.CheckPreviousAttackerValid(other) == nullptr);
+                TestAssert(uat.CheckValid(other) == nullptr);
+                // Test critter bool
+                other = CreateUnitForTestAt(Unit::Bengalaas, 0, Point(100, 100));
+                TestAssert(uat.CheckValid(other) == nullptr);
+                TestAssert(allowing_critters.CheckValid(other) == other);
+                TestAssert(allowing_critters.CheckPreviousAttackerValid(other) == nullptr);
+                Pass();
+            }
+        }
+    }
+};
+
+struct TransmissionTest {
+    int unit_id;
+    Point pos;
+    bool ok;
+};
+// Well, these variants mostly test finding specific unit at a location but that's nice too
+const TransmissionTest transmission_tests[] = {
+    { Unit::Marine, Point(100, 100), false },
+    { Unit::Zergling, Point(100, 100), true },
+    { Unit::Zergling, Point(400, 100), false },
+};
+
+struct Test_Transmission : public GameTest {
+    Unit *unit;
+    const TransmissionTest *variant;
+    void Init() override {
+        bw::locations[0] = Location { Rect32(50, 50, 150, 150), 0, 0 };
+        variant = transmission_tests;
+    }
+    void NextFrame() override {
+        // May be initialized incorrectly, as the structure is incomplete
+        Trigger trigger;
+        memset(&trigger, 0, sizeof(Trigger));
+        trigger.actions[0].location = 1;
+        trigger.actions[0].amount = 7;
+        trigger.actions[0].misc = 500;
+        trigger.actions[0].unit_id = Unit::Zergling;
+        trigger.actions[0].sound_id = 0;
+        trigger.actions[0].action_id = 0x7;
+        switch (state) {
+            case 0: {
+                unit = CreateUnitForTestAt(variant->unit_id, 0, variant->pos);
+                *bw::current_trigger = &trigger;
+                *bw::trigger_current_player = 0;
+                ProgressActions(&trigger);
+                TestAssert(bw::player_wait_active[0] != 0);
+                state++;
+            } break; case 1: {
+                if (bw::player_wait_active[0] == 0) {
+                    bool circle_flashing = unit->sprite->selection_flash_timer != 0;
+                    TestAssert(circle_flashing == variant->ok);
+                    variant++;
+                    const TransmissionTest *test_end = transmission_tests +
+                        sizeof transmission_tests / sizeof(transmission_tests[0]);
+                    ClearUnits();
+                    state = 0;
+                    if (variant == test_end) {
+                        Pass();
+                    }
+                }
+            }
+        }
+    }
+};
+
+
+/// There was a bug where attackking interceptor caused workers to come help.
+/// Test that it no longer happens, but that attacking a building with a
+/// worker still works.
+struct Test_NearbyHelpers : public GameTest {
+    Unit *helper;
+    Unit *target;
+    Unit *enemy;
+    const TransmissionTest *variant;
+    void Init() override {
+        AiPlayer(1);
+        SetEnemy(0, 1);
+        SetEnemy(1, 0);
+    }
+    void CreateAiTown(const Point &pos, int player) {
+        CreateUnitForTestAt(Unit::Nexus, player, pos);
+        helper = CreateUnitForTestAt(Unit::Probe, player, pos + Point(0, 100));
+        Unit *mineral = CreateUnitForTestAt(Unit::MineralPatch1, NeutralPlayer, pos + Point(0, 200));
+        mineral->resource.resource_amount = 1500;
+        AiScript_StartTown(pos.x, pos.y, 1, player);
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                CreateAiTown(Point(100, 100), 1);
+                target = CreateUnitForTestAt(Unit::Carrier, 1, Point(100, 100));
+                enemy = CreateUnitForTestAt(Unit::Hydralisk, 0, Point(100, 600));
+                target->IssueSecondaryOrder(Order::TrainFighter);
+                target->build_queue[target->current_build_slot] = Unit::Interceptor;
+                state++;
+            } break; case 1: {
+                if (target->carrier.in_child != nullptr) {
+                    IssueOrderTargetingGround(enemy, Order::Move, 100, 100);
+                    state++;
+                }
+            } break; case 2: {
+                SetHp(target, target->GetMaxHitPoints() * 256);
+                SetHp(enemy, enemy->GetMaxHitPoints() * 256);
+                if (target->carrier.out_child != nullptr) {
+                    IssueOrderTargetingUnit_Simple(enemy, Order::AttackUnit, target->carrier.out_child);
+                    state++;
+                }
+            } break; case 3: {
+                SetHp(target, target->GetMaxHitPoints() * 256);
+                SetHp(enemy, enemy->GetMaxHitPoints() * 256);
+                TestAssert(helper->target != enemy);
+                if (enemy->target == nullptr || enemy->target->unit_id != Unit::Interceptor) {
+                    IssueOrderTargetingGround(enemy, Order::Move, 100, 100);
+                    state--;
+                } else if (enemy->target->GetHealth() != enemy->target->GetMaxHealth()) {
+                    // This test makes only sense if interceptors have no ai
+                    TestAssert(enemy->target->ai == nullptr);
+                    if (IsInArea(enemy->target, CallFriends_Radius, helper)) {
+                        frames_remaining = 50;
+                        state++;
+                    }
+                }
+            } break; case 4: {
+                TestAssert(helper->target != enemy);
+                if (frames_remaining == 1) {
+                    enemy->Kill(nullptr);
+                    frames_remaining = 5000;
+                    enemy = CreateUnitForTestAt(Unit::SCV, 0, Point(100, 500));
+                    target = FindUnit(Unit::Nexus);
+                    IssueOrderTargetingUnit_Simple(enemy, Order::AttackUnit, target);
+                    state++;
+                }
+            } break; case 5: {
+                SetHp(target, target->GetMaxHitPoints() * 256);
+                SetHp(enemy, enemy->GetMaxHitPoints() * 256);
+                if (enemy->target->GetHealth() != enemy->target->GetMaxHealth()) {
+                    if (IsInArea(enemy->target, CallFriends_Radius, helper)) {
+                        frames_remaining = 50;
+                        state++;
+                    }
+                }
+            } break; case 6: {
+                SetHp(target, target->GetMaxHitPoints() * 256);
+                if (frames_remaining == 1) {
+                    TestAssert(helper->target == enemy);
+                    Pass();
+                }
+            }
+        }
+    }
+};
 
 GameTests::GameTests()
 {
@@ -1481,6 +1973,14 @@ GameTests::GameTests()
     AddTest("Attack move", new Test_AttackMove);
     AddTest("Detection", new Test_Detection);
     AddTest("Death", new Test_Death);
+    AddTest("Parasite aggro", new Test_ParasiteAggro);
+    AddTest("Hit chance", new Test_HitChance);
+    AddTest("Spell overlays", new Test_SpellOverlay);
+    AddTest("Iscript turn1cwise", new Test_Turn1CWise);
+    AddTest("Matrix + storm", new Test_MatrixStorm);
+    AddTest("Ai target priority", new Test_AiTargetPriority);
+    AddTest("Transmission trigger", new Test_Transmission);
+    AddTest("Nearby helpers", new Test_NearbyHelpers);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)
@@ -1521,6 +2021,7 @@ void GameTests::StartTest() {
     NoAi();
     AllyPlayers();
     GiveAllTechs();
+    ClearTriggers();
     *bw::cheat_flags = 0;
     tests[current_test]->state = 0;
     tests[current_test]->Init();

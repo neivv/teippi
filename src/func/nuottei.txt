@@ -138,6 +138,7 @@
 
 00489CC0 = void ProgressTime(), edx int
 00489450 = void ProgressTriggerList(), eax TriggerList *
+00489130 = ProgressActions(), esi Trigger *trigger
 0048A200 = void ApplyVictory()
 00416000 = DeleteTimer(), esi Control *ctrl, edx timer_id
 004C7380 = Unit *FindUnitInLocation(), arg 1 unit_id, arg 2 player, eax location
@@ -172,14 +173,12 @@
 004A3FD0 = void DrawMinimapDot(), ecx int, eax x32, arg 1 y32, arg 2 int, arg 3 int, arg 4 int
 00497A10 = void MoveSprite(), ecx Sprite *, ebx int, edi int
 00487FD0 = Unit *FindFowUnit(), ecx x32, eax y32, arg 1 int
-00499030 = bool InitializeSprite(), arg 1 Sprite *, edx int, eax x32, edi y32, ecx int
 00498EA0 = void AddOverlayHighest(), eax Sprite *, esi int, arg 1 int, arg 2 int, arg 3 int
-00498E00 = void AddOverlayAboveMain(), eax Sprite *, esi int, arg 1 int, arg 2 int, arg 3 int
 00498D70 = AddOverlayBelowMain(), eax Sprite *sprite, esi image_id, arg 1 x_off, arg 2 y_off, arg 3 direction
 
 004D57B0 = void PrepareDrawImage(), eax Image *
 004970A0 = void MarkImageAreaForRedraw(), eax Image *
-004D74C0 = void ProgressIscriptFrame(), ecx Image *, arg 1 Iscript *, arg 2 int, arg 3 int
+004D74C0 = void ProgressIscriptFrame(), ecx Image *, arg 1 Iscript::Script *, arg 2 int, arg 3 int
 004D5EA0 = void SetImageDirection32(), eax Image *, arg 1 int
 004D5F80 = void SetImageDirection256(), esi Image *, arg 1 int
 
@@ -271,9 +270,9 @@
 00439500 = void Ai_EndAllMovingToAttack(), arg 1 int
 
 004D9460 = void DrawFlashingSelectionCircles()
-00487100 = void ProgressReplay()
 004DEED0 = void Replay_RefershUiIfNeeded()
 004D9550 = bool ProgressTurns(), ecx dword *
+00461640 = Victory()
 
 0047DF90 = bool UpdateCreepDisappearance_Unit(), arg 1 Unit *
 0047E410 = void TryUpdateCreepDisappear()
@@ -322,49 +321,49 @@
 
 0049E530 = void ShowLastError(), arg 1 int
 
-0047CDD0 = bool Command_Sync_Main(), edi void *
-004CF950 = void Command_Load(), ebx void *
+0047CDD0 = bool Command_Sync_Main(), edi const void *
+004CF950 = void Command_Load(), ebx const void *
 004BFB10 = void Command_Restart()
 004C0BC0 = void Command_Pause()
 004C0B00 = void Command_Resume()
-004C23C0 = void Command_Build(), esi void *
-004BF7A0 = void Command_MinimapPing(), eax void *
-004BF9C0 = void Command_Vision(), eax void *
-004C28A0 = void Command_Ally(), arg 1 void *
-004C0AD0 = void Command_Cheat(), edx void *
-004C2870 = void Command_Hotkey(), ecx void *
+004C23C0 = void Command_Build(), esi const void *
+004BF7A0 = void Command_MinimapPing(), eax const void *
+004BF9C0 = void Command_Vision(), eax const void *
+004C28A0 = void Command_Ally(), arg 1 const void *
+004C0AD0 = void Command_Cheat(), edx const void *
+004C2870 = void Command_Hotkey(), ecx const void *
 004C2EF0 = void Command_CancelBuild()
 004C2EC0 = void Command_CancelMorph()
-004C2190 = void Command_Stop(), edi void *
+004C2190 = void Command_Stop(), edi const void *
 004C1430 = void Command_CarrierStop()
 004C1240 = void Command_ReaverStop()
 004C1050 = void Command_Order_Nothing()
-004C2040 = void Command_ReturnCargo(), edi void *
-004C1C20 = void Command_Train(), eax void *
-004C0100 = void Command_CancelTrain(), arg 1 void *
-004C1BA0 = void Command_Tech(), arg 1 void *
+004C2040 = void Command_ReturnCargo(), edi const void *
+004C1C20 = void Command_Train(), eax const void *
+004C0100 = void Command_CancelTrain(), arg 1 const void *
+004C1BA0 = void Command_Tech(), arg 1 const void *
 004C0070 = void Command_CancelTech()
-004C1B20 = void Command_Upgrade(), arg 1 void *
+004C1B20 = void Command_Upgrade(), arg 1 const void *
 004BFFC0 = void Command_CancelUpgrade()
-004C1FA0 = void Command_Burrow(), arg 1 void *
+004C1FA0 = void Command_Burrow(), arg 1 const void *
 004C1AC0 = void Command_Unburrow()
 004C0720 = void Command_Cloak()
 004C0660 = void Command_Decloak()
-004C1990 = void Command_UnitMorph(), arg 1 void *
-004C1910 = void Command_BuildingMorph(), eax void *
-004C1F10 = void Command_Unsiege(), arg 1 void *
-004C1E80 = void Command_Siege(), arg 1 void *
+004C1990 = void Command_UnitMorph(), arg 1 const void *
+004C1910 = void Command_BuildingMorph(), eax const void *
+004C1F10 = void Command_Unsiege(), arg 1 const void *
+004C1E80 = void Command_Siege(), arg 1 const void *
 004C0E90 = void Command_MergeArchon()
 004C0CD0 = void Command_MergeDarkArchon()
-004C20C0 = void Command_HoldPosition(), edi void *
+004C20C0 = void Command_HoldPosition(), edi const void *
 004BFCD0 = void Command_CancelNuke()
-004C1620 = void Command_Lift(), arg 1 void *
+004C1620 = void Command_Lift(), arg 1 const void *
 004C1800 = void Command_TrainFighter()
 004BFF30 = void Command_CancelAddon()
 004C2F30 = void Command_Stim()
-00485E60 = void Command_Latency(), eax void *
-004C2E90 = void Command_LeaveGame(), arg 1 void *
-004C1CC0 = void Command_UnloadAll(), edi void *
+00485E60 = void Command_Latency(), eax const void *
+004C2E90 = void Command_LeaveGame(), arg 1 const void *
+004C1CC0 = void Command_UnloadAll(), edi const void *
 004DEB90 = void ChangeReplaySpeed(), eax int, ecx int, edx int
 004CDE70 = void AddToReplayData(), eax ReplayData *, arg 1 int, ebx const void *, edi int
 
@@ -413,7 +412,6 @@
 0043FF00 = void Ai_FocusUnit(), eax Unit *
 0043FF90 = void Ai_FocusUnit2(), eax Unit *
 
-004E4F40 = void Order_ProtossBuildSelf(), eax Unit *
 0047C210 = void Order_JunkYardDog(), eax Unit *
 00463900 = void Order_Medic(), eax Unit *
 004F6FA0 = void Order_Obscured(), eax Unit *
@@ -547,10 +545,8 @@
 00479D60 = Iscript_AttackWith(), eax Unit *unit, arg 1 ground
 00479C30 = Iscript_UseWeapon(), arg 1 weapon_id, esi Unit *unit
 004762C0 = GetClosestPointOfTarget(), arg 1 Unit *unit, arg 2 dword *out_x, arg 3 dword *out_y
-004011A0 = SetMoveTargetToNearbyPoint(), eax direction, edx Unit *unit
+004011A0 = SetMoveTargetToNearbyPoint(), eax direction, edx Flingy *flingy
 00479D40 = FireWeapon(), eax Unit *parent, ebx weapon_id
-004010E0 = InitializeImageFull(), arg 1 image_id, ebx Image *img, ecx x, eax y, edi Sprite *parent
-00496360 = bool InitializeFlingy(), arg 1 Flingy *flingy, arg 2 player, arg 3 direction, eax flingy_id, ecx x, edx y
 004D5A00 = SetOffsetToParentsSpecialOverlay(), ecx Image *img
 
 00473920 = dword GetPsiPlacementState(), arg 1 x_tile, arg 2 y_tile, esi unit_id, eax player
@@ -607,14 +603,14 @@
 
 00472060 = Command_StartGame(), arg 1 player
 00450210 = DrawDownloadStatuses()
-004713E0 = Command_NewNetPlayer(), arg 1 net_player, edx void *data
-00471460 = Command_ChangeGameSlot(), eax net_player, ecx void *data
-00471300 = Command_ChangeRace(), arg 1 void *data, arg 2 player
-00471750 = Command_TeamGameTeam(), ecx void *data, arg 1 player
-00471670 = Command_UmsTeam(), arg 1 void *data, arg 2 player
-00471570 = Command_MeleeTeam(), ebx void *data, arg 1 player
-00471860 = Command_SwapPlayers(), ebx void *data, arg 1 player
-00472110 = Command_SavedData(), edx void *data, eax player
+004713E0 = Command_NewNetPlayer(), arg 1 net_player, edx const void *data
+00471460 = Command_ChangeGameSlot(), eax net_player, ecx const void *data
+00471300 = Command_ChangeRace(), arg 1 const void *data, arg 2 player
+00471750 = Command_TeamGameTeam(), ecx const void *data, arg 1 player
+00471670 = Command_UmsTeam(), arg 1 const void *data, arg 2 player
+00471570 = Command_MeleeTeam(), ebx const void *data, arg 1 player
+00471860 = Command_SwapPlayers(), ebx const void *data, arg 1 player
+00472110 = Command_SavedData(), edx const void *data, eax player
 004C46E0 = MakeGamePublic()
 00418640 = Ctrl_LeftUp(), esi Control *ctrl
 
@@ -629,7 +625,7 @@
 004D2930 = void *OpenGrpFile(), edi char *filename
 004D2880 = FileError(), ecx void *file, ebx error
 004212C0 = ErrorMessageBox(), ebx error, arg 1 char *filename
-004D2D10 = void *ReadMpqFile(), arg 1 char *chk_path, arg 2 int, arg 3 int, arg 4 const char *source_file, arg 5 source_line, ecx open_mode, eax dword *out_filesize
+004D2D10 = void *ReadMpqFile(), arg 1 const char *chk_path, arg 2 int, arg 3 int, arg 4 const char *source_file, arg 5 source_line, ecx open_mode, eax dword *out_filesize
 
 00431030 = Unit **GetClickableUnits(), arg 1 x, eax y
 00402A00 = bool IsClickablePixel(), arg 1 Unit *unit, edi x, ebx y
@@ -696,6 +692,8 @@
 00402C40 = dword GetBuildHpGain(), eax Unit *unit
 004679A0 = dword ProgressBuild(), eax Unit *unit, edx hp_gain, arg 1 unk
 00466F50 = RallyUnit(), ecx Unit *parent, eax Unit *created
+
+00434220 = AiScript_StartTown(), arg 1 x, arg 2 y, arg 3 unk, eax player
 
 ### storm (15000000)
 

@@ -1464,11 +1464,11 @@ void Save::SaveGame(uint32_t time)
     *bw::unk_57F240 = (GetTickCount() - *bw::unk_59CC7C) / 1000 + *bw::unk_6D5BCC;
     WriteCompressed((File *)file, bw::players.raw_pointer(), sizeof(Player) * Limits::Players);
     if (!*bw::campaign_mission)
-        ReplaceWithShortPath(&*bw::map_path, MAX_PATH);
+        ReplaceWithShortPath(&bw::map_path[0], MAX_PATH);
     WriteCompressed((File *)file, bw::minerals.raw_pointer(), 0x17700);
     fwrite(bw::local_player_id.raw_pointer(), 1, 4, file);
     if (!*bw::campaign_mission)
-        ReplaceWithFullPath(&*bw::map_path, MAX_PATH);
+        ReplaceWithFullPath(&bw::map_path[0], MAX_PATH);
 
     bullet_to_id.reserve(bullet_system->BulletCount());
     bullet_system->MakeSaveIdMapping([this] (Bullet *bullet, uintptr_t id) {
@@ -1616,7 +1616,7 @@ void Unit::serialize(Archive &archive)
     archive(order_wait, unk86, attack_notify_timer, previous_unit_id, lastEventTimer, lastEventColor);
     archive(unused8c, rankIncrease, last_attacking_player, secondary_order_wait, ai_spell_flags, order_flags);
     archive(buttons, invisibility_effects, movement_state, build_queue, energy, current_build_slot);
-    archive(secondary_order, buildingOverlayState, build_hp_gain, unkaa, previous_hp, lookup_id);
+    archive(secondary_order, buildingOverlayState, build_hp_gain, build_shield_gain, previous_hp, lookup_id);
     archive(flags, carried_powerup_flags, wireframe_randomizer, secondary_order_state, move_target_update_timer);
     archive(detection_status, unke8, unkea, path_frame, pathing_flags, _unused_0x106, is_being_healed);
     archive(contourBounds, death_timer, matrix_hp, matrix_timer, stim_timer, ensnare_timer, lockdown_timer);
@@ -1727,7 +1727,7 @@ void Image::serialize(Archive &archive)
     }
     archive(image_id, drawfunc, direction, flags, x_off, y_off, iscript.header, iscript.pos);
     archive(iscript.return_pos, iscript.animation, iscript.wait, frameset, frame, map_position);
-    archive(screen_position, grpBounds);
+    archive(screen_position, grp_bounds);
     archive(make_tuple(image_id, ref(grp)));
     ImageDrawfuncParam **param = (ImageDrawfuncParam **)&drawfunc_param;
     archive(make_tuple(drawfunc, ref(*param)));

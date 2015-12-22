@@ -7,6 +7,7 @@
 #include "game.h"
 #include "unsorted_list.h"
 #include "common/claimable.h"
+#include "ai_hit_reactions.h"
 #include <tuple>
 #include <array>
 
@@ -90,15 +91,15 @@ struct BulletHit
 
 struct BulletFramesInput
 {
-    BulletFramesInput(vector<DoWeaponDamageData> w, vector<HallucinationHitData> h, Ai::HelpingUnitVec hu) :
-        weapon_damages(move(w)), hallucination_hits(move(h)), helping_units(move(hu)) {}
+    BulletFramesInput(vector<DoWeaponDamageData> w, vector<HallucinationHitData> h, Ai::HitReactions hu) :
+        weapon_damages(move(w)), hallucination_hits(move(h)), ai_hit_reactions(move(hu)) {}
     BulletFramesInput(const BulletFramesInput &other) = delete;
     BulletFramesInput(BulletFramesInput &&other) = default;
     BulletFramesInput& operator=(const BulletFramesInput &other) = delete;
     BulletFramesInput& operator=(BulletFramesInput &&other) = default;
     vector<DoWeaponDamageData> weapon_damages;
     vector<HallucinationHitData> hallucination_hits;
-    Ai::HelpingUnitVec helping_units;
+    Ai::HitReactions ai_hit_reactions;
 };
 
 struct ProgressBulletBufs;
@@ -120,6 +121,7 @@ class DamagedUnit
 
         bool IsDead() const;
         void AddHit(uint32_t dmg, int weapon_id, int player, int direction, Unit *attacker, ProgressBulletBufs *bufs);
+        int32_t GetDamage();
 
     private:
         void AddDamage(int dmg);
@@ -245,12 +247,17 @@ class Bullet
 
         void UpdateMoveTarget(const Point &target);
         void Move(const Point &where);
+        /// Returns true if the random hit chance roll in State_Init failed
+        bool DoesMiss() const { return flags & 0x1; }
 
         ~Bullet() {}
         Bullet(Bullet &&other) = default;
 
         template <class Archive>
         void serialize(Archive &archive);
+
+        void WarnUnhandledIscriptCommand(const Iscript::Command &cmd, const char *func) const;
+        std::string DebugStr() const;
 
     private:
         Bullet() {}
@@ -267,7 +274,9 @@ class Bullet
         bool Initialize(Unit *parent_, int player_, int direction, int weapon, const Point &pos);
 
         static vector<std::pair<Unit *, Point>> broodling_spawns;
-        Sprite::ProgressFrame_C SetIscriptAnimation(int anim, bool force);
+
+        // Results must not be null
+        void SetIscriptAnimation(int anim, bool force, const char *caller, BulletStateResults *results);
 };
 
 /// Contains and controls bullets of the game
@@ -301,7 +310,7 @@ class BulletSystem
         Claimed<BulletStateResults> ProgressStates();
         void ProcessHits(ProgressBulletBufs *bufs);
         vector<Unit *> ProcessUnitWasHit(vector<tuple<Unit *, Unit *>> hits, ProgressBulletBufs *bufs);
-        vector<Ai::HitUnit> ProcessAiReactToHit(vector<tuple<Unit *, Unit *, bool>> input, Ai::HelpingUnitVec *helping_units);
+        void ProcessAiReactToHit(vector<tuple<Unit *, Unit *, bool>> input, Ai::HitReactions *hit_reactions);
 
         void DeleteBullet(BulletContainer::entry *bullet);
         std::array<BulletContainer *, 7> Containers()

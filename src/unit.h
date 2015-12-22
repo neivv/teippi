@@ -8,6 +8,7 @@
 #include "sprite.h"
 #include "unitsearch_cache.h" // For UnitSearchRegionCache::Entry
 #include "game.h"
+#include "ai_hit_reactions.h"
 #include "pathing.h"
 
 #include <atomic>
@@ -93,7 +94,7 @@ struct ProgressUnitResults
 {
     vector<DoWeaponDamageData> weapon_damages;
     vector<HallucinationHitData> hallucination_hits;
-    Ai::HelpingUnitVec helping_units;
+    Ai::HitReactions ai_hit_reactions;
 };
 
 #pragma pack(push)
@@ -105,11 +106,33 @@ struct struct230
     uint8_t building_was_hit;
 };
 
+class UnitIscriptContext : public Iscript::Context
+{
+    public:
+        constexpr UnitIscriptContext(Unit *unit, ProgressUnitResults *results,
+                                     const char *caller, Rng *rng, bool can_delete) :
+            Iscript::Context(rng, can_delete),
+            unit(unit), results(results), caller(caller) { }
+
+        Unit * const unit;
+        ProgressUnitResults * const results;
+        const char * const caller;
+
+        void IscriptToIdle();
+        void ProgressIscript();
+        void SetIscriptAnimation(int anim, bool force);
+
+        virtual Iscript::CmdResult HandleCommand(Image *img, Iscript::Script *script,
+                                                 const Iscript::Command &cmd) override;
+        virtual void NewOverlay(Image *img) override;
+};
+
  // Derived from BWAPI's unit.h
 
 class Unit
 {
     friend class Load;
+    friend class UnitIscriptContext;
     public:
         static const size_t offset_of_allocated = 0xb8;
 
@@ -199,7 +222,7 @@ class Unit
         uint8_t secondary_order; // 0xa6
         uint8_t buildingOverlayState; // 0xa7
         uint16_t build_hp_gain; // 0xa8
-        uint16_t unkaa;
+        uint16_t build_shield_gain;
         uint16_t remaining_build_time;
         uint16_t previous_hp;
 
@@ -385,11 +408,26 @@ class Unit
 
         // DamagedUnit data, should be only accessed from DamagedUnit.
         // See comment in bullet.h ProgressBulletBufs::GetDamagedUnit for more info.
-        struct
+        class DamagedUnitPrivate
         {
+            friend class DamagedUnit;
+            friend struct ProgressBulletBufs;
             uint32_t valid_frame;
             uint32_t damage; // Hp damage only
+
+            public:
+                constexpr DamagedUnitPrivate() : valid_frame(0), damage(0) { }
         } dmg_unit;
+
+        /// For Ai::HitReactions.
+        class AiReactionPrivate
+        {
+            friend class Ai::BestPickedTarget;
+            Unit *picked_target;
+
+            public:
+                constexpr AiReactionPrivate() : picked_target(nullptr) { }
+        } ai_reaction_private;
 
         // Funcs etc
 #ifdef SYNC
@@ -427,6 +465,7 @@ class Unit
         bool IsUnreachable(const Unit *other) const;
         bool IsCritter() const;
         bool IsWorker() const { return units_dat_flags[unit_id] & UnitFlags::Worker; }
+        bool IsHero() const { return units_dat_flags[unit_id] & UnitFlags::Hero; }
         bool IsFlying() const { return flags & UnitStatus::Air; }
         bool IsInvincible() const { return flags & UnitStatus::Invincible; }
 
@@ -450,10 +489,10 @@ class Unit
         int GetTargetAcquisitionRange() const;
         int GetMaxEnergy() const;
         int GetModifiedDamage(int dmg) const;
-        /// Returns remaining dmg
-        int ReduceMatrixDamage(int dmg);
-        /// Returns remaining dmg
-        int DamageShields(int dmg, bool ignore_armor);
+        /// Assumes that dmg <= shields, most likely should not be called but let
+        /// DamagedUnit call it when necessary
+        void DamageShields(int32_t dmg, int direction);
+        void ShowShieldHitOverlay(int direction);
         void DamageSelf(int dmg, ProgressUnitResults *results);
 
         bool CanDetect() const;
@@ -539,6 +578,7 @@ class Unit
 
         void RemoveOverlayFromSelf(int first_id, int last_id);
         void RemoveOverlayFromSelfOrSubunit(int first_id, int last_id);
+        void AddSpellOverlay(int small_overlay_id);
 
         int GetAirWeapon() const;
         int GetGroundWeapon() const;
@@ -559,6 +599,13 @@ class Unit
 
         bool HasWayOfAttacking() const;
         bool IsBetterTarget(const Unit *other) const;
+        /// Returns true if cmp is better target than prev.
+        /// Used by ai code, but is not depending on any ai structures.
+        bool Ai_IsBetterTarget(const Unit *cmp, const Unit *prev) const {
+            return Ai_ChooseBetterTarget(cmp, prev) == cmp;
+        }
+        const Unit *Ai_ChooseBetterTarget(const Unit *cmp, const Unit *prev) const;
+
         bool IsInvisible() const { return flags & (UnitStatus::BeginInvisibility | UnitStatus::InvisibilityDone); }
         bool IsInvisibleTo(const Unit *unit) const;
         bool CanSeeUnit(const Unit *other) const;
@@ -577,8 +624,6 @@ class Unit
         void Cloak(int tech);
 
         static bool IsClickable(int unit_id);
-
-        Unit *ChooseBetterTarget(Unit *cmp, Unit *prev);
 
         bool CanBeAttacked() const;
         bool CanAttackUnit(const Unit *other, bool check_detection = true) const;
@@ -633,14 +678,23 @@ class Unit
         template <class Archive>
         void serialize(Archive &archive);
 
+        /// Progresses iscript by a frame. Sprite may become nullptr if all images
+        /// are deleted by this function.
+        void ProgressIscript(const char *caller, ProgressUnitResults *results);
+        /// Hack for hooks
+        void SetIscriptAnimationForImage(Image *img, int anim);
+
     private:
         Unit(bool); // Raw alloc
 
         void AddToLookup();
+        Entity *AsEntity();
 
         Unit *PickBestTarget(Unit **targets, int amount) const;
-        Unit *GetBetterTarget(Unit *unit);
-        Unit *ValidateTarget(Unit *unit);
+        /// These two are used by Ai_IsBetterTarget
+        const Unit *GetBetterTarget(const Unit *unit) const;
+        const Unit *ValidateTarget(const Unit *unit) const;
+
         Unit *ChooseTarget(bool ground);
         Unit *ChooseTarget(UnitSearchRegionCache::Entry units, int region, bool ground);
         tuple<int, Unit *> ChooseTarget_Player(bool check_alliance, Array<Unit *> units, int region_id, bool ground);
@@ -650,7 +704,7 @@ class Unit
         void ProgressFrame(ProgressUnitResults *results);
         void ProgressFrame_Late(ProgressUnitResults *results);
         void ProgressFrame_Hidden(ProgressUnitResults *results);
-        bool ProgressFrame_Dying(); // Return true when deleted
+        bool ProgressFrame_Dying(ProgressUnitResults *results); // Return true when deleted
         void ProgressTimers(ProgressUnitResults *results);
         template <bool flyers> void ProgressActiveUnitFrame();
         void ProgressOrder(ProgressUnitResults *results);
@@ -664,9 +718,6 @@ class Unit
 
         static Unit ** const id_lookup;
         static vector<Unit *>temp_flagged;
-
-        Sprite::ProgressFrame_C SetIscriptAnimation(int anim, bool force);
-        void SetIscriptAnimation_NoHandling(int anim, bool force, const char *caller, ProgressUnitResults *results);
 
         // Returns all attackers with which UnitWasHit has to be called
         vector<Unit *> RemoveFromResults(ProgressUnitResults *results);
@@ -733,6 +784,15 @@ class Unit
         void CancelTrain(ProgressUnitResults *results);
         void TransferTechsAndUpgrades(int new_player);
         void Order_Train(ProgressUnitResults *results);
+        void Order_ProtossBuildSelf(ProgressUnitResults *results);
+        /// Increases hp and reduces build time (if needed).
+        /// Might be only be used for protoss buildings.
+        void ProgressBuildingConstruction();
+
+        Iscript::CmdResult HandleIscriptCommand(UnitIscriptContext *ctx, Image *img,
+                                                Iscript::Script *script, const Iscript::Command &cmd);
+        void WarnUnhandledIscriptCommand(const Iscript::Command &cmd, const char *caller) const;
+        void SetIscriptAnimation(int anim, bool force, const char *caller, ProgressUnitResults *results);
 
     public:
         static uint32_t next_id;
@@ -742,6 +802,8 @@ class Unit
 
 extern DummyListHead<Unit, Unit::offset_of_allocated> first_allocated_unit;
 extern DummyListHead<Unit, Unit::offset_of_allocated> first_movementstate_flyer;
+
+extern bool late_unit_frames_in_progress;
 
 static_assert(Unit::offset_of_allocated == offsetof(Unit, allocated), "Unit::allocated offset");
 

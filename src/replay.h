@@ -5,7 +5,7 @@
 
 uint32_t LoadReplayData(const char *filename, uint32_t *error);
 void LoadReplayMapDirEntry();
-int __stdcall ExtractNextReplayFrame(uint32_t *cmd_amount, uint8_t *players, uint8_t *cmd_data, uint32_t *cmd_lengths);
+void ProgressReplay();
 void SaveReplay(const char *name, bool overwrite);
 
 #pragma pack(push, 1)

@@ -139,7 +139,8 @@ class array_offset<Type, Size, More...> : public offset_base
                 }
                 const array_offset<Type, More...> operator*() {
                     uintptr_t deref_end = address + array_offset<Type, More...>::size() * sizeof(Type);
-                    Assert(deref_end <= end);
+                    // Avoid unused var warning ._.
+                    if (deref_end > end) { Assert(deref_end <= end); }
                     return array_offset<Type, More...>(address);
                 }
                 bool operator!=(const iterator &other) const {
@@ -199,6 +200,7 @@ namespace bw
     const array_offset<Unit *, 0x20, 0x10, 0x2> lurker_hits = 0x0064DEC8;
 
     const offset<uint32_t> game_speed = 0x006CDFD4;
+    const offset<uint32_t> replay_speed_multiplier = 0x0050E058;
     const array_offset<uint32_t, 7> game_speed_waits = 0x005124D8;
 
     const array_offset<Ai::Region *, 8> player_ai_regions = 0x0069A604;
@@ -366,13 +368,11 @@ namespace bw
 
     const offset<uint8_t> image_flags = 0x006CEFB5;
 
-    const array_offset<ImgRenderFuncs, 0x11> image_renderfuncs = 0x005125A0;
-    const array_offset<ImgUpdateFunc, 0x11> image_updatefuncs = 0x00512510;
+    const array_offset<ImgRenderFuncs, 0x12> image_renderfuncs = 0x005125A0;
+    const array_offset<ImgUpdateFunc, 0x12> image_updatefuncs = 0x00512510;
 
     const offset<uint8_t *> iscript = 0x006D1200;
     const offset<Unit *> active_iscript_unit = 0x006D11FC;
-    const offset<void *> active_iscript_flingy = 0x006D11F4;
-    const offset<Bullet *> active_iscript_bullet = 0x006D11F8;
 
     const offset<RevListHead<Unit, 0x0>> first_active_unit = 0x00628430;
     const offset<RevListHead<Unit, 0x0>> first_hidden_unit = 0x006283EC;
@@ -493,7 +493,7 @@ namespace bw
     const offset<uint32_t> unk_57F240 = 0x0057F240;
     const offset<uint32_t> unk_59CC7C = 0x0059CC7C;
     const offset<uint32_t> unk_6D5BCC = 0x006D5BCC;
-    const offset<char> map_path = 0x0057FD3C;
+    const array_offset<char, 0x104> map_path = 0x0057FD3C;
     const offset<uint16_t> campaign_mission = 0x0057F244;
     const offset<GameData> game_data = 0x005967F8;
     const offset<File *> loaded_save = 0x006D1218;
@@ -528,6 +528,7 @@ namespace bw
     const offset<uint32_t> scenario_chk_length = 0x006D0F20;
     const offset<void *> scenario_chk = 0x006D0F24;
     const offset<ReplayHeader> replay_header = 0x006D0F30;
+    const offset<uint32_t> next_replay_command_frame = 0x005136C8;
     const array_offset<char *, 65> campaign_map_names = 0x0059C080;
 
     const offset<Unit *> ai_building_placement_hack = 0x006D5DCC;
@@ -637,19 +638,28 @@ namespace bw
         const weapons_dat<uint8_t> weapons_dat_death_time = 0x00657040;
         const weapons_dat<uint8_t> weapons_dat_launch_spin = 0x00657888;
         const weapons_dat<uint8_t> weapons_dat_attack_angle = 0x00656990;
+        const weapons_dat<uint16_t> weapons_dat_label = 0x006572E0;
 
         const flingy_dat<int32_t> flingy_dat_top_speed = 0x006C9EF8;
         const flingy_dat<uint32_t> flingy_dat_halt_distance = 0x006C9930;
         const flingy_dat<uint16_t> flingy_dat_acceleration = 0x006C9C78;
         const flingy_dat<uint16_t> flingy_dat_sprite = 0x006CA318;
         const flingy_dat<uint8_t> flingy_dat_movement_type = 0x006C9858;
+        const flingy_dat<uint8_t> flingy_dat_turn_speed = 0x006C9E20;
 
         const sprites_dat<uint16_t> sprites_dat_image = 0x00666160;
+        const sprites_dat<uint8_t> sprites_dat_start_as_visible = 0x00665C48;
 
         const images_dat<uint8_t> images_dat_drawfunc = 0x00669E28;
         const images_dat<int8_t *> images_dat_shield_overlay = 0x0052E5C8;
         const images_dat<uint32_t> images_dat_damage_overlay = 0x0066A210;
         const images_dat<uint8_t> images_dat_draw_if_cloaked = 0x00667718;
+        const images_dat<uint8_t> images_dat_turning_graphic = 0x0066E860;
+        const images_dat<uint8_t> images_dat_clickable = 0x0066C150;
+        const images_dat<uint8_t> images_dat_remapping = 0x00669A40;
+        const images_dat<uint8_t> images_dat_use_full_iscript = 0x0066D4D8;
+        const images_dat<uint32_t> images_dat_iscript_header = 0x0066EC48;
+        const images_dat<uint32_t> images_dat_grp = 0x00668AA0;
         const array_offset<void *, 6, 0x3e7> images_dat_overlays = 0x0051F2A8;
 
         const techdata_dat<uint16_t> techdata_dat_energy_cost = 0x00656380;

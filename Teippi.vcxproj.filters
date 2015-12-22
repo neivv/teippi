@@ -24,261 +24,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\possearch.hpp">
-      <Filter>Sources</Filter>
-    </ClInclude>
-    <ClInclude Include="src\unitsearch.hpp">
-      <Filter>Sources</Filter>
-    </ClInclude>
-    <ClInclude Include="src\unitsearch_cache.hpp">
-      <Filter>Sources</Filter>
-    </ClInclude>
-    <ClInclude Include="src\ai.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\building.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\bullet.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\bunker.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\commands.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\datastream.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\dialog.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\draw.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\flingy.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\game.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\image.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\init.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\iscript.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\limits.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\list.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\lofile.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\log.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\mainpatch.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\mapdirectory.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\memory.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\mpqdraft.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\MPQDraftPlugin.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\nuke.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\offsets.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\order.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\patchmanager.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\pathing.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\perfclock.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\player.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\replay.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\resolution.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\rng.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\save.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\scconsole.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\scthread.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\selection.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\sound.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\sprite.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\strings.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\sync.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\targeting.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\tech.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\test_game.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\text.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\thread.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\triggers.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\types.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\unit.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\unit_cache.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\unitlist.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\unitsearch.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\unitsearch_cache.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\upgrade.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\warn.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\x86.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\yms.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\console\assert.h">
-      <Filter>Headers\console</Filter>
-    </ClInclude>
-    <ClInclude Include="src\console\cmdargs.h">
-      <Filter>Headers\console</Filter>
-    </ClInclude>
-    <ClInclude Include="src\console\console.h">
-      <Filter>Headers\console</Filter>
-    </ClInclude>
-    <ClInclude Include="src\console\font.h">
-      <Filter>Headers\console</Filter>
-    </ClInclude>
-    <ClInclude Include="src\console\genericconsole.h">
-      <Filter>Headers\console</Filter>
-    </ClInclude>
-    <ClInclude Include="src\console\surface.h">
-      <Filter>Headers\console</Filter>
-    </ClInclude>
-    <ClInclude Include="src\console\types.h">
-      <Filter>Headers\console</Filter>
-    </ClInclude>
-    <ClInclude Include="src\console\windows_wrap.h">
-      <Filter>Headers\console</Filter>
-    </ClInclude>
-    <ClInclude Include="src\common\assert.h">
-      <Filter>Headers\common</Filter>
-    </ClInclude>
-    <ClInclude Include="src\common\claimable.h">
-      <Filter>Headers\common</Filter>
-    </ClInclude>
-    <ClInclude Include="src\common\iter.h">
-      <Filter>Headers\common</Filter>
-    </ClInclude>
-    <ClInclude Include="src\common\ll-deque.h">
-      <Filter>Headers\common</Filter>
-    </ClInclude>
-    <ClInclude Include="src\common\log_freeze.h">
-      <Filter>Headers\common</Filter>
-    </ClInclude>
-    <ClInclude Include="src\common\optional.h">
-      <Filter>Headers\common</Filter>
-    </ClInclude>
-    <ClInclude Include="src\common\unsorted_vector.h">
-      <Filter>Headers\common</Filter>
-    </ClInclude>
-    <ClInclude Include="src\common\vector.h">
-      <Filter>Headers\common</Filter>
-    </ClInclude>
-    <ClInclude Include="src\constants\image.h">
-      <Filter>Headers\constants</Filter>
-    </ClInclude>
-    <ClInclude Include="src\constants\iscript.h">
-      <Filter>Headers\constants</Filter>
-    </ClInclude>
-    <ClInclude Include="src\constants\order.h">
-      <Filter>Headers\constants</Filter>
-    </ClInclude>
-    <ClInclude Include="src\constants\sound.h">
-      <Filter>Headers\constants</Filter>
-    </ClInclude>
-    <ClInclude Include="src\constants\sprite.h">
-      <Filter>Headers\constants</Filter>
-    </ClInclude>
-    <ClInclude Include="src\constants\string.h">
-      <Filter>Headers\constants</Filter>
-    </ClInclude>
-    <ClInclude Include="src\constants\tech.h">
-      <Filter>Headers\constants</Filter>
-    </ClInclude>
-    <ClInclude Include="src\constants\unit.h">
-      <Filter>Headers\constants</Filter>
-    </ClInclude>
-    <ClInclude Include="src\constants\upgrade.h">
-      <Filter>Headers\constants</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="src\ai.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ai_hit_reactions.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
     <ClCompile Include="src\building.cpp">
@@ -290,8 +39,26 @@
     <ClCompile Include="src\bunker.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="src\bwlauncher.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
     <ClCompile Include="src\commands.cpp">
       <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\console\assert.cpp">
+      <Filter>Sources\console</Filter>
+    </ClCompile>
+    <ClCompile Include="src\console\cmdargs.cpp">
+      <Filter>Sources\console</Filter>
+    </ClCompile>
+    <ClCompile Include="src\console\console.cpp">
+      <Filter>Sources\console</Filter>
+    </ClCompile>
+    <ClCompile Include="src\console\font.cpp">
+      <Filter>Sources\console</Filter>
+    </ClCompile>
+    <ClCompile Include="src\console\genericconsole.cpp">
+      <Filter>Sources\console</Filter>
     </ClCompile>
     <ClCompile Include="src\datastream.cpp">
       <Filter>Sources</Filter>
@@ -416,34 +183,279 @@
     <ClCompile Include="src\yms.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
-    <ClCompile Include="src\console\assert.cpp">
-      <Filter>Sources\console</Filter>
-    </ClCompile>
-    <ClCompile Include="src\console\cmdargs.cpp">
-      <Filter>Sources\console</Filter>
-    </ClCompile>
-    <ClCompile Include="src\console\console.cpp">
-      <Filter>Sources\console</Filter>
-    </ClCompile>
-    <ClCompile Include="src\console\font.cpp">
-      <Filter>Sources\console</Filter>
-    </ClCompile>
-    <ClCompile Include="src\console\genericconsole.cpp">
-      <Filter>Sources\console</Filter>
-    </ClCompile>
-    <ClCompile Include="src\bwlauncher.cpp">
+    <ClInclude Include="src\MPQDraftPlugin.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ai.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ai_hit_reactions.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\building.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\bullet.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\bunker.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\commands.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\assert.h">
+      <Filter>Headers\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\claimable.h">
+      <Filter>Headers\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\iter.h">
+      <Filter>Headers\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\ll-deque.h">
+      <Filter>Headers\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\log_freeze.h">
+      <Filter>Headers\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\optional.h">
+      <Filter>Headers\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\vector.h">
+      <Filter>Headers\common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\console\assert.h">
+      <Filter>Headers\console</Filter>
+    </ClInclude>
+    <ClInclude Include="src\console\cmdargs.h">
+      <Filter>Headers\console</Filter>
+    </ClInclude>
+    <ClInclude Include="src\console\console.h">
+      <Filter>Headers\console</Filter>
+    </ClInclude>
+    <ClInclude Include="src\console\font.h">
+      <Filter>Headers\console</Filter>
+    </ClInclude>
+    <ClInclude Include="src\console\genericconsole.h">
+      <Filter>Headers\console</Filter>
+    </ClInclude>
+    <ClInclude Include="src\console\surface.h">
+      <Filter>Headers\console</Filter>
+    </ClInclude>
+    <ClInclude Include="src\console\types.h">
+      <Filter>Headers\console</Filter>
+    </ClInclude>
+    <ClInclude Include="src\console\windows_wrap.h">
+      <Filter>Headers\console</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants\image.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants\iscript.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants\order.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants\sound.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants\sprite.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants\string.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants\tech.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants\unit.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\constants\upgrade.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
+    <ClInclude Include="src\damage_calculation.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\datastream.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dialog.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\draw.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\entity.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\flingy.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\game.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\image.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\init.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\iscript.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\limits.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\list.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\lofile.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\log.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\mainpatch.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\mapdirectory.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\memory.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\mpqdraft.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\nuke.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\offsets.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\offsets_hooks.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\order.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\patchmanager.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\pathing.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\perfclock.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\player.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\replay.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\resolution.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rng.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\save.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scconsole.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\scthread.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\selection.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sound.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sprite.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\strings.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sync.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\targeting.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\tech.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\test_game.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\text.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\thread.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\triggers.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\types.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\unit.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\unit_cache.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\unitlist.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\unitsearch.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\unitsearch_cache.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\unsorted_list.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\upgrade.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\warn.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\x86.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\yms.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\possearch.hpp">
       <Filter>Sources</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
+    </ClInclude>
+    <ClInclude Include="src\unitsearch.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="src\unitsearch_cache.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <Text Include="src\func\nuottei.txt">
+      <Filter>Sources\func</Filter>
+    </Text>
+    <None Include="src\func\functonuot.py">
+      <Filter>Sources\func</Filter>
+    </None>
     <None Include="src\func\genfuncs.py">
       <Filter>Sources\func</Filter>
     </None>
     <None Include="wscript" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="src\func\nuottei.txt">
-      <Filter>Sources\func</Filter>
-    </Text>
   </ItemGroup>
 </Project>

@@ -33,9 +33,31 @@ class EnemyUnitCache
         void ForAttackableEnemiesInArea(MainUnitSearch *search, const Unit *own, const Rect16 &area_, Cb callback)
         {
             Rect16 area = area_.Clipped(MapBounds());
-            // From CanAttackUnit
-            bool air;
+            auto ground_air = ForAttackableEnemiesInArea_Init(search, own, area);
+            bool ground = std::get<0>(ground_air);
+            bool air = std::get<1>(ground_air);
+            if (!ground && !air)
+                return;
+
+            for (int i = 0; i < Limits::ActivePlayers; i++)
+            {
+                if (bw::alliances[own->player][i] == 0)
+                {
+                    bool stop = ForAttackableEnemiesInArea(area, own, i, ground, air, callback);
+                    if (stop)
+                        return;
+                }
+            }
+        }
+    private:
+        /// Helper function for ForAttackableEnemiesInArea, separated to drastically reduce binary size.
+        /// As the parent function is a template, compilers don't realize that most of the code can be shared.
+        tuple<bool, bool> ForAttackableEnemiesInArea_Init(MainUnitSearch *search, const Unit *own, const Rect16 &area)
+        {
             bool ground;
+            bool air;
+            // From CanAttackUnit
+            // TODO remove this duplication
             switch (own->unit_id)
             {
                 case Unit::Carrier:
@@ -64,9 +86,9 @@ class EnemyUnitCache
                     }
             }
             if (!ground && !air)
-                return;
+                return make_tuple(false, false);
 
-            search->FillSecondaryCache(&cache, area, [](Unit *unit) {
+            search->FillSecondaryCache(&cache, area, [](const Unit *unit) {
                 // Filter
                 // Could filter by unit->CanBeAttacked
                 return unit->GetOriginalPlayer() < Limits::ActivePlayers;
@@ -77,40 +99,23 @@ class EnemyUnitCache
                 else
                     return unit->GetOriginalPlayer() * 2;
             });
-
-            for (int i = 0; i < Limits::ActivePlayers; i++)
-            {
-                if (bw::alliances[own->player][i] == 0)
-                {
-                    bool stop = ForAttackableEnemiesInArea(area, own, i, ground, air, callback);
-                    if (stop)
-                        return;
-                }
-            }
+            return make_tuple(ground, air);
         }
-    private:
+
         template <class Cb>
         bool ForAttackableEnemiesInArea(const Rect16 &area, const Unit *own, int player, bool ground, bool air, Cb callback)
         {
             bool stop = false;
+            auto lambda = [&](Unit *unit, bool *stop2) {
+                if (!own->CanAttackUnit(unit))
+                    return;
+                callback(unit, &stop);
+                *stop2 = stop;
+            };
             if (ground)
-            {
-                cache.Cache(player * 2).ForEach(area, [&](Unit *unit, bool *stop2) {
-                    if (!own->CanAttackUnit(unit))
-                        return;
-                    callback(unit, &stop);
-                    *stop2 = stop;
-                });
-            }
+                cache.Cache(player * 2).ForEach(area, lambda);
             if (air && !stop)
-            {
-                cache.Cache(player * 2 + 1).ForEach(area, [&](Unit *unit, bool *stop2) {
-                    if (!own->CanAttackUnit(unit))
-                        return;
-                    callback(unit, &stop);
-                    *stop2 = stop;
-                });
-            }
+                cache.Cache(player * 2 + 1).ForEach(area, lambda);
             return stop;
         }
 

@@ -65,10 +65,11 @@ class Unit;
 class Sprite;
 class LoneSpriteSystem;
 class Image;
-class Iscript;
 class Bullet;
 class BulletSystem;
+class DamagedUnit;
 class Flingy;
+class Entity;
 class Tbl;
 class Path;
 class Order;
@@ -133,7 +134,7 @@ namespace Ai
     template <class C> class DataList;
     struct ResourceArea;
     struct ResourceAreaArray;
-    typedef vector<tuple<Unit *, Unit *>> HelpingUnitVec;
+    class BestPickedTarget;
 }
 
 namespace Pathing
@@ -141,5 +142,13 @@ namespace Pathing
     struct Region;
     struct PathingSystem;
 }
+
+namespace Iscript
+{
+    class Script;
+}
+class UnitIscriptContext;
+class BulletIscriptContext;
+
 #endif // TYPES_H
 

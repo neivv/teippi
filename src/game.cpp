@@ -204,7 +204,7 @@ void ProgressObjects()
     auto unit_time = clock.GetTime() - total_time;
     total_time += unit_time;
     BulletFramesInput bullet_input(move(unit_results.weapon_damages), move(unit_results.hallucination_hits),
-            move(unit_results.helping_units));
+            move(unit_results.ai_hit_reactions));
     bullet_system->ProgressFrames(move(bullet_input));
     auto bullet_time = clock.GetTime() - total_time;
     total_time += bullet_time;
@@ -383,7 +383,7 @@ void GameEnd()
         bw::unk_6CEF8C[i][0] = 0;
 
     FreeUnkSound(&*bw::unk_sound);
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < Limits::ActivePlayers; i++)
         FreeTriggerList(&bw::triggers[i]);
     for (int i = 0; i < 2; i++)
     {

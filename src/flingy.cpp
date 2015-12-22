@@ -13,6 +13,45 @@ Flingy::Flingy()
     current_speed = 0;
 }
 
+bool Flingy::Initialize(Iscript::Context *ctx, int flingy_id_, int player, int direction, const Point &pos)
+{
+    flingy_id = flingy_id_;
+    position = pos;
+    exact_position = Point32(pos.x * 256, pos.y * 256);
+
+    flingy_flags = 0x1;
+    next_speed = 0;
+    current_speed = 0;
+    speed[0] = 0;
+    speed[1] = 0;
+    facing_direction = direction;
+    movement_direction = direction;
+    new_direction = direction;
+    target_direction = direction;
+    _unknown_0x026 = 0;
+    value = 1;
+
+    move_target = pos;
+    move_target_unit = nullptr;
+    next_move_waypoint = pos;
+    unk_move_waypoint = pos;
+
+    turn_speed = flingy_dat_turn_speed[flingy_id];
+    flingy_movement_type = flingy_dat_movement_type[flingy_id];
+    acceleration = flingy_dat_acceleration[flingy_id];
+    top_speed = flingy_dat_top_speed[flingy_id];
+
+    sprite = Sprite::Allocate(ctx, flingy_dat_sprite[flingy_id], pos, player);
+    if (sprite == nullptr)
+        return false;
+
+    for (Image *img : sprite->first_overlay)
+    {
+        SetImageDirection256(img, direction);
+    }
+    return true;
+}
+
 Flingy::~Flingy()
 {
 }
@@ -48,29 +87,40 @@ void Flingy::ProgressFlingy()
     flingy_flags = *bw::current_flingy_flags;
 }
 
+class FlingyIscriptContext : public Iscript::Context
+{
+    public:
+        constexpr FlingyIscriptContext(Flingy *flingy, Rng *rng) :
+            Iscript::Context(rng, true), flingy(flingy) { }
+
+        Flingy * const flingy;
+
+        void ProgressIscript() { flingy->sprite->ProgressFrame(this); }
+        void SetIscriptAnimation(int anim, bool force) { flingy->sprite->SetIscriptAnimation(this, anim, force); }
+
+        virtual Iscript::CmdResult HandleCommand(Image *img, Iscript::Script *script,
+                                                 const Iscript::Command &cmd) override
+        {
+            Iscript::CmdResult result = flingy->HandleIscriptCommand(this, img, script, cmd);
+            if (result == Iscript::CmdResult::NotHandled)
+            {
+                Warning("Unhandled iscript command %s in Flingy::ProgressFrame, image %s",
+                        cmd.DebugStr().c_str(), img->DebugStr().c_str());
+            }
+            return result;
+        }
+};
+
 void Flingy::ProgressFrame()
 {
-    for (auto &cmd : sprite->ProgressFrame(IscriptContext(), main_rng))
-    {
-        if (cmd.opcode == IscriptOpcode::End)
-        {
-            sprite->Remove();
-            // TODO make Flingy use unique_ptr (if the limit is ever removed, lol)
-            delete sprite;
-            sprite = nullptr;
-        }
-        else
-            Warning("Unhandled iscript command %x in Flingy::ProgressFrame", cmd.opcode);
-    }
+    FlingyIscriptContext(this, MainRng()).ProgressIscript();
 
     ProgressFlingy();
     MoveFlingy(this);
 
     if (sprite->position.x >= *bw::map_width || sprite->position.y >= *bw::map_height || move_target == position)
     {
-        auto cmds = sprite->SetIscriptAnimation(1, true);
-        if (!Empty(cmds))
-            Warning("Flingy::ProgressFrame did not handle all iscript commands for sprite %x", sprite->sprite_id);
+        FlingyIscriptContext(this, MainRng()).SetIscriptAnimation(Iscript::Animation::Death, true);
     }
 }
 
@@ -83,40 +133,6 @@ void Flingy::ProgressFrames()
         it = it->list.next;
         flingy->ProgressFrame();
     }
-}
-
-bool Flingy::Move(const IscriptContext &ctx)
-{
-    STATIC_PERF_CLOCK(Flingy_Move);
-    bool moved = false;
-    if (*bw::new_flingy_x != position.x || *bw::new_flingy_y != position.y)
-        moved = true;
-    *bw::old_flingy_x = position.x;
-    *bw::old_flingy_y = position.y;
-    position.x = *bw::new_flingy_x;
-    position.y = *bw::new_flingy_y;
-    movement_direction = new_direction;
-    flingy_flags = *bw::new_flingy_flags;
-    exact_position.x = *bw::new_exact_x;
-    exact_position.y = *bw::new_exact_y;
-    next_speed = current_speed;
-    MoveSprite(sprite, position.x, position.y);
-    ProgressTurning();
-    for (Image *img : sprite->first_overlay)
-    {
-        SetImageDirection256(img, facing_direction);
-    }
-    if (*bw::show_endwalk_anim || *bw::show_startwalk_anim)
-    {
-        Sprite::ProgressFrame_C cmds;
-        if (*bw::show_endwalk_anim)
-            cmds = sprite->SetIscriptAnimation(IscriptAnim::Idle, false, ctx, main_rng);
-        else if (*bw::show_startwalk_anim)
-            cmds = sprite->SetIscriptAnimation(IscriptAnim::Walking, true, ctx, main_rng);
-        if (!Empty(cmds))
-            Warning("Flingy::Move did not handle all iscript commands for sprite %x", sprite->sprite_id);
-    }
-    return moved;
 }
 
 bool Flingy::ProgressTurning()
@@ -148,4 +164,28 @@ void Flingy::SetMovementDirectionToTarget()
     movement_direction = new_direction;
     ProgressTurning();
     sprite->SetDirection256(facing_direction);
+}
+
+bool Flingy::Move()
+{
+    bool moved = false;
+    if (*bw::new_flingy_x != position.x || *bw::new_flingy_y != position.y)
+        moved = true;
+    *bw::old_flingy_x = position.x;
+    *bw::old_flingy_y = position.y;
+    position.x = *bw::new_flingy_x;
+    position.y = *bw::new_flingy_y;
+    movement_direction = new_direction;
+    flingy_flags = *bw::new_flingy_flags;
+    exact_position.x = *bw::new_exact_x;
+    exact_position.y = *bw::new_exact_y;
+    next_speed = current_speed;
+    MoveSprite(sprite.get(), position.x, position.y);
+    ProgressTurning();
+    for (Image *img : sprite->first_overlay)
+    {
+        SetImageDirection256(img, facing_direction);
+    }
+
+    return moved;
 }

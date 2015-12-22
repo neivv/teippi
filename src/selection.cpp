@@ -171,7 +171,7 @@ void SendChangeSelectionCommand(int count, Unit **units)
     }
 }
 
-void Command_SelectionRemove(uint8_t *buf)
+void Command_SelectionRemove(const uint8_t *buf)
 {
     if (buf[1] != 0)
     {
@@ -193,17 +193,15 @@ void Command_SelectionRemove(uint8_t *buf)
             if (unit->IsDying() || sprite->IsHidden() || unit->player != player)
                 continue;
 
-            if (HasTeamSelection(player) && (sprite->flags & 0x6))
+            if (HasTeamSelection(player))
             {
-                // ???
-                int flag = sprite->flags;
-                int flag2 = flag >> 1;
-                if (flag2 & 3)
+                int ally_selections = (sprite->flags & SpriteFlags::DashedSelectionMask) >> 1;
+                if (ally_selections != 0)
                 {
-                    flag2--;
-                    flag2 = flag2 << 1;
-                    sprite->flags = ((flag2 ^ flag) & 6) ^ flag;
-                    if (sprite->flags & 6)
+                    ally_selections -= 1;
+                    sprite->flags &= ~SpriteFlags::DashedSelectionMask;
+                    sprite->flags |= (ally_selections << 1);
+                    if (ally_selections == 0)
                         RemoveDashedSelectionCircle(sprite);
                 }
             }
@@ -211,11 +209,10 @@ void Command_SelectionRemove(uint8_t *buf)
         }
         if (remaining > 1)
             AddToRecentSelections();
-
     }
 }
 
-void Command_SelectionAdd(uint8_t *buf)
+void Command_SelectionAdd(const uint8_t *buf)
 {
     if (buf[1] != 0)
     {
@@ -265,7 +262,7 @@ void Command_SelectionAdd(uint8_t *buf)
     }
 }
 
-void Command_Select(uint8_t *buf)
+void Command_Select(const uint8_t *buf)
 {
     if (buf[1] != 0)
     {
@@ -347,10 +344,9 @@ void SelectHotkeyGroup(uint8_t group_id)
         }
         if (IsMultiSelectable(unit) || count == 1)
             valid_units[valid_units_count++] = unit;
-
     }
     if (valid_units_count == 1 && valid_units[0]->HasRally())
-        ShowRallyTarget(valid_units[valid_units_count]);
+        ShowRallyTarget(valid_units[0]);
 
     ClearOrderTargeting();
 
@@ -500,7 +496,7 @@ int TrySelectRecentHotkeyGroup(Unit *unit)
     return 0;
 }
 
-int SelectCommandLength(uint8_t *data)
+int SelectCommandLength(const uint8_t *data)
 {
     return *(uint32_t *)(data + 2) * 4 + 6;
 }

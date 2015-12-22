@@ -11,6 +11,9 @@
 #include "constants/string.h"
 #include "mapdirectory.h"
 #include "console/windows_wrap.h"
+#include "warn.h"
+
+using std::min;
 
 const uint32_t ReplayMagic = 0x4c526572;
 const uint32_t OldReplayMagic = 0x53526572;
@@ -30,7 +33,7 @@ static bool WriteReplay(File *replay)
     if (WriteReplayData(*bw::replay_data, replay) == 0)
         return false;
     uint32_t size;
-    void *chk = ReadChk(&size, &*bw::map_path);
+    void *chk = ReadChk(&size, &bw::map_path[0]);
     if (!chk)
         return false;
     if (WriteCompressed(replay, &size, 4) == 0)
@@ -191,39 +194,113 @@ void LoadReplayMapDirEntry()
     mde->unk25c = 0;
 }
 
-int __stdcall ExtractNextReplayFrame(uint32_t *cmd_amount, uint8_t *players, uint8_t *cmd_data, uint32_t *cmd_lengths)
+struct ReplayCommand
 {
-    REG_ESI(ReplayData *, commands);
-    if (!commands->unk4)
-        return -1;
-    if (commands->pos >= commands->beg + commands->length_bytes)
-        return -1;
+    constexpr ReplayCommand(int net_player, const uint8_t *beg, const uint8_t *end) :
+        net_player(net_player), beg(beg), end(end) { }
+    int net_player;
+    const uint8_t *beg;
+    const uint8_t *end;
+};
 
-    uint32_t frame = ((uint32_t *)commands->pos)[0];
-    int i = 0;
-    while (frame == ((uint32_t *)commands->pos)[0])
+/// Currently meant to be created each time when replay commands are to be run,
+/// and advances the pointers in the ReplayData that gets passed to it (if needed).
+struct ReplayCommands
+{
+    /// Modifies the pointers of replay_data.
+    /// Assumes that replay_data is at either current frame or a future frame.
+    ReplayCommands(ReplayData *replay_data, uint32_t frame)
     {
-        commands->pos += 4;
-        uint8_t len = *commands->pos++;
-        int read = 0;
-        while (read < len)
+        const uint8_t *data_end = replay_data->beg + replay_data->length_bytes;
+        if (!replay_data->unk4 || replay_data->pos + sizeof(uint32_t) > data_end)
+            return;
+
+        uint32_t cmd_frame = *(const uint32_t *)replay_data->pos;
+        if (cmd_frame < frame)
         {
-            uint8_t player = *commands->pos++;
-            players[i] = player;
-            read++;
-            int cmd_len = CommandLength(commands->pos, len - read);
-            if (cmd_len > len - read)
-                return -1;
-            memcpy(cmd_data, commands->pos, cmd_len);
-            cmd_data += cmd_len;
-            cmd_lengths[i] = cmd_len;
-            commands->pos += cmd_len;
-            read += cmd_len;
-            i += 1;
+            Warn("Corrupted replay? Got frame %d, expected at least %d\n", cmd_frame, frame);
+            return;
         }
-        if (commands->pos >= commands->beg + commands->length_bytes)
-            return -1;
+        if (cmd_frame > frame)
+            return;
+
+        // Is most likely enough most of the cases.
+        commands.reserve(8);
+        while (replay_data->pos + sizeof(uint32_t) + 1 < data_end && frame == *(const uint32_t *)replay_data->pos)
+        {
+            replay_data->pos += 4;
+            int replay_cmd_len = *replay_data->pos;
+            replay_data->pos += 1;
+            const uint8_t *cmd_end = replay_data->pos + replay_cmd_len;
+            cmd_end = std::min(cmd_end, data_end);
+            while (replay_data->pos < cmd_end)
+            {
+                int player = *replay_data->pos;
+                replay_data->pos += 1;
+                if (replay_data->pos == cmd_end)
+                {
+                    Warn("Corrupted replay? Command ends suddenly\n");
+                    return;
+                }
+                int cmd_len = CommandLength(replay_data->pos, cmd_end - replay_data->pos);
+                if (replay_data->pos + cmd_len > cmd_end || cmd_len <= 0)
+                {
+                    Warn("Corrupted replay? Invalid length %d for command %x\n", cmd_len, replay_data->pos[0]);
+                    return;
+                }
+                commands.emplace_back(player, replay_data->pos, replay_data->pos + cmd_len);
+                replay_data->pos += cmd_len;
+            }
+        }
     }
-    *cmd_amount = i;
-    return frame;
+
+    template <class... Args>
+    void Warn(Args &&... args)
+    {
+        ChangeReplaySpeed(*bw::game_speed, *bw::replay_speed_multiplier, 1);
+        Warning(std::forward<Args>(args)...);
+    }
+
+    ReplayCommands(ReplayCommands &&other) = default;
+    ReplayCommands& operator=(ReplayCommands &&other) = default;
+    vector<ReplayCommand> commands;
+};
+
+void ProgressReplay()
+{
+    if (!*bw::is_ingame)
+        return;
+    if (*bw::frame_count >= bw::replay_header->replay_end_frame)
+    {
+        ChangeReplaySpeed(*bw::game_speed, *bw::replay_speed_multiplier, 1);
+        Victory();
+        return;
+    }
+    ReplayCommands cmds(*bw::replay_data, *bw::frame_count);
+    *bw::use_rng = 1;
+    for (const auto &cmd : cmds.commands)
+    {
+        int player_id = -1;
+        int unique_id = -1;
+        for (int i = 0; i < Limits::ActivePlayers; i++)
+        {
+            if (bw::players[i].storm_id == cmd.net_player)
+            {
+                unique_id = i;
+                if (*bw::team_game)
+                    player_id = bw::team_game_main_player[bw::players[i].team - 1];
+                else
+                    player_id = i;
+                break;
+            }
+        }
+        if (player_id == -1)
+            continue;
+        *bw::command_user = player_id;
+        *bw::select_command_user = unique_id;
+        // Unnecessary?
+        *bw::keep_alive_count = 0;
+        ProcessCommands(cmd.beg, cmd.end - cmd.beg, 1);
+    }
+    *bw::use_rng = 0;
 }

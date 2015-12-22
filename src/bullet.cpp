@@ -24,10 +24,15 @@
 #include "rng.h"
 #include "warn.h"
 #include "unit_cache.h"
+#include "damage_calculation.h"
+#include "strings.h"
+#include "entity.h"
 
 using std::get;
 using std::min;
 using std::max;
+
+const DamageCalculation default_damage_calculation;
 
 BulletSystem *bullet_system;
 bool bulletframes_in_progress = false; // Protects calling Kill() when FindHelpingUnits may be run
@@ -39,15 +44,6 @@ const Point32 random_chances[] = { Point32(1, 1), Point32(51, 31), Point32(7, 12
 }
 
 TempMemoryPool pbf_memory;
-
-static void ShowShieldHitOverlay(Unit *unit, int direction)
-{
-    Image *img = unit->sprite->main_image;
-    direction = ((direction - 0x7c) >> 3) & 0x1f;
-    int8_t *shield_los = images_dat_shield_overlay[img->image_id];
-    shield_los = shield_los + *(uint32_t *)(shield_los + 8 + img->direction * 4) + direction * 2; // sigh
-    AddOverlayAboveMain(unit->sprite.get(), Image::ShieldOverlay, shield_los[0], shield_los[1], direction);
-}
 
 static void UnitKilled(Unit *target, Unit *attacker, int attacking_player, vector<Unit *> *killed_units)
 {
@@ -89,6 +85,11 @@ void DamagedUnit::AddDamage(int amt)
     base->dmg_unit.damage += amt;
 }
 
+int32_t DamagedUnit::GetDamage()
+{
+    return base->dmg_unit.damage;
+}
+
 DamagedUnit ProgressBulletBufs::GetDamagedUnit(Unit *unit)
 {
     if (unit->dmg_unit.valid_frame != *bw::frame_count)
@@ -100,39 +101,41 @@ DamagedUnit ProgressBulletBufs::GetDamagedUnit(Unit *unit)
     return DamagedUnit(unit);
 }
 
+/// Convenience function for DamageCalculation class which can be annoying
+/// (and error-prone) to initialize with all the variables units can have.
+static DamageCalculation MakeDamageCalculation(Unit *unit, uint32_t base_damage, int weapon_id)
+{
+    int32_t shields = 0;
+    if (unit->HasShields() && unit->shields >= 256)
+        shields = unit->shields;
+
+    return default_damage_calculation
+        .BaseDamage(base_damage)
+        .HitPoints(unit->hitpoints)
+        .Shields(shields)
+        .MatrixHp(unit->matrix_hp)
+        .ArmorReduction(unit->GetArmor() * 256)
+        .ShieldReduction(GetUpgradeLevel(Upgrade::ProtossPlasmaShields, unit->player) * 256)
+        .ArmorType(units_dat_armor_type[unit->unit_id])
+        .DamageType(weapons_dat_damage_type[weapon_id])
+        .Hallucination(unit->flags & UnitStatus::Hallucination)
+        .AcidSpores(unit->acid_spore_count)
+        .IgnoreArmor(weapons_dat_damage_type[weapon_id] == 4);
+}
+
 void DamagedUnit::AddHit(uint32_t dmg, int weapon_id, int player, int direction, Unit *attacker, ProgressBulletBufs *bufs)
 {
     if (IsDead())
         return;
 
-    dmg = base->GetModifiedDamage(dmg);
-    dmg = base->ReduceMatrixDamage(dmg);
-    auto dmg_type = weapons_dat_damage_type[weapon_id];
-    auto armor_type = units_dat_armor_type[base->unit_id];
-
-    bool damaged_shields = false;
-    if (base->HasShields() && base->shields >= 256)
-    {
-        dmg = base->DamageShields(dmg, dmg_type == 4);
-        if (base->shields >= 256)
-            ShowShieldHitOverlay(base, direction);
-        damaged_shields = true;
-    }
-    if (dmg_type != 4) // Ignore armor
-    {
-        int armor_reduction = base->GetArmor() * 256;
-        if (dmg > armor_reduction)
-            dmg -= armor_reduction;
-        else
-            dmg = 0;
-    }
-
-    dmg = (dmg * bw::damage_multiplier[dmg_type][armor_type]) / 256;
-    if (!damaged_shields && !dmg)
-        dmg = 128;
+    auto damage = MakeDamageCalculation(base, dmg, weapon_id).Calculate();
+    if (damage.shield_damage)
+        base->DamageShields(damage.shield_damage, direction);
+    if (damage.matrix_damage)
+        DoMatrixDamage(base, damage.matrix_damage);
 
     if (!IsCheatActive(Cheats::Power_Overwhelming) || IsHumanPlayer(player))
-        AddDamage(dmg);
+        AddDamage(damage.hp_damage);
     if (IsDead())
     {
         UnitKilled(base, attacker, player, bufs->killed_units);
@@ -210,8 +213,15 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
     current_speed = 0;
 
     auto flingy_id = weapons_dat_flingy[weapon];
-    auto result = InitializeFlingy((Flingy *)this, player_, direction, flingy_id, pos.x, pos.y);
-    if (result == 0) { Assert(result != 0); } // Avoids an unused var warning
+
+    // Yes, bw mixes bullet's images with spawner's unit code.
+    // At least wraith's lasers actually depend on this behaviour.
+    const char *desc = "Bullet::Initialize (First frame of bullet's animation modifies the unit who spawned it)";
+    UnitIscriptContext ctx(spawner, nullptr, desc, MainRng(), false);
+    bool success = ((Flingy *)this)->Initialize(&ctx, flingy_id, player_, direction, pos);
+    if (!success)
+        return false;
+
     player = player_;
     weapon_id = weapon;
     time_remaining = weapons_dat_death_time[weapon_id];
@@ -223,7 +233,7 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
     auto spin = weapons_dat_launch_spin[weapon_id];
     if (spin)
     {
-        bool spin_positive = main_rng->Rand(2) == 1;
+        bool spin_positive = MainRng()->Rand(2) == 1;
         // Goliath dual missiles etc, ugh
         static bool last_bullet_spin_positive;
         if (spawner == *bw::last_bullet_spawner)
@@ -280,7 +290,7 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
         case 0x2: case 0x4: // Appear on target unit / site
         if (target && parent)
         {
-            if (main_rng->Rand(0x100) < GetMissChance(parent, target))
+            if (MainRng()->Rand(0x100) <= GetMissChance(parent, target))
             {
                 int x = sprite->position.x - bw::circle[direction][0] * 30 / 256;
                 int y = sprite->position.y - bw::circle[direction][1] * 30 / 256;
@@ -315,7 +325,7 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
             bounces_remaining = 3; // Won't matter on others
             if (target && parent)
             {
-                if (main_rng->Rand(0x100) < GetMissChance(parent, target))
+                if (MainRng()->Rand(0x100) <= GetMissChance(parent, target))
                 {
                     int x = order_target_pos.x - bw::circle[direction][0] * 30 / 256;
                     int y = order_target_pos.y - bw::circle[direction][1] * 30 / 256;
@@ -384,7 +394,8 @@ Bullet *BulletSystem::AllocateBullet(Unit *parent, int player, int direction, in
     else
     {
         debug_log->Log("Bullet creation failed %x %x.%x\n", weapon, pos.x, pos.y);
-        bullet_ptr->sprite->Remove();
+        if (bullet_ptr->sprite != nullptr)
+            bullet_ptr->sprite->Remove();
         return nullptr;
     }
 }
@@ -581,8 +592,24 @@ bool UnitWasHit_Actual(Unit *target, Unit *attacker, ProgressBulletBufs *bufs)
         while (!nearby)
             nearby = target->nearby_helping_units.load(std::memory_order_relaxed);
 
+        bool ai_player = IsComputerPlayer(target->player);
+
         for (Unit *unit = *nearby++; unit; unit = *nearby++)
         {
+            const Point &unit_pos = unit->sprite->position;
+            const Point &target_pos = target->sprite->position;
+
+            // Hackfix for units without ai owned by ai players.
+            // Their nearby_helping_units has larger search area than otherwise,
+            // so check for reduced area here.
+            // Yes, some units get Ai_AskForHelp and Unit::AskForHelp for same target then
+            // No idea if it would even change anything to remove this check, but it's
+            // slightly closer to bw behaviour.
+            if (ai_player && (abs(unit_pos.x - target_pos.x) > CallFriends_Radius ||
+                        abs(unit_pos.y - target_pos.y) > CallFriends_Radius))
+            {
+                continue;
+            }
             if (unit->order != Order::Die)
                 unit->AskForHelp(attacker);
         }
@@ -654,8 +681,8 @@ void HallucinationHit(Unit *target, Unit *attacker, int direction, vector<tuple<
         if (attacker->player != target->player)
             Notify_UnitWasHit(target);
     }
-    if (target->shields >= 128 && target->HasShields())
-        ShowShieldHitOverlay(target, direction);
+    if (target->shields >= 256 && target->HasShields())
+        target->ShowShieldHitOverlay(direction);
 }
 
 void Bullet::HitUnit(Unit *target, int dmg, ProgressBulletBufs *bufs)
@@ -690,7 +717,7 @@ Unit *Bullet::ChooseBounceTarget()
 
 BulletState Bullet::State_Bounce(BulletStateResults *results)
 {
-    if (target && ~flags & 0x1)
+    if (target != nullptr && !DoesMiss())
         ChangeMovePos(this, target->sprite->position.x, target->sprite->position.y);
 
     ProgressBulletMovement(this);
@@ -703,13 +730,7 @@ BulletState Bullet::State_Bounce(BulletStateResults *results)
             previous_target = target;
             if (new_target)
             {
-                for (auto &cmd : SetIscriptAnimation(IscriptAnim::Special1, true))
-                {
-                    if (cmd.opcode == IscriptOpcode::DoMissileDmg)
-                        results->do_missile_dmgs.emplace(this);
-                    else
-                        Warning("Bullet::State_Bounce did not handle all iscript commands for bullet %x", weapon_id);
-                }
+                SetIscriptAnimation(Iscript::Animation::Special1, true, "Bullet::State_Bounce", results);
                 results->new_bounce_targets.emplace(this, new_target);
                 return BulletState::Bounce;
             }
@@ -719,13 +740,7 @@ BulletState Bullet::State_Bounce(BulletStateResults *results)
         order_fow_unit = Unit::None;
         if (target)
             order_target_pos = target->sprite->position;
-        for (auto &cmd : SetIscriptAnimation(IscriptAnim::Death, true))
-        {
-            if (cmd.opcode == IscriptOpcode::DoMissileDmg)
-                results->do_missile_dmgs.emplace(this);
-            else
-                Warning("Bullet::State_Bounce did not handle all iscript commands for bullet %x", weapon_id);
-        }
+        SetIscriptAnimation(Iscript::Animation::Death, true, "Bullet::State_Bounce", results);
         return BulletState::Die;
     }
     return BulletState::Bounce;
@@ -747,40 +762,34 @@ BulletState Bullet::State_Init(BulletStateResults *results)
         case 0x5:
         case 0x6:
             state = BulletState::Die;
-            anim = IscriptAnim::Death;
+            anim = Iscript::Animation::Death;
         break;
         case 0x1:
             state = BulletState::MoveToTarget;
-            anim = IscriptAnim::GndAttkInit;
+            anim = Iscript::Animation::GndAttkInit;
         break;
         case 0x7:
             state = BulletState::Bounce;
-            anim = IscriptAnim::GndAttkInit;
+            anim = Iscript::Animation::GndAttkInit;
         break;
         case 0x3:
             state = BulletState::GroundDamage;
-            anim = IscriptAnim::Special2;
+            anim = Iscript::Animation::Special2;
         break;
         case 0x8:
             state = BulletState::MoveNearUnit;
-            anim = IscriptAnim::GndAttkInit;
+            anim = Iscript::Animation::GndAttkInit;
         break;
         default:
             state = BulletState::MoveToPoint;
-            anim = IscriptAnim::GndAttkInit;
+            anim = Iscript::Animation::GndAttkInit;
         break;
     }
     if (target)
         order_target_pos = target->sprite->position;
     order_fow_unit = Unit::None;
     order_state = 0;
-    for (auto &cmd : SetIscriptAnimation(anim, true))
-    {
-        if (cmd.opcode == IscriptOpcode::DoMissileDmg)
-            results->do_missile_dmgs.emplace(this);
-        else
-            Warning("Bullet::State_Init did not handle iscript command %x for bullet %x", cmd.opcode, weapon_id);
-    }
+    SetIscriptAnimation(anim, true, "Bullet::State_Init", results);
     return state;
 }
 
@@ -793,13 +802,7 @@ BulletState Bullet::State_GroundDamage(BulletStateResults *results)
             order_target_pos = target->sprite->position;
         order_state = 0;
         order_fow_unit = Unit::None;
-        for (auto &cmd : SetIscriptAnimation(IscriptAnim::Death, true))
-        {
-            if (cmd.opcode == IscriptOpcode::DoMissileDmg)
-                results->do_missile_dmgs.emplace(this);
-            else
-                Warning("Bullet::State_GroundDamage did not handle iscript command %x for bullet %x", cmd.opcode, weapon_id);
-        }
+        SetIscriptAnimation(Iscript::Animation::Death, true, "Bullet::State_GroundDamage", results);
         return BulletState::Die;
     }
     else if (time_remaining % 7 == 0)
@@ -815,13 +818,7 @@ BulletState Bullet::State_MoveToPoint(BulletStateResults *results)
 
     if (target)
         order_target_pos = target->sprite->position;
-    for (auto &cmd : SetIscriptAnimation(IscriptAnim::Death, true))
-    {
-        if (cmd.opcode == IscriptOpcode::DoMissileDmg)
-            results->do_missile_dmgs.emplace(this);
-        else
-            Warning("Bullet::State_MoveToPoint did not handle iscript command %x for bullet %x", cmd.opcode, weapon_id);
-    }
+    SetIscriptAnimation(Iscript::Animation::Death, true, "Bullet::State_MoveToPoint", results);
     return BulletState::Die;
 }
 
@@ -829,7 +826,7 @@ BulletState Bullet::State_MoveToUnit(BulletStateResults *results)
 {
     if (!target)
         return State_MoveToPoint(results);
-    if (flags & 0x1) // Stop following
+    if (DoesMiss())
     {
         order_target_pos = target->sprite->position;
         return State_MoveToPoint(results);
@@ -849,7 +846,7 @@ BulletState Bullet::State_MoveNearUnit(BulletStateResults *results)
 {
     if (!target)
         return State_MoveToPoint(results);
-    if (flags & 0x1) // Stop following
+    if (DoesMiss())
     {
         order_target_pos = target->sprite->position;
         return State_MoveToPoint(results);
@@ -912,7 +909,7 @@ void BulletSystem::ProcessHits(ProgressBulletBufs *bufs)
         Unit *unit = dmg_unit.base;
         if (!dmg_unit.IsDead())
         {
-            unit->hitpoints -= unit->dmg_unit.damage;
+            unit->hitpoints -= dmg_unit.GetDamage();
             if (images_dat_damage_overlay[unit->sprite->main_image->image_id] &&
                     unit->flags & UnitStatus::Completed)
             {
@@ -931,7 +928,7 @@ void Bullet::NormalHit(ProgressBulletBufs *bufs)
     if (!target)
         return;
 
-    if (flags & 0x1) // Don't follow target
+    if (DoesMiss())
     {
         if (target->ai && parent)
         {
@@ -1145,7 +1142,7 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
             if (target && !target->IsDying())
             {
                 target->Parasite(player);
-                if (parent)
+                if (parent && IsComputerPlayer(target->player))
                 {
                     target->StartHelperSearch();
                     bufs->AddToAiReact(target, parent, false);
@@ -1155,8 +1152,11 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
         case 0x7:
             if (parent && target && !target->IsDying())
             {
-                target->StartHelperSearch();
-                bufs->AddToAiReact(target, parent, true);
+                if (IsComputerPlayer(target->player))
+                {
+                    target->StartHelperSearch();
+                    bufs->AddToAiReact(target, parent, true);
+                }
                 SpawnBroodlingHit(bufs->killed_units);
                 if (~target->flags & UnitStatus::Hallucination)
                     return SpellCast(player, target->sprite->position, Tech::SpawnBroodlings, parent);
@@ -1201,7 +1201,7 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
             return SpellCast(player, order_target_pos, Tech::DisruptionWeb, parent);
         break;
         case 0x12:
-            if (target && ~flags & 0x1) // Miss
+            if (target != nullptr && !DoesMiss())
             {
                 HitUnit(target, GetWeaponDamage(this, target), bufs);
                 if (~flags & 0x2) // Hallu
@@ -1250,30 +1250,78 @@ void BulletSystem::ProgressBulletsForState(BulletContainer *container, BulletSta
     }
 }
 
+class BulletIscriptContext : public Iscript::Context
+{
+    public:
+        constexpr BulletIscriptContext(Bullet *bullet, BulletStateResults *results,
+                                       const char *caller, Rng *rng, bool can_delete) :
+            Iscript::Context(rng, can_delete),
+            bullet(bullet), results(results), caller(caller) { }
+
+        Bullet * const bullet;
+        BulletStateResults * const results;
+        const char * const caller;
+
+        void ProgressIscript() { bullet->sprite->ProgressFrame(this); }
+        void SetIscriptAnimation(int anim, bool force) { bullet->sprite->SetIscriptAnimation(this, anim, force); }
+
+        virtual Iscript::CmdResult HandleCommand(Image *img, Iscript::Script *script,
+                                                 const Iscript::Command &cmd) override
+        {
+            Iscript::CmdResult result = HandleIscriptCommand(img, script, cmd);
+            if (result == Iscript::CmdResult::NotHandled)
+                bullet->WarnUnhandledIscriptCommand(cmd, caller);
+            return result;
+        }
+
+        /// Calls entity->flingy->sprite->img handlers as needed.
+        Iscript::CmdResult HandleIscriptCommand(Image *img, Iscript::Script *script, const Iscript::Command &cmd)
+        {
+            using Iscript::CmdResult;
+            CmdResult result = CmdResult::Handled;
+            switch (cmd.opcode)
+            {
+                case Iscript::Opcode::DoMissileDmg:
+                    results->do_missile_dmgs.emplace(bullet);
+                break;
+                case Iscript::Opcode::SprOl:
+                    result = CmdResult::NotHandled;
+                    if (bullet->parent != nullptr && bullet->parent->IsGoliath())
+                    {
+                        Unit *goliath = bullet->parent;
+                        bool range_upgrade = GetUpgradeLevel(Upgrade::CharonBooster, goliath->player) != 0;
+                        if (range_upgrade || (goliath->IsHero() && *bw::is_bw))
+                        {
+                            Sprite::Spawn(img, Sprite::HaloRocketsTrail, cmd.point, bullet->sprite->elevation + 1);
+                            result = CmdResult::Handled;
+                        }
+                    }
+                break;
+                default:
+                    result = CmdResult::NotHandled;
+            }
+            if (result == CmdResult::NotHandled)
+                result = ((Entity *)bullet)->HandleIscriptCommand(this, img, script, cmd);
+            return result;
+        }
+};
+
 Claimed<BulletStateResults> BulletSystem::ProgressStates()
 {
     auto results = state_results_buf.Claim();
     results->clear();
+    BulletStateResults *results_ptr = &results.Inner();
     for (BulletContainer::entry bullet_it : ActiveBullets_Entries())
     {
         Bullet *bullet = bullet_it->get();
         bullet->sprite->UpdateVisibilityPoint();
 
-        for (auto &cmd : bullet->sprite->ProgressFrame(IscriptContext(bullet), main_rng))
-        {
-            if (cmd.opcode == IscriptOpcode::End)
-            {
-                bullet->sprite->Remove();
-                DeleteBullet(&bullet_it);
-            }
-            else if (cmd.opcode == IscriptOpcode::DoMissileDmg)
-                results->do_missile_dmgs.emplace(bullet);
-            else
-                Warning("Unhandled iscript command %x in BulletSystem::ProgressStates, weapon %x", cmd.opcode, bullet->weapon_id);
-        }
+        BulletIscriptContext ctx(bullet, results_ptr, "BulletSystem::ProgressStates", MainRng(), true);
+        ctx.ProgressIscript();
+        if (ctx.CheckDeleted())
+            DeleteBullet(&bullet_it);
     }
 
-    BulletStateResults *results_ptr = &results.Inner();
     ProgressBulletsForState(&initstate, results_ptr, BulletState::Init, &Bullet::State_Init);
     ProgressBulletsForState(&moving_to_point, results_ptr, BulletState::MoveToPoint, &Bullet::State_MoveToPoint);
     ProgressBulletsForState(&moving_to_unit, results_ptr, BulletState::MoveToTarget, &Bullet::State_MoveToUnit);
@@ -1285,7 +1333,7 @@ Claimed<BulletStateResults> BulletSystem::ProgressStates()
 }
 
 // Input should not need to be synced
-vector<Ai::HitUnit> BulletSystem::ProcessAiReactToHit(vector<tuple<Unit *, Unit *, bool>> input, Ai::HelpingUnitVec *helping_units)
+void BulletSystem::ProcessAiReactToHit(vector<tuple<Unit *, Unit *, bool>> input, Ai::HitReactions *hit_reactions)
 {
     STATIC_PERF_CLOCK(BulletSystem_Parth);
     // I would not dare to have it sort by pointer here ever, Ai::ReactToHit is really complicated piece of code
@@ -1298,10 +1346,6 @@ vector<Ai::HitUnit> BulletSystem::ProcessAiReactToHit(vector<tuple<Unit *, Unit 
             return get<2>(a) > get<2>(b);
     });
 
-    Unit *previous = nullptr;
-    Ai::HitUnit *hit_unit = nullptr;
-    vector<Ai::HitUnit> hit_units;
-    helping_units->reserve(input.size());
     // Assuming here that it does not make difference if repeating this with same target-attacker pair
     // or repeating without main_target_reactions once main_target_reactions has been true
     // ((It should be sorted so that mtr=true becomes first))
@@ -1311,157 +1355,14 @@ vector<Ai::HitUnit> BulletSystem::ProcessAiReactToHit(vector<tuple<Unit *, Unit 
     {
         auto target = get<0>(tp);
         auto attacker = get<1>(tp);
-        auto main_target_reactions = get<2>(tp);
-        if (previous != target)
-        {
-            hit_units.emplace_back(target);
-            hit_unit = &hit_units.back();
-            previous = target;
-            // This clear is be usually unnecessary as it is done for every bullet hit in UnitWasHit, but
-            // broodling and parasite hits only trigger Ai::ReactToHit so clear flags here as well
-            // Idk if clearing the 0x00c00000 is even necessary but it won't hurt ^_^
-            target->hotkey_groups &= ~0x80c00000;
-        }
-        Ai::ReactToHit(hit_unit, attacker, main_target_reactions, helping_units);
-    }
-    return hit_units;
-}
-
-// input should be sorted so the iteration order is consistent across all players' computers
-// It should also not have duplicates
-// And it yields objects which have functions Own() -> Unit * and Enemies -> Iterator<reference<Unit>>
-template<class Iterable>
-void ProcessAiUpdateAttackTarget(Iterable input)
-{
-    for (auto first : input)
-    {
-        Unit *own = first.Own();
-        bool must_reach = own->order == Order::Pickup4;
-
-        Unit *picked = nullptr;
-        for (const reference<Unit> &other_ : first.Enemies())
-        {
-            Unit *other = &other_.get();
-            if (other->hitpoints == 0)
-                continue;
-            if (must_reach && own->IsUnreachable(other))
-                continue;
-
-            if (!other->IsDisabled())
-            {
-                if ((other->unit_id != Unit::Bunker) && (!other->target || other->target->player != own->player))
-                    continue;
-                else if (!own->CanAttackUnit(other, true))
-                    continue;
-            }
-            picked = own->ChooseBetterTarget(other, picked);
-        }
-
-        if (picked)
-        {
-            own->SetPreviousAttacker(picked);
-            if (own->HasSubunit())
-                own->subunit->SetPreviousAttacker(picked);
-            Ai::UpdateAttackTarget(own, false, true, false);
-        }
+        auto important_hit = get<2>(tp);
+        // This clear is be usually unnecessary as it is done for every bullet hit in UnitWasHit, but
+        // broodling and parasite hits only trigger Ai::ReactToHit so clear flags here as well
+        // Idk if clearing the 0x00c00000 is even necessary but it won't hurt ^_^
+        target->hotkey_groups &= ~0x80c00000;
+        hit_reactions->NewHit(target, attacker, important_hit);
     }
 }
-
-class IterateUatValue
-{
-    friend class enemies;
-    public:
-        class enemies : public Common::Iterator<enemies, reference<Unit>> {
-            public:
-                enemies(Unit *f, Unit *s) : first(f) {
-                    if (s == nullptr) {
-                        second = Optional<reference<Unit>>();
-                    } else {
-                        second = Optional<reference<Unit>>(reference<Unit>(*s));
-                    }
-                }
-                Optional<reference<Unit>> next() {
-                    if (first != nullptr)
-                    {
-                        auto ret = first;
-                        first = nullptr;
-                        return Optional<reference<Unit>>(*ret);
-                    }
-                    else
-                    {
-                        auto ret = move(second);
-                        second = Optional<reference<Unit>>();
-                        return ret;
-                    }
-                }
-
-            private:
-                Unit *first;
-                Optional<reference<Unit>> second;
-        };
-
-        IterateUatValue(Ai::HitUnit *f, Unit *s) : first(f), second(s) {}
-        IterateUatValue(Ai::HitUnit *f) : first(f), second(nullptr) {}
-
-        Unit *Own() { return first->unit; }
-        enemies Enemies() {
-            return enemies(first->picked_target, second);
-        }
-
-    private:
-        Ai::HitUnit *first;
-        Unit * second;
-};
-
-class IterateUat : public Common::Iterator<IterateUat, IterateUatValue>
-{
-    public:
-        using value = IterateUatValue;
-        IterateUat(vector<Ai::HitUnit> &&f, vector<Ai::HitUnit> &&s) : first(move(f)), second(move(s)) {
-            std::sort(first.begin(), first.end(),
-                    [](const auto &a, const auto &b) { return a.unit->lookup_id > b.unit->lookup_id; });
-            std::sort(second.begin(), second.end(),
-                    [](const auto &a, const auto &b) { return a.unit->lookup_id > b.unit->lookup_id; });
-            // Dirty tricks - final entry having lookup id 0 and sorting reverse is slightly more efficent
-            // (Should be)
-            Unit *fake_unit = (Unit *)fake_unit_buf;
-            fake_unit->lookup_id = 0;
-            first.emplace_back(fake_unit);
-            second.emplace_back(fake_unit);
-            first_pos = first.begin();
-            second_pos = second.begin();
-        }
-        IterateUat(IterateUat &&other) = default;
-        IterateUat& operator=(IterateUat &&other) = default;
-
-        Optional<value> next()
-        {
-            Optional<value> ret;
-            if (first_pos->unit->lookup_id == second_pos->unit->lookup_id) {
-                if (first_pos->unit->lookup_id == 0)
-                    return Optional<value>();
-                ret = Optional<value>(value(&*first_pos, second_pos->picked_target));
-                ++first_pos;
-                ++second_pos;
-            }
-            else if (first_pos->unit->lookup_id > second_pos->unit->lookup_id) {
-                ret = Optional<value>(value(&*first_pos));
-                ++first_pos;
-            }
-            else {
-                ret = Optional<value>(value(&*second_pos));
-                ++second_pos;
-            }
-            return ret;
-        }
-
-    private:
-        vector<Ai::HitUnit> first;
-        vector<Ai::HitUnit> second;
-        vector<Ai::HitUnit>::iterator first_pos;
-        vector<Ai::HitUnit>::iterator second_pos;
-        char fake_unit_buf[sizeof(Unit)];
-};
 
 void BulletSystem::ProgressFrames(BulletFramesInput input)
 {
@@ -1510,20 +1411,14 @@ void BulletSystem::ProgressFrames(BulletFramesInput input)
     auto ph_time = clock.GetTime();
     clock.Start();
 
-    Ai::UpdateRegionEnemyStrengths();
-
     auto canceled_ai_units = ProcessUnitWasHit(move(*bufs.unit_was_hit), &bufs);
-    auto update_attack_targets = ProcessAiReactToHit(move(*bufs.ai_react), &input.helping_units);
+    ProcessAiReactToHit(move(*bufs.ai_react), &input.ai_hit_reactions);
     auto puwh_time = clock.GetTime();
     clock.Start();
 
-    auto more_uat = Ai::ProcessAskForHelp(move(input.helping_units));
-    auto afh_time = clock.GetTime();
-
-    Ai::ClearRegionChangeList();
+    input.ai_hit_reactions.ProcessEverything();
+    auto ahr_time = clock.GetTime();
     clock.Start();
-
-    ProcessAiUpdateAttackTarget(IterateUat(move(update_attack_targets), move(more_uat)));
 
     // Sync with child threads. It is possible (but very unlikely) for a child be still busy,
     // if this thread did not want to wait for its result and did the search itself.
@@ -1568,7 +1463,7 @@ void BulletSystem::ProgressFrames(BulletFramesInput input)
         unit->Kill(nullptr);
     }
 
-    perf_log->Log("Pbf: %f ms + Ph %f ms + Puwh %f ms + Afh %f ms + Uaat %f ms = about %f ms\n", pbf_time, ph_time, puwh_time, afh_time, clock.GetTime(), clock2.GetTime());
+    perf_log->Log("Pbf: %f ms + Ph %f ms + Puwh %f ms + Ahr %f ms + Clean %f ms = about %f ms\n", pbf_time, ph_time, puwh_time, ahr_time, clock.GetTime(), clock2.GetTime());
     perf_log->Log("Sleep count: %d\n", threads->GetSleepCount() - prev_sleep);
     perf_log->Indent(2);
     StaticPerfClock::LogCalls();
@@ -1590,7 +1485,20 @@ void RemoveFromBulletTargets(Unit *unit)
     unit->spawned_bullets = nullptr;
 }
 
-Sprite::ProgressFrame_C Bullet::SetIscriptAnimation(int anim, bool force)
+void Bullet::SetIscriptAnimation(int anim, bool force, const char *caller, BulletStateResults *results)
 {
-    return sprite->SetIscriptAnimation(anim, force, IscriptContext(this), main_rng);
+    BulletIscriptContext(this, results, caller, MainRng(), false).SetIscriptAnimation(anim, force);
+}
+
+void Bullet::WarnUnhandledIscriptCommand(const Iscript::Command &cmd, const char *func) const
+{
+    Warning("Unhandled iscript command %s in %s (Bullet %s)", cmd.DebugStr().c_str(), func, DebugStr().c_str());
+}
+
+std::string Bullet::DebugStr() const
+{
+    char buf[64];
+    const char *name = (*bw::stat_txt_tbl)->GetTblString(weapons_dat_label[weapon_id]);
+    snprintf(buf, sizeof buf / sizeof(buf[0]), "%x [%s]", weapon_id, name);
+    return buf;
 }

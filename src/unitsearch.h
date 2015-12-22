@@ -123,7 +123,7 @@ class MainUnitSearch : public UnitSearch
         void PopResult();
 
         UnitSearchRegionCache::Entry FindUnits_ChooseTarget(int region, bool ground);
-        Unit **FindHelpingUnits(Unit *unit, const Rect16 &rect, TempMemoryPool *allocation_pool, bool ai);
+        Unit **FindHelpingUnits(Unit *unit, const Rect16 &rect, TempMemoryPool *allocation_pool);
         void ClearRegionCache();
         void EnableAreaCache();
         void DisableAreaCache();

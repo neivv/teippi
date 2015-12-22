@@ -24,7 +24,7 @@ struct MapDl
 };
 #pragma pack(pop)
 
-const int ProtocolVersion = 0xdaef;
+const int ProtocolVersion = 0xdaf0;
 
 static bool IsReplayCommand(uint8_t command)
 {
@@ -34,8 +34,6 @@ static bool IsReplayCommand(uint8_t command)
         case commands::Pause:
         case commands::Resume:
         case commands::Sync:
-        case commands::Unk38:
-        case commands::Unk39:
         case commands::Latency:
         case commands::ReplaySpeed:
             return false;
@@ -44,7 +42,7 @@ static bool IsReplayCommand(uint8_t command)
     }
 }
 
-void Command_GameData(uint8_t *data, int net_player)
+void Command_GameData(const uint8_t *data, int net_player)
 {
     if (*bw::in_lobby || net_player != 0)
         return;
@@ -92,7 +90,7 @@ void Command_GameData(uint8_t *data, int net_player)
     *bw::lobby_state = 3;
 }
 
-static void Command_JoinedGame(uint8_t *data, int net_player, bool creator)
+static void Command_JoinedGame(const uint8_t *data, int net_player, bool creator)
 {
     if (!*bw::in_lobby)
         return;
@@ -216,12 +214,12 @@ void MakeJoinedGameCommand(int net_player_flags, int net_player_x4,
     }
 }
 
-static void Command_KeepAlive(uint8_t *data)
+static void Command_KeepAlive(const uint8_t *data)
 {
     *bw::keep_alive_count += 1;
 }
 
-static void Command_GameSpeed(uint8_t *data)
+static void Command_GameSpeed(const uint8_t *data)
 {
     int speed = data[1];
     if (!IsMultiplayer() && speed <= 6)
@@ -246,7 +244,7 @@ static void LogSyncData()
     sync.WriteDiff(SyncData(false), SyncDumper(error_log));
 }
 
-static void Command_Sync(uint8_t *data)
+static void Command_Sync(const uint8_t *data)
 {
     if (!IsReplay())
     {
@@ -279,7 +277,7 @@ static void Command_Sync(uint8_t *data)
     *bw::keep_alive_count += 1;
 }
 
-static void Command_Unload(uint8_t *buf)
+static void Command_Unload(const uint8_t *buf)
 {
     Unit *unit = Unit::FindById(*(uint32_t *)(buf + 1));
     if (unit && (unit->flags & UnitStatus::InTransport) && unit->player == *bw::command_user)
@@ -288,19 +286,7 @@ static void Command_Unload(uint8_t *buf)
     }
 }
 
-static void Command_Unk3839(uint8_t *buf)
-{
-    unsigned player = *bw::select_command_user;
-    if (player != *bw::local_player_id && bw::net_players[player].state != 1)
-    {
-        if (buf[0] == commands::Unk38)
-            bw::net_players[player].flags &= ~0x2;
-        else
-            bw::net_players[player].flags |= 0x2;
-    }
-}
-
-static void Command_ReplaySpeed(uint8_t *buf)
+static void Command_ReplaySpeed(const uint8_t *buf)
 {
     bool paused = buf[1];
     int speed = *(int *)(buf + 2);
@@ -308,14 +294,16 @@ static void Command_ReplaySpeed(uint8_t *buf)
     ChangeReplaySpeed(speed, multiplier, paused);
 }
 
-static void Command_Chat(uint8_t *buf, bool replay_unk)
+static void Command_Chat(const uint8_t *buf, bool replay_unk)
 {
-    buf[129] = 0;
-    PrintText((char *)buf + 2, replay_unk, buf[1]);
+    char copy[129];
+    copy[128] = 0;
+    memcpy(copy, buf, 128);
+    PrintText(copy + 2, replay_unk, copy[1]);
 }
 
 /// Returns -1 for invalid data
-int CommandLength(uint8_t *data, int max_length)
+int CommandLength(const uint8_t *data, int max_length)
 {
     switch (data[0])
     {
@@ -370,8 +358,6 @@ int CommandLength(uint8_t *data, int max_length)
         case commands::TrainFighter: return 1;
         case commands::CancelAddon: return 1;
         case commands::Stim: return 1;
-        case commands::Unk38: case commands::Unk39: return 1;
-        case commands::Unused3b: case commands::Unused3a: return 2;
         case commands::Latency: return 2;
         case commands::ReplaySpeed: return 10;
         case commands::LeaveGame: return 2;
@@ -393,7 +379,7 @@ int CommandLength(uint8_t *data, int max_length)
     }
 }
 
-void ProcessCommands(uint8_t *data, int data_length, int replay_process)
+void ProcessCommands(const uint8_t *data, int data_length, int replay_process)
 {
     while (data_length > 0)
     {
@@ -462,7 +448,6 @@ void ProcessCommands(uint8_t *data, int data_length, int replay_process)
             case commands::TrainFighter: Command_TrainFighter(); break;
             case commands::CancelAddon: Command_CancelAddon(); break;
             case commands::Stim: Command_Stim(); break;
-            case commands::Unk38: case commands::Unk39: Command_Unk3839(data); break;
             case commands::Latency: Command_Latency(data); break;
             case commands::ReplaySpeed: Command_ReplaySpeed(data); break;
             case commands::LeaveGame: Command_LeaveGame(data); break;
@@ -474,7 +459,7 @@ void ProcessCommands(uint8_t *data, int data_length, int replay_process)
     }
 }
 
-static void ProcessPlayerLobbyCommands(int player, uint8_t *data, int data_len)
+static void ProcessPlayerLobbyCommands(int player, const uint8_t *data, int data_len)
 {
     while (data_len > 0)
     {
