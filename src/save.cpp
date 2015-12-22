@@ -738,6 +738,37 @@ struct OwnedList
     T **main;
 };
 
+/// Convenience class for loading/saving all unit pointers at once
+class GlobalUnitPointers
+{
+    public:
+        constexpr GlobalUnitPointers() { }
+
+        template <class Archive>
+        void serialize(Archive &archive)
+        {
+            try {
+                archive(*bw::first_invisible_unit);
+                archive(*bw::first_active_unit, *bw::first_hidden_unit);
+                archive(*bw::first_dying_unit, *bw::first_revealer);
+                archive(*bw::last_active_unit, *bw::last_hidden_unit);
+                archive(*bw::last_dying_unit, *bw::last_revealer);
+                for (unsigned i = 0; i < Limits::Players; i++)
+                    archive(bw::first_player_unit[i]);
+
+                for (auto selection : bw::selection_groups)
+                {
+                    for (Unit *&unit : selection)
+                    {
+                        archive(unit);
+                    }
+                }
+            } catch (const std::exception &e) {
+                std::throw_with_nested(SaveFail(SaveFail::UnitMisc));
+            }
+        }
+};
+
 const int buf_defaultmax = 0x110000;
 const int buf_defaultlimit = 0x100000;
 
@@ -854,27 +885,6 @@ void ConvertUnitPtr(Unit **ptr)
             *ptr = Unit::FindById((uint32_t)(*ptr));
         if (!*ptr)
             throw NewSaveConvertFail(Unit *, ptr, 0);
-    }
-}
-
-template <class List>
-void ValidateList(List &head)
-{
-    auto i = head.begin();
-    if (*i == nullptr)
-        return;
-    if (i.prev() != nullptr)
-        throw SaveException(nullptr, "ValidateList");
-    auto prev = *i;
-    i = nullptr;
-    while (i != nullptr)
-    {
-        if (i.prev() != prev)
-        {
-            throw SaveException(nullptr, "ValidateList");
-        }
-        prev = *i;
-        ++i;
     }
 }
 
@@ -1482,21 +1492,9 @@ void Save::SaveGame(uint32_t time)
     cereal_archive(version);
     cereal_archive(*lone_sprites, *bullet_system);
     SaveUnits();
+    GlobalUnitPointers global_unit_ptrs;
+    cereal_archive(global_unit_ptrs);
     cereal_archive.Flush();
-
-    SaveUnitPtr(*bw::first_invisible_unit);
-    SaveUnitPtr(*bw::first_active_unit);
-    SaveUnitPtr(*bw::first_hidden_unit);
-    SaveUnitPtr(*bw::first_dying_unit);
-    SaveUnitPtr(*bw::first_revealer);
-    SaveUnitPtr(*bw::last_active_unit);
-    SaveUnitPtr(*bw::last_hidden_unit);
-    SaveUnitPtr(*bw::last_dying_unit);
-    SaveUnitPtr(*bw::last_revealer);
-    for (unsigned i = 0; i < Limits::Players; i++)
-        ValidateList(bw::first_player_unit[i]);
-    for (unsigned i = 0; i < Limits::Players; i++)
-        SaveUnitPtr(bw::first_player_unit[i]);
 
     uint32_t original_tile_length = *bw::original_tile_width * *bw::original_tile_height * 2;
     fwrite(&original_tile_length, 1, 4, file);
@@ -1510,19 +1508,6 @@ void Save::SaveGame(uint32_t time)
     SaveTriggerChunk((File *)file);
     fwrite(bw::scenario_chk_STR_size.raw_pointer(), 1, 4, file);
     WriteCompressed((File *)file, *bw::scenario_chk_STR, *bw::scenario_chk_STR_size);
-
-    Unit *tmp_selections[Limits::Selection * Limits::ActivePlayers];
-    Unit **tmp_selections_pos = tmp_selections;
-    for (auto selection : bw::selection_groups)
-    {
-        for (Unit *unit : selection)
-        {
-            *tmp_selections_pos = unit;
-            ConvertUnitPtr<true>(tmp_selections_pos);
-            tmp_selections_pos += 1;
-        }
-    }
-    WriteCompressed((File *)file, tmp_selections, Limits::Selection * Limits::ActivePlayers * sizeof(Unit *));
 
     SavePathingChunk();
 
@@ -2228,6 +2213,9 @@ void Load::LoadGame()
         id_to_bullet[id] = bullet;
     });
     LoadUnits();
+    GlobalUnitPointers global_unit_ptrs;
+    cereal_archive(global_unit_ptrs);
+
     cereal_archive.ConfirmEmptyBuffer();
     FixupArchive fixup(version, id_to_sprite, id_to_bullet);
     fixup(*lone_sprites, *bullet_system);
@@ -2238,20 +2226,7 @@ void Load::LoadGame()
     for (auto &bullet : bullet_system->ActiveBullets())
         bullet->sprite->AddToHlines();
     FixupUnits(fixup);
-
-    LoadUnitPtr(&(*bw::first_invisible_unit).AsRawPointer());
-    LoadUnitPtr(&(*bw::first_active_unit).AsRawPointer());
-    LoadUnitPtr(&(*bw::first_hidden_unit).AsRawPointer());
-    LoadUnitPtr(&(*bw::first_dying_unit).AsRawPointer());
-    LoadUnitPtr(&(*bw::first_revealer).AsRawPointer());
-    LoadUnitPtr(&*bw::last_active_unit);
-    LoadUnitPtr(&*bw::last_hidden_unit);
-    LoadUnitPtr(&*bw::last_dying_unit);
-    LoadUnitPtr(&*bw::last_revealer);
-    for (unsigned i = 0; i < Limits::Players; i++)
-        LoadUnitPtr(&bw::first_player_unit[i].AsRawPointer());
-    for (unsigned i = 0; i < Limits::Players; i++)
-        ValidateList(bw::first_player_unit[i]);
+    fixup(global_unit_ptrs);
 
     uint32_t original_tile_length;
     fread(&original_tile_length, 1, 4, file);
@@ -2269,14 +2244,6 @@ void Load::LoadGame()
     SMemFree(*bw::scenario_chk_STR, "notasourcefile", 42, 0);
     *bw::scenario_chk_STR = SMemAlloc(*bw::scenario_chk_STR_size, "notasourcefile", 42, 0);
     ReadCompressed(file, *bw::scenario_chk_STR, *bw::scenario_chk_STR_size);
-    ReadCompressed(file, bw::selection_groups.raw_pointer(), Limits::Selection * Limits::ActivePlayers * sizeof(Unit *));
-    for (auto selection : bw::selection_groups)
-    {
-        for (Unit *&unit : selection)
-        {
-            ConvertUnitPtr<false>(&unit);
-        }
-    }
 
     LoadPathingChunk();
     unit_search->Init();
