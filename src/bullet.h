@@ -227,7 +227,7 @@ class Bullet
         uint8_t spread_seed;
         uint8_t padding[0x3];
 
-
+        // TODO: Use better list/remove/refactor these
         ListEntry<Bullet, 0x70> targeting; // 0x70
         ListEntry<Bullet, 0x78> spawned; // 0x78
 

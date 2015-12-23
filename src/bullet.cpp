@@ -411,11 +411,11 @@ void Bullet::SingleDelete()
     if (list.prev)
         list.prev->list.next = list.next;
 
-    if (target)
+    if (target != nullptr)
     {
         targeting.Remove(target->targeting_bullets);
     }
-    if (parent)
+    if (parent != nullptr)
     {
         spawned.Remove(parent->spawned_bullets);
     }
@@ -1472,13 +1472,23 @@ void BulletSystem::ProgressFrames(BulletFramesInput input)
 
 void RemoveFromBulletTargets(Unit *unit)
 {
-    for (Bullet *bullet : unit->targeting_bullets)
+    Bullet *next = unit->targeting_bullets;
+    while (next != nullptr)
     {
+        Bullet *bullet = next;
+        next = bullet->targeting.next;
+        bullet->targeting.next = nullptr;
+        bullet->targeting.prev = nullptr;
         bullet->target = nullptr;
         bullet->order_target_pos = unit->sprite->position;
     }
-    for (Bullet *bullet : unit->spawned_bullets)
+    next = unit->spawned_bullets;
+    while (next != nullptr)
     {
+        Bullet *bullet = next;
+        next = bullet->spawned.next;
+        bullet->spawned.next = nullptr;
+        bullet->spawned.prev = nullptr;
         bullet->parent = nullptr;
     }
     unit->targeting_bullets = nullptr;
