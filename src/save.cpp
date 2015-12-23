@@ -46,6 +46,11 @@ using std::get;
 // Bw also has its own version, but we won't use that
 const uint32_t SaveVersion = 1;
 
+namespace Ai {
+    template <class Archive>
+    void SerializePlayerStructures(Archive &ar, int player);
+}
+
 /// Helper for nicely logging SaveFail info
 /// (Uses global error_log)
 static void PrintNestedExceptions(const std::exception &e)
@@ -73,13 +78,22 @@ class SaveFail : public std::exception
             Grp,
             ImageRemap,
             OwnedList,
+            AiRegion,
+            AiTown,
+            GuardAi,
+            PlayerAi,
+            AiScript,
+            ResourceArea,
+            AiTownPointer,
+            AiRegionPointer,
+            GuardAiPointer,
             // ReadCompressed had too much data
             ExtraData,
             // ReadCompressed didn't have expected amount of data
             CompressedFormat
         };
-        SaveFail(Type ty) : type(ty), index(~0), desc(type_description()) { }
-        SaveFail(Type ty, uintptr_t index) : type(ty), index(index), desc(type_description())
+        SaveFail(Type ty) : type(ty), index(~0), desc(type_description()), player(-1) { }
+        SaveFail(Type ty, uintptr_t index) : type(ty), index(index), desc(type_description()), player(-1)
         {
             char buf[16];
             if (type == ExtraData)
@@ -111,6 +125,24 @@ class SaveFail : public std::exception
                     return "Image remap";
                 case OwnedList:
                     return "Owned list";
+                case AiRegion:
+                    return "Ai::Region";
+                case AiTown:
+                    return "Ai::Town";
+                case GuardAi:
+                    return "Ai::GuardAi";
+                case PlayerAi:
+                    return "Ai::PlayerData";
+                case AiScript:
+                    return "Ai::Script";
+                case ResourceArea:
+                    return "Ai::ResourceArea";
+                case AiTownPointer:
+                    return "Ai::Town *";
+                case AiRegionPointer:
+                    return "Ai::Region *";
+                case GuardAiPointer:
+                    return "Ai::GuardAi *";
                 case ExtraData:
                     return "Too large compressed chunk";
                 case CompressedFormat:
@@ -120,9 +152,20 @@ class SaveFail : public std::exception
             }
         }
 
+        SaveFail Player(int player)
+        {
+            SaveFail copy = *this;
+            copy.player = player;
+            char buf[16];
+            snprintf(buf, sizeof buf, " Player %d", player);
+            copy.desc += buf;
+            return copy;
+        }
+
         Type type;
         uintptr_t index;
         std::string desc;
+        int player;
 
         virtual const char *what() const noexcept override { return desc.c_str(); }
 };
@@ -172,6 +215,9 @@ class CompressedOutputStreambuf : public std::streambuf  {
 
 /// Loading counterpart for CompressedOutputStreambuf.
 class CompressedInputStreambuf : public std::streambuf  {
+    // Prevent malicious saves from allocating large chunks of memory.
+    // Size is arbitarily chosen, could be equal to CompressedOutputStreambuf::BufferSize.
+    const int MaxBufferSize = 0x80000;
     public:
         CompressedInputStreambuf(FILE *f) : file(f), buffer(nullptr), bufsize(0)
         {
@@ -193,6 +239,8 @@ class CompressedInputStreambuf : public std::streambuf  {
 
             if (size > bufsize)
             {
+                if (size > MaxBufferSize)
+                    throw SaveFail(SaveFail::CompressedFormat);
                 buffer = make_unique<char[]>(size);
                 bufsize = size;
             }
@@ -219,6 +267,10 @@ class SaveArchive : public cereal::OutputArchive<SaveArchive>
 
         bool IsSaving() const { return true; }
         uint32_t Version() const { return version; }
+        // Used for some ai structures which need to know their owner
+        // player to serialize, while having to carry it is inconvinient
+        int CurrentAiPlayer() const { return current_ai_player; }
+        void SetCurrentAiPlayer(int p) { current_ai_player = p; }
 
     private:
         CompressedOutputStreambuf buffer;
@@ -229,6 +281,7 @@ class SaveArchive : public cereal::OutputArchive<SaveArchive>
 
         const std::unordered_map<const Sprite *, uintptr_t> &sprites;
         const std::unordered_map<const Bullet *, uintptr_t> &bullets;
+        int current_ai_player;
 
     private:
         uint32_t version;
@@ -272,6 +325,8 @@ class LoadArchive : public cereal::InputArchive<LoadArchive>
 
         bool IsSaving() const { return false; }
         uint32_t Version() const;
+        int CurrentAiPlayer() const { return current_ai_player; }
+        void SetCurrentAiPlayer(int p) { current_ai_player = p; }
 
     private:
         CompressedInputStreambuf buffer;
@@ -279,6 +334,7 @@ class LoadArchive : public cereal::InputArchive<LoadArchive>
 
     public:
         cereal::BinaryInputArchive inner;
+        int current_ai_player;
 
     private:
         const Load *load;
@@ -321,14 +377,18 @@ class FixupArchive : public cereal::InputArchive<FixupArchive>
         typedef std::unordered_map<uintptr_t, Bullet *> BulletFixup;
 
         FixupArchive(uint32_t version, const SpriteFixup &s, const BulletFixup &b) :
-            cereal::InputArchive<FixupArchive>(this), sprites(s), bullets(b), version(version) { }
+            cereal::InputArchive<FixupArchive>(this), sprites(s), bullets(b), version(version),
+            current_ai_player(-1) { }
 
         bool IsSaving() const { return false; }
         uint32_t Version() const { return version; }
+        int CurrentAiPlayer() const { return current_ai_player; }
+        void SetCurrentAiPlayer(int p) { current_ai_player = p; }
 
         const SpriteFixup &sprites;
         const BulletFixup &bullets;
         uint32_t version;
+        int current_ai_player;
 };
 
 CEREAL_REGISTER_ARCHIVE(FixupArchive);
@@ -342,17 +402,6 @@ class SaveBase
         void Close();
 
     protected:
-        template <bool saving, class Ai_Type> void ConvertAiParent(Ai_Type *ai);
-        template <bool saving> void ConvertBuildingAi(Ai::BuildingAi *ai, int player);
-        template <bool saving> void ConvertGuardAiPtr(Ai::GuardAi **ai, int player);
-        template <bool saving> void ConvertAiRegion(Ai::Region *region);
-        template <bool saving> void ConvertAiTown(Ai::Town *town);
-        template <bool saving> void ConvertAiRegionPtr(Ai::Region **script, int player);
-        template <bool saving> void ConvertAiTownPtr(Ai::Town **town, int player);
-        template <bool saving> void ConvertPlayerAiData(Ai::PlayerData *player_ai, int player);
-        template <bool saving> void ConvertAiScript(Ai::Script *script);
-        template <bool saving> void ConvertAiRequestValue(int type, void **value, int player);
-
         template <bool saving> void ConvertPathing(Pathing::PathingSystem *pathing, Pathing::PathingSystem *offset = 0);
 
         FILE *file;
@@ -377,20 +426,8 @@ class Save : public SaveBase<Save>
         void BeginBufWrite(C **out, C *in = 0);
 
         void SaveUnits();
-        void SaveUnitPtr(Unit *ptr);
 
-        void SaveAiChunk();
-        void SavePlayerAiData(int player);
-        void SaveAiTowns(int player);
-        void CreateAiTownSave(Ai::Town *ai_);
-        void CreateWorkerAiSave(Ai::WorkerAi *ai_);
-        void CreateBuildingAiSave(Ai::BuildingAi *ai_, int player);
-        void CreateMilitaryAiSave(Ai::MilitaryAi *ai_);
-        void CreateAiRegionSave(Ai::Region *region_);
-        void CreateAiScriptSave(Ai::Script *script_);
-        void SaveAiRegions(int player);
-        template <bool active_ais> void CreateGuardAiSave(Ai::GuardAi *ai_);
-        template <bool active_ais> void SaveGuardAis(const ListHead<Ai::GuardAi, 0x0> &list_head);
+        void SaveAi();
 
         void SavePathingChunk();
 
@@ -421,25 +458,12 @@ class Load : public SaveBase<Load>
     private:
         int ReadCompressedChunk();
         void ReadCompressed(FILE *file, void *out, int size);
-        void LoadUnitPtr(Unit **ptr);
-        void LoadAiChunk();
-        void LoadAiRegions(int player, int region_count);
-        template <bool active_ais> void LoadGuardAis(ListHead<Ai::GuardAi, 0x0> &list_head);
-        void LoadAiTowns(int player);
-        void LoadPlayerAiData(int player);
-
-        int LoadAiRegion(Ai::Region *region, uint32_t size);
-        int LoadAiTown(Ai::Town *out, uint32_t size);
-        Ai::MilitaryAi *LoadMilitaryAi();
-        Ai::Script *LoadAiScript();
+        void LoadAi(FixupArchive &fixup);
 
         void LoadPathingChunk();
 
         void LoadUnits();
         void FixupUnits(FixupArchive &fixup);
-
-        template <class C>
-        void BufRead(C *out);
 
         uint8_t *buf_beg;
         uint8_t *buf;
@@ -454,12 +478,12 @@ class Load : public SaveBase<Load>
 /// Has to be after Save declaration
 SaveArchive::SaveArchive(FILE *file, Save *save) : cereal::OutputArchive<SaveArchive>(this),
     buffer(file), stream(&buffer), inner(stream), sprites(save->sprite_to_id), bullets(save->bullet_to_id),
-    version(save->version)
+    current_ai_player(-1), version(save->version)
 {
 }
 
 LoadArchive::LoadArchive(FILE *file, Load *load) : cereal::InputArchive<LoadArchive>(this),
-    buffer(file), stream(&buffer), inner(stream), load(load)
+    buffer(file), stream(&buffer), inner(stream), current_ai_player(-1), load(load)
 {
 }
 
@@ -503,6 +527,9 @@ void load(FixupArchive &ar, std::unique_ptr<T> &ptr)
 CEREAL_SPECIALIZE_FOR_ALL_ARCHIVES(Unit *, cereal::specialization::non_member_load_save);
 CEREAL_SPECIALIZE_FOR_ALL_ARCHIVES(Bullet *, cereal::specialization::non_member_load_save);
 CEREAL_SPECIALIZE_FOR_ALL_ARCHIVES(Sprite *, cereal::specialization::non_member_load_save);
+CEREAL_SPECIALIZE_FOR_ALL_ARCHIVES(Ai::Region *, cereal::specialization::non_member_load_save);
+CEREAL_SPECIALIZE_FOR_ALL_ARCHIVES(Ai::Town *, cereal::specialization::non_member_load_save);
+CEREAL_SPECIALIZE_FOR_ALL_ARCHIVES(Ai::GuardAi *, cereal::specialization::non_member_load_save);
 
 void save(SaveArchive &archive, Unit * const &ptr)
 {
@@ -637,6 +664,12 @@ namespace Common {
         archive(point.x, point.y);
     }
 
+    template <class Archive, class Size>
+    void serialize(Archive &archive, Rect<Size> &val)
+    {
+        archive(val.left, val.top, val.right, val.bottom);
+    }
+
     template <class Archive>
     void serialize(Archive &archive, Rect16 &rect)
     {
@@ -673,7 +706,82 @@ void load(FixupArchive &archive, UnsortedList<T, N, A> &list)
         archive(val);
 }
 
-/// Handles serialization of Order lists in Units and such
+/// Most ai lists contain structures with pointers back to
+/// the parent structure owning the list.
+/// (Item's parent pointer does not need to be serialized, as
+/// it is reset to parent anyways)
+template <class T, unsigned O, class Parent = int, Parent *T::*ParentPtr = nullptr>
+struct OwnedAiList
+{
+    constexpr OwnedAiList(ListHead<T, O> &head, Parent *parent) : head(head), parent(parent) { }
+    constexpr OwnedAiList(ListHead<T, O> &head) : head(head), parent(nullptr) { }
+
+    template <class Archive>
+    void save(Archive &archive) const
+    {
+        uintptr_t count = 0;
+        for (T *item : head)
+        {
+            if (ParentPtr != nullptr)
+                Assert(item->*ParentPtr == parent);
+            count += 1;
+        }
+        archive(count);
+        uintptr_t index = 0;
+        for (T *item : head)
+        {
+            try {
+                archive(*item);
+            } catch (const std::exception &e) {
+                std::throw_with_nested(SaveFail(SaveFail::OwnedList, index));
+            }
+            index += 1;
+        }
+    }
+
+    template <class Archive>
+    void load(Archive &archive)
+    {
+        uintptr_t count;
+        archive(count);
+        T *previous = nullptr;
+        head = nullptr;
+        for (uintptr_t i = 0; i < count; i++)
+        {
+            try {
+                ptr<T> value(new T);
+                archive(*value);
+                if (ParentPtr != nullptr)
+                    (*value).*ParentPtr = parent;
+                if (previous == nullptr)
+                    head = value.get();
+                else
+                    ListEntry<T, O>::FromValue(previous)->next = value.get();
+
+                auto *entry = ListEntry<T, O>::FromValue(value.get());
+                entry->prev = previous;
+                entry->next = nullptr;
+                previous = value.get();
+                value.release();
+            } catch (const std::exception &e) {
+                std::throw_with_nested(SaveFail(SaveFail::OwnedList, i));
+            }
+        }
+    }
+
+    void load(FixupArchive &archive)
+    {
+        for (T *item : head)
+        {
+            archive(*item);
+        }
+    }
+
+    ListHead<T, O> &head;
+    Parent *parent;
+};
+
+/// Handles serialization of Order lists in Units and such.
 template <class T, unsigned O>
 struct OwnedList
 {
@@ -716,11 +824,12 @@ struct OwnedList
         end = nullptr;
         for (uintptr_t i = 0; i < count; i++)
         {
-            T *value = new T;
+            ptr<T> value(new T);
             archive(*value);
-            RevListEntry<T, O>::FromValue(value)->Add(end);
+            RevListEntry<T, O>::FromValue(value.get())->Add(end);
             if (main != nullptr && i == main_pos)
-                *main = value;
+                *main = value.get();
+            value.release();
         }
         for (T *item : end)
             head = item;
@@ -737,6 +846,30 @@ struct OwnedList
     RevListHead<T, O> &end;
     T **main;
 };
+
+/// For saving only initial N entries of fixed-size arrays.
+template <class Type, class IntType>
+struct SaveArrayClass
+{
+    // Size may be any value during loading.
+    constexpr SaveArrayClass(Type *data, IntType &size) : data(data), size(size) { }
+
+    template <class Archive>
+    void serialize(Archive &archive)
+    {
+        archive(size);
+        for (uintptr_t i = 0; i < size; i++)
+            archive(data[i]);
+    }
+
+    Type *data;
+    IntType &size;
+};
+
+template <class Type, class IntType>
+SaveArrayClass<Type, IntType> SaveArray(Type *data, IntType &size) {
+    return SaveArrayClass<Type, IntType>(data, size);
+}
 
 /// Convenience class for loading/saving all unit pointers at once
 class GlobalUnitPointers
@@ -770,7 +903,6 @@ class GlobalUnitPointers
 };
 
 const int buf_defaultmax = 0x110000;
-const int buf_defaultlimit = 0x100000;
 
 class SaveException : public std::exception
 {
@@ -874,20 +1006,6 @@ class ReadCompressedFail : public SaveException
         }
 };
 
-template <bool saving>
-void ConvertUnitPtr(Unit **ptr)
-{
-    if (*ptr)
-    {
-        if (saving)
-            *ptr = (Unit *)((*ptr)->lookup_id);
-        else
-            *ptr = Unit::FindById((uint32_t)(*ptr));
-        if (!*ptr)
-            throw NewSaveConvertFail(Unit *, ptr, 0);
-    }
-}
-
 template <class P>
 SaveBase<P>::~SaveBase()
 {
@@ -922,16 +1040,6 @@ Load::Load(FILE *file) : cereal_archive(file, this)
 Load::~Load()
 {
     free(buf_beg);
-}
-
-template <class C>
-void Load::BufRead(C *out)
-{
-    int amount = sizeof(C);
-    if (buf + amount > buf_end)
-        throw SaveException();
-    memcpy(out, buf, amount);
-    buf += amount;
 }
 
 template <class C>
@@ -1037,336 +1145,6 @@ void SaveBase<P>::ConvertPathing(Pathing::PathingSystem *pathing, Pathing::Pathi
         pathing->unk = (Pathing::SplitRegion *)((uintptr_t)(pathing->unk) + (uintptr_t)(offset));
 }
 
-template<class P> template <bool saving>
-void SaveBase<P>::ConvertAiRegionPtr(Ai::Region **region, int player)
-{
-    if (saving)
-    {
-        int id = (*region)->region_id;
-        *region = (Ai::Region *)id;
-    }
-    else
-        *region = bw::player_ai_regions[player] + (int)*region;
-}
-
-template<class P> template <bool saving>
-void SaveBase<P>::ConvertAiRegion(Ai::Region *region)
-{
-    ConvertUnitPtr<saving>(&region->air_target);
-    ConvertUnitPtr<saving>(&region->ground_target);
-    ConvertUnitPtr<saving>(&region->slowest_military);
-    ConvertUnitPtr<saving>(&region->first_important);
-}
-
-template<class P> template <bool saving>
-void SaveBase<P>::ConvertGuardAiPtr(Ai::GuardAi **ai, int player)
-{
-    if (*ai)
-    {
-        int ai_index = 1;
-        bool found = false;
-        for (auto other_ai : Ai::needed_guards[player])
-        {
-            if (saving && other_ai == *ai)
-            {
-                *ai= (Ai::GuardAi *)ai_index;
-                found = true;
-                break;
-            }
-            else if (ai_index == (int)*ai)
-            {
-                *ai = other_ai;
-                found = true;
-                break;
-            }
-            ai_index++;
-        }
-        if (!found)
-            throw NewSaveConvertFail(Ai::GuardAi *, ai, 0);
-    }
-}
-
-template<class P> template <bool saving, class Ai_Type>
-void SaveBase<P>::ConvertAiParent(Ai_Type *ai)
-{
-    ConvertUnitPtr<saving>(&ai->parent);
-}
-
-template<class P> template <bool saving>
-void SaveBase<P>::ConvertAiRequestValue(int type, void **value, int player)
-{
-    switch(type)
-    {
-        case 1:
-            ConvertAiRegionPtr<saving>((Ai::Region **)value, player);
-        break;
-        case 2:
-            ConvertGuardAiPtr<saving>((Ai::GuardAi **)value, player);
-        break;
-        case 3:
-        case 4:
-        case 5:
-        case 6:
-        case 7:
-            ConvertAiTownPtr<saving>((Ai::Town **)value, player);
-        break;
-        case 8:
-        default:
-        break;
-    }
-}
-
-template<class P> template <bool saving>
-void SaveBase<P>::ConvertBuildingAi(Ai::BuildingAi *ai, int player)
-{
-    ConvertUnitPtr<saving>(&ai->parent);
-    for (int i = 0; i < 5; i++)
-    {
-        ConvertAiRequestValue<saving>(ai->train_queue_types[i], &ai->train_queue_values[i], player);
-    }
-}
-
-template<class P> template <bool saving>
-void SaveBase<P>::ConvertAiTownPtr(Ai::Town **town, int player)
-{
-    if (*town)
-    {
-        int town_index = 1;
-        bool found = false;
-        for (auto other_town : bw::active_ai_towns[player])
-        {
-            if (saving && other_town == *town)
-            {
-                *town = (Ai::Town *)town_index;
-                found = true;
-                break;
-            }
-            else if (town_index == (int)*town)
-            {
-                *town = other_town;
-                found = true;
-                break;
-            }
-            town_index++;
-        }
-        if (!found)
-            throw NewSaveConvertFail(Ai::Town *, town, 0);
-    }
-}
-
-template<class P> template <bool saving>
-void SaveBase<P>::ConvertAiTown(Ai::Town *town)
-{
-    ConvertUnitPtr<saving>(&town->main_building);
-    ConvertUnitPtr<saving>(&town->building_scv);
-    ConvertUnitPtr<saving>(&town->mineral);
-    ConvertUnitPtr<saving>(&town->gas_buildings[0]);
-    ConvertUnitPtr<saving>(&town->gas_buildings[1]);
-    ConvertUnitPtr<saving>(&town->gas_buildings[2]);
-}
-
-template<class P> template <bool saving>
-void SaveBase<P>::ConvertPlayerAiData(Ai::PlayerData *player_ai, int player)
-{
-    for (int i = 0; i < player_ai->request_count; i++)
-    {
-        ConvertAiRequestValue<saving>(player_ai->requests[i].type, &player_ai->requests[i].val, player);
-    }
-    ConvertUnitPtr<saving>(&player_ai->free_medic);
-}
-
-template<class P> template <bool saving>
-void SaveBase<P>::ConvertAiScript(Ai::Script *script)
-{
-    ConvertAiTownPtr<saving>(&script->town, script->player);
-}
-
-void Save::SaveUnitPtr(Unit *ptr)
-{
-    ConvertUnitPtr<true>(&ptr);
-    fwrite(&ptr, 1, 4, file);
-}
-
-void Save::CreateMilitaryAiSave(Ai::MilitaryAi *ai_)
-{
-    Ai::MilitaryAi *ai;
-    BeginBufWrite(&ai, ai_);
-    ConvertAiParent<true>(ai);
-}
-
-void Save::CreateAiRegionSave(Ai::Region *region_)
-{
-    Ai::Region *region;
-    BeginBufWrite(&region, region_);
-    ConvertAiRegion<true>(region);
-
-    int count = 0;
-    buf->Seek(4);
-    for (Ai::MilitaryAi *ai : region->military)
-    {
-        CreateMilitaryAiSave(ai);
-        count += 1;
-    }
-    buf->Seek(0 - 4 - count * sizeof(Ai::MilitaryAi));
-    buf->Append(&count, 4);
-    buf->Seek(count * sizeof(Ai::MilitaryAi));
-}
-
-void Save::SaveAiRegions(int player)
-{
-    Ai::Region *regions = bw::player_ai_regions[player];
-    for (int i = 0; i < (*bw::pathing)->region_count; i++)
-    {
-        CreateAiRegionSave(regions + i);
-        if (buf->Length() > buf_defaultlimit)
-            WriteCompressedChunk();
-    }
-    if (buf->Length())
-        WriteCompressedChunk();
-}
-
-template <bool active_ais>
-void Save::CreateGuardAiSave(Ai::GuardAi *ai_)
-{
-    Ai::GuardAi *ai;
-    BeginBufWrite(&ai, ai_);
-    if (active_ais)
-        ConvertAiParent<true>(ai);
-}
-
-template <bool active_ais>
-void Save::SaveGuardAis(const ListHead<Ai::GuardAi, 0x0> &list_head)
-{
-    int i = 0, i_pos = 0;
-    i_pos = ftell(file);
-    fwrite(&i, 1, 4, file);
-    for (Ai::GuardAi *ai : list_head)
-    {
-        CreateGuardAiSave<active_ais>(ai);
-        if (buf->Length() > buf_defaultlimit)
-            WriteCompressedChunk();
-
-        i++;
-    }
-    if (buf->Length())
-        WriteCompressedChunk();
-
-    fseek(file, i_pos, SEEK_SET);
-    fwrite(&i, 1, 4, file);
-    fseek(file, 0, SEEK_END);
-}
-
-void Save::CreateWorkerAiSave(Ai::WorkerAi *ai_)
-{
-    Ai::WorkerAi *ai;
-    BeginBufWrite(&ai, ai_);
-    ConvertAiParent<true>(ai);
-}
-
-void Save::CreateBuildingAiSave(Ai::BuildingAi *ai_, int player)
-{
-    Ai::BuildingAi *ai;
-    BeginBufWrite(&ai, ai_);
-    ConvertBuildingAi<true>(ai, player);
-}
-
-void Save::CreateAiTownSave(Ai::Town *town_)
-{
-    Ai::Town *town;
-    BeginBufWrite(&town, town_);
-    ConvertAiTown<true>(town);
-
-    int i = 0;
-    buf->Seek(4);
-    for (Ai::WorkerAi *ai : town->first_worker)
-    {
-        CreateWorkerAiSave(ai);
-        i += 1;
-    }
-    buf->Seek(0 - 4 - i * sizeof(Ai::WorkerAi));
-    buf->Append(&i, 4);
-    buf->Seek(i * sizeof(Ai::WorkerAi) + 4);
-    i = 0;
-    for (Ai::BuildingAi *ai : town->first_building)
-    {
-        CreateBuildingAiSave(ai, town->player);
-        i += 1;
-    }
-    buf->Seek(0 - 4 - i * sizeof(Ai::BuildingAi));
-    buf->Append(&i, 4);
-    buf->Seek(i * sizeof(Ai::BuildingAi));
-}
-
-void Save::SaveAiTowns(int player)
-{
-    int i = 0, i_pos = ftell(file);
-    fwrite(&i, 1, 4, file);
-    for (Ai::Town *town : bw::active_ai_towns[player])
-    {
-        CreateAiTownSave(town);
-        if (buf->Length() > buf_defaultlimit)
-            WriteCompressedChunk();
-
-        i++;
-    }
-    if (buf->Length())
-        WriteCompressedChunk();
-
-    fseek(file, i_pos, SEEK_SET);
-    fwrite(&i, 1, 4, file);
-    fseek(file, 0, SEEK_END);
-}
-
-void Save::SavePlayerAiData(int player)
-{
-    Ai::PlayerData *data;
-    BeginBufWrite(&data, &(bw::player_ai[player]));
-    ConvertPlayerAiData<true>(data, player);
-    WriteCompressed((File *)file, buf->GetData(), buf->Length());
-    buf->Clear();
-}
-
-void Save::CreateAiScriptSave(Ai::Script *script_)
-{
-    Ai::Script *script;
-    BeginBufWrite(&script, script_);
-    ConvertAiScript<true>(script);
-}
-
-void Save::SaveAiChunk()
-{
-    fwrite(&((*bw::pathing)->region_count), 1, 4, file);
-    for (unsigned i = 0; i < Limits::ActivePlayers; i++)
-    {
-        if (bw::players[i].type == 1)
-        {
-            SaveAiRegions(i);
-            SaveGuardAis<true>(bw::first_guard_ai[i]);
-            SaveGuardAis<false>(Ai::needed_guards[i]);
-            SaveAiTowns(i);
-            SavePlayerAiData(i);
-        }
-    }
-    int i = 0, i_pos = ftell(file);
-    fwrite(&i, 1, 4, file);
-    for (Ai::Script *script : *bw::first_active_ai_script)
-    {
-        CreateAiScriptSave(script);
-        if (buf->Length() > buf_defaultlimit)
-            WriteCompressedChunk();
-
-        i++;
-    }
-    if (buf->Length())
-        WriteCompressedChunk();
-
-    fseek(file, i_pos, SEEK_SET);
-    fwrite(&i, 1, 4, file);
-    fseek(file, 0, SEEK_END);
-
-    WriteCompressed((File *)file, bw::resource_areas.raw_pointer(), 0x2ee8);
-}
-
 void Save::SavePathingChunk()
 {
     using namespace Pathing;
@@ -1464,6 +1242,55 @@ void Load::FixupUnits(FixupArchive &fixup)
     }
 }
 
+void Save::SaveAi()
+{
+    uint32_t region_count = (*bw::pathing)->region_count;
+    cereal_archive(region_count);
+    for (unsigned i = 0; i < Limits::ActivePlayers; i++)
+    {
+        if (bw::players[i].type == 1)
+        {
+            // I don't think that parents for needed guards are usually cleared..
+            for (Ai::GuardAi *ai : Ai::needed_guards[i])
+                ai->parent = nullptr;
+            Ai::SerializePlayerStructures(cereal_archive, i);
+        }
+    }
+
+#define TRY_NEST(t, e) try { t; } catch (const std::exception &err) { std::throw_with_nested(e); }
+    TRY_NEST(cereal_archive(OwnedAiList<Ai::Script, 0x0>(*bw::first_active_ai_script)),
+            SaveFail(SaveFail::AiScript))
+    TRY_NEST(cereal_archive(*bw::resource_areas),
+            SaveFail(SaveFail::ResourceArea))
+#undef TRY_NEST
+}
+
+void Load::LoadAi(FixupArchive &fixup)
+{
+    uint32_t region_count;
+    cereal_archive(region_count);
+    DeleteAiRegions();
+    AllocateAiRegions(region_count);
+    for (unsigned i = 0; i < Limits::ActivePlayers; i++)
+    {
+        if (bw::players[i].type == 1)
+        {
+            Ai::SerializePlayerStructures(cereal_archive, i);
+            Ai::SerializePlayerStructures(fixup, i);
+        }
+    }
+#define TRY_NEST(t, e) try { t; } catch (const std::exception &err) { std::throw_with_nested(e); }
+    TRY_NEST(cereal_archive(OwnedAiList<Ai::Script, 0x0>(*bw::first_active_ai_script)),
+            SaveFail(SaveFail::AiScript))
+    TRY_NEST(cereal_archive(*bw::resource_areas),
+            SaveFail(SaveFail::ResourceArea))
+    TRY_NEST(fixup(OwnedAiList<Ai::Script, 0x0>(*bw::first_active_ai_script)),
+            SaveFail(SaveFail::AiScript))
+    TRY_NEST(fixup(*bw::resource_areas),
+            SaveFail(SaveFail::ResourceArea))
+#undef TRY_NEST
+}
+
 void Save::SaveGame(uint32_t time)
 {
     Sprite::RemoveAllSelectionOverlays();
@@ -1511,7 +1338,8 @@ void Save::SaveGame(uint32_t time)
 
     SavePathingChunk();
 
-    SaveAiChunk();
+    SaveAi();
+    cereal_archive.Flush();
     SaveDatChunk((File *)file);
     fwrite(bw::screen_x.raw_pointer(), 1, 4, file);
     fwrite(bw::screen_y.raw_pointer(), 1, 4, file);
@@ -1835,317 +1663,313 @@ void LoneSpriteSystem::serialize(Archive &archive)
     archive(lone_sprites, fow_sprites);
 }
 
-void Load::LoadUnitPtr(Unit **ptr)
-{
-    fread(ptr, 1, 4, file);
-    ConvertUnitPtr<false>(ptr);
-}
-
-Ai::Script *Load::LoadAiScript()
-{
-    Ai::Script *script = Ai::Script::RawAlloc();
-    BufRead(script);
-    ConvertAiScript<false>(script);
-    return script;
-}
-
-Ai::MilitaryAi *Load::LoadMilitaryAi()
-{
-    Ai::MilitaryAi *ai = new Ai::MilitaryAi;
-    BufRead(ai);
-    try
+namespace Ai {
+    template <class Archive>
+    void SerializeRegions(Archive &ar, int player, int region_count)
     {
-        ConvertAiParent<false>(ai);
-    }
-    catch (const SaveException &e)
-    {
-        auto ex = NewSaveConvertFail(Ai::MilitaryAi, ai, &e);
-        delete ai;
-        throw ex;
-    }
-    ai->parent->ai = (Ai::UnitAi *)ai;
-
-    return ai;
-}
-
-int Load::LoadAiRegion(Ai::Region *region, uint32_t size)
-{
-    if (size < sizeof(Ai::Region) + 4)
-        throw SaveReadFail(Ai::Region);
-    size -= sizeof(Ai::Region) + 4;
-
-    BufRead(region);
-    ConvertAiRegion<false>(region);
-
-    uint32_t ai_count;
-    BufRead(&ai_count);
-    if (size < ai_count * sizeof(Ai::MilitaryAi))
-        throw SaveReadFail(Ai::MilitaryAi);
-
-    Ai::MilitaryAi *prev = 0;
-    for (uint32_t i = 0; i < ai_count; i++)
-    {
-        Ai::MilitaryAi *ai = LoadMilitaryAi();
-        ai->region = region;
-        if (prev)
-            prev->list.next = ai;
-        else
-            region->military = ai;
-        ai->list.prev = prev;
-        prev = ai;
-    }
-    if (prev)
-        prev->list.next = 0;
-
-    return sizeof(Ai::Region) + 4 + ai_count * sizeof(Ai::MilitaryAi);
-}
-
-void Load::LoadAiRegions(int player, int region_count)
-{
-    Ai::Region *regions = bw::player_ai_regions[player];
-    try
-    {
-        while (region_count)
-        {
-            int size = ReadCompressedChunk();
-            while (size)
+        int i = 0;
+        try {
+            Ai::Region *regions = bw::player_ai_regions[player];
+            for (i = 0; i != region_count; i++)
             {
-                int diff = LoadAiRegion(regions, size);
-                size -= diff;
-                region_count -= 1;
-                regions++;
-                if (region_count == 0 && size != 0)
-                    throw SaveReadFail(Ai::Region);
+                ar(regions[i]);
             }
+        } catch (const std::exception &e) {
+            std::throw_with_nested(SaveFail(SaveFail::AiRegion, i).Player(player));
         }
     }
-    catch (const ReadCompressedFail &e)
+
+    template <class Archive>
+    void SerializePlayerStructures(Archive &archive, int player)
     {
-        throw SaveReadFail_("AiRegion", &e);
+        archive.SetCurrentAiPlayer(player);
+        Ai::SerializeRegions(archive, player, (*bw::pathing)->region_count);
+#define TRY_NEST(t, e) try { t; } catch (const std::exception &err) { std::throw_with_nested(e); }
+        TRY_NEST(archive(OwnedAiList<Ai::GuardAi, 0x0>(bw::first_guard_ai[player])),
+                SaveFail(SaveFail::GuardAi).Player(player))
+        TRY_NEST(archive(OwnedAiList<Ai::GuardAi, 0x0>(Ai::needed_guards[player])),
+                SaveFail(SaveFail::GuardAi).Player(player))
+        TRY_NEST(archive(OwnedAiList<Ai::Town, 0x0>(bw::active_ai_towns[player])),
+                SaveFail(SaveFail::AiTown).Player(player))
+        TRY_NEST(archive(bw::player_ai[player]),
+                SaveFail(SaveFail::PlayerAi).Player(player))
+#undef TRY_NEST
     }
-}
 
-template <bool active_ais>
-void Load::LoadGuardAis(ListHead<Ai::GuardAi, 0x0> &list_head)
-{
-    int ai_count;
-    fread(&ai_count, 4, 1, file);
-    Ai::GuardAi *prev = nullptr;
-    while (ai_count)
+    template <class Archive>
+    void Region::serialize(Archive &archive)
     {
-        int size = ReadCompressedChunk();
-        while (size)
-        {
-            if (size < (int)sizeof(Ai::GuardAi))
-                throw SaveReadFail(Ai::GuardAi);
+        archive(region_id, target_region_id, player, state, unk6, flags, ground_unit_count);
+        archive(needed_ground_strength, needed_air_strength, local_ground_strength, local_air_strength);
+        archive(all_ground_strength, all_air_strength, enemy_air_strength, enemy_ground_strength);
+        archive(air_target, ground_target, slowest_military, first_important);
+        archive(OwnedAiList<MilitaryAi, 0x0, Region, &MilitaryAi::region>(military, this));
+    }
 
-            Ai::GuardAi *ai = new Ai::GuardAi;
-            BufRead(ai);
-            if (active_ais)
+    template <class Archive>
+    void ResourceAreaArray::serialize(Archive &archive)
+    {
+        archive(areas, used_count, frames_till_update);
+    }
+
+    template <class Archive>
+    void ResourceArea::serialize(Archive &archive)
+    {
+        archive(position, mineral_field_count, geyser_count, dc6, flags, total_minerals, total_gas, unk10);
+    }
+
+    template <class Archive>
+    void PlayerData::serialize(Archive &archive)
+    {
+        archive(mineral_need, gas_need, supply_need, minerals_available, gas_available, supply_available);
+        archive(SaveArray(requests, request_count), liftoff_cooldown, unk212, flags);
+        archive(dc21a, unk_region, wanted_unit, dc222, unk_count, unk228, strategic_suicide, unk22d);
+        archive(unit_ids, unk2b0, unit_build_limits, free_medic, unk4d8);
+    }
+
+    void save(SaveArchive &archive, Region * const &ptr)
+    {
+        if (ptr == nullptr)
+            archive((uint16_t)0);
+        else
+            archive((uint16_t)(ptr - bw::player_ai_regions[archive.CurrentAiPlayer()]));
+    }
+
+    template <class Archive>
+    void load(Archive &archive, Region *&ptr)
+    {
+        uint16_t id;
+        archive(id);
+        reinterpret_cast<uintptr_t &>(ptr) = id;
+    }
+
+    void load(FixupArchive &ar, Region *&ptr)
+    {
+        if (ptr != nullptr)
+        {
+            uint16_t id = (uintptr_t)ptr;
+            if (id >= (*bw::pathing)->region_count)
+                throw SaveFail(SaveFail::AiRegionPointer);
+            ptr = bw::player_ai_regions[ar.CurrentAiPlayer()] + (uintptr_t)ptr;
+        }
+    }
+
+    uintptr_t GuardAiPtrToId(GuardAi *ptr, int player)
+    {
+        uintptr_t index = 1;
+        for (GuardAi *ai : needed_guards[player])
+        {
+            if (ai == ptr)
+                return index;
+            index += 1;
+        }
+        for (GuardAi *ai : bw::first_guard_ai[player])
+        {
+            if (ai == ptr)
+                return index;
+            index += 1;
+        }
+        throw SaveFail(SaveFail::GuardAiPointer);
+    }
+
+    void save(SaveArchive &archive, GuardAi * const &ptr)
+    {
+        if (ptr == nullptr)
+            archive((uintptr_t)0);
+        else
+            archive(GuardAiPtrToId(ptr, archive.CurrentAiPlayer()));
+    }
+
+    template <class Archive>
+    void load(Archive &archive, GuardAi *&ptr)
+    {
+        uintptr_t id;
+        archive(id);
+        reinterpret_cast<uintptr_t &>(ptr) = id;
+    }
+
+    void load(FixupArchive &ar, GuardAi *&ptr)
+    {
+        if (ptr != nullptr)
+        {
+            uintptr_t id = (uintptr_t)ptr;
+            uintptr_t index = 1;
+            for (GuardAi *ai : needed_guards[ar.CurrentAiPlayer()])
             {
-                try
+                if (index == id)
                 {
-                    ConvertAiParent<false>(ai);
+                    ptr = ai;
+                    return;
                 }
-                catch (const SaveException &e)
+                index += 1;
+            }
+            for (GuardAi *ai : bw::first_guard_ai[ar.CurrentAiPlayer()])
+            {
+                if (index == id)
                 {
-                    auto ex = NewSaveConvertFail(Ai::GuardAi, ai, &e);
-                    delete ai;
-                    throw ex;
+                    ptr = ai;
+                    return;
                 }
-                ai->parent->ai = (Ai::UnitAi *)ai;
+                index += 1;
             }
-            if (prev)
-                prev->list.next = ai;
-            else
-                list_head = ai;
-            ai->list.prev = prev;
-            prev = ai;
-
-            ai_count -= 1;
-            size -= sizeof(Ai::GuardAi);
-            if (ai_count == 0 && size != 0)
-                throw SaveReadFail(Ai::GuardAi);
+            throw SaveFail(SaveFail::GuardAiPointer);
         }
     }
-    if (prev)
-        prev->list.next = nullptr;
-}
 
-int Load::LoadAiTown(Ai::Town *out, uint32_t size)
-{
-    if (size < sizeof(Ai::Town) + 8)
-        throw SaveReadFail(Ai::Town);
-    BufRead(out);
-    ConvertAiTown<false>(out);
-    size -= sizeof(Ai::Town) + 4;
-
-    uint32_t worker_ai_count;
-    BufRead(&worker_ai_count);
-    if (size < worker_ai_count * sizeof(Ai::WorkerAi) + 4)
-        throw SaveReadFail(Ai::Town);
-    size -= worker_ai_count * sizeof(Ai::WorkerAi) + 4;
-
-    Ai::WorkerAi *prev_worker = 0;
-    int i = worker_ai_count;
-    while (i)
+    void save(SaveArchive &archive, Town * const &ptr)
     {
-        Ai::WorkerAi *ai = Ai::WorkerAi::RawAlloc();
-        BufRead(ai);
-        try
-        {
-            ConvertAiParent<false>(ai);
-        }
-        catch (const SaveException &e)
-        {
-            auto ex = NewSaveConvertFail(Ai::WorkerAi, ai, &e);
-            if (prev_worker)
-                prev_worker->list.next = 0;
-            delete ai;
-            throw ex;
-        }
-        ai->parent->ai = (Ai::UnitAi *)ai;
-        ai->town = out;
-
-        if (prev_worker)
-            prev_worker->list.next = ai;
+        if (ptr == nullptr)
+            archive((uintptr_t)0);
         else
-            out->first_worker = ai;
-        ai->list.prev = prev_worker;
-        prev_worker = ai;
-
-        i -= 1;
-    }
-
-
-    uint32_t building_ai_count;
-    BufRead(&building_ai_count);
-    if (size < building_ai_count * sizeof(Ai::BuildingAi))
-        throw SaveReadFail(Ai::Town);
-
-    Ai::BuildingAi *prev_building = 0;
-    i = building_ai_count;
-    while (i)
-    {
-        Ai::BuildingAi *ai = Ai::BuildingAi::RawAlloc();
-        BufRead(ai);
-
-        ai->town = out;
-
-        if (prev_building)
-            prev_building->list.next = ai;
-        else
-            out->first_building = ai;
-        ai->list.prev = prev_building;
-        prev_building = ai;
-
-        i -= 1;
-    }
-
-    return sizeof(Ai::Town) + 8 + worker_ai_count * sizeof(Ai::WorkerAi) + building_ai_count * sizeof(Ai::BuildingAi);
-}
-
-void Load::LoadAiTowns(int player)
-{
-    uint32_t town_count;
-    fread(&town_count, 4, 1, file);
-    Ai::Town *prev = 0;
-    while (town_count)
-    {
-        int size = ReadCompressedChunk();
-        while (size)
         {
-            Ai::Town *town = new Ai::Town;
-            int diff;
-            try
+            uintptr_t index = 1;
+            for (Town *town : bw::active_ai_towns[archive.CurrentAiPlayer()])
             {
-                diff = LoadAiTown(town, size);
+                if (town == ptr)
+                {
+                    archive(index);
+                    return;
+                }
+                index += 1;
             }
-            catch (const SaveException &e)
+            throw SaveFail(SaveFail::AiTownPointer);
+        }
+    }
+
+    template <class Archive>
+    void load(Archive &archive, Town *&ptr)
+    {
+        uintptr_t id;
+        archive(id);
+        reinterpret_cast<uintptr_t &>(ptr) = id;
+    }
+
+    void load(FixupArchive &ar, Town *&ptr)
+    {
+        if (ptr != nullptr)
+        {
+            uintptr_t id = (uintptr_t)ptr;
+            uintptr_t index = 1;
+            for (Town *town : bw::active_ai_towns[ar.CurrentAiPlayer()])
             {
-                delete town;
-                if (prev)
-                    prev->list.next = 0;
-                throw SaveReadFail_("AiTown", &e);
+                if (index == id)
+                {
+                    ptr = town;
+                    return;
+                }
+                index += 1;
             }
-            if (prev)
-                prev->list.next = town;
-            else
-                bw::active_ai_towns[player] = town;
-            town->list.prev = prev;
-            prev = town;
-
-            size -= diff;
-            town_count -= 1;
-            if (size < 0 || (town_count == 0 && size != 0))
-                throw SaveReadFail(Ai::Town);
+            throw SaveFail(SaveFail::AiTownPointer);
         }
     }
-    if (prev)
-        prev->list.next = 0;
 
-    // BuildingAi:ssa can have Town pointer,
-    // it usually points to parent town but i'm not 100% sure so let's do this
-    for (Ai::Town *town : bw::active_ai_towns[player])
+    struct SpendingRequestValue
     {
-        for (Ai::BuildingAi *ai : town->first_building)
+        constexpr SpendingRequestValue(uint8_t &type, void *&val) : type(type), val(val) { }
+
+        template <class Archive>
+        void serialize(Archive &archive)
         {
-            ConvertBuildingAi<false>(ai, town->player);
-            ai->parent->ai = (Ai::UnitAi *)ai;
+            archive(type);
+            switch(type)
+            {
+                case 1:
+                    archive((Region *&)val);
+                break;
+                case 2:
+                    archive((GuardAi *&)val);
+                break;
+                case 3:
+                case 4:
+                case 5:
+                case 6:
+                case 7:
+                    archive((Town *&)val);
+                break;
+                case 8:
+                default:
+                break;
+            }
         }
-    }
-}
 
-void Load::LoadPlayerAiData(int player)
-{
-    ReadCompressed(file, &bw::player_ai[player], sizeof(Ai::PlayerData));
-    ConvertPlayerAiData<false>(&bw::player_ai[player], player);
-}
+        uint8_t &type;
+        void *&val;
+    };
 
-void Load::LoadAiChunk()
-{
-    uint32_t region_count;
-    fread(&region_count, 4, 1, file);
-    DeleteAiRegions();
-    AllocateAiRegions(region_count);
-    for (unsigned i = 0; i < Limits::ActivePlayers; i++)
+    template <class Archive>
+    void SpendingRequest::serialize(Archive &archive)
     {
-        if (bw::players[i].type == 1)
-        {
-            LoadAiRegions(i, region_count);
-            LoadGuardAis<true>(bw::first_guard_ai[i]);
-            LoadGuardAis<false>(Ai::needed_guards[i]);
-            LoadAiTowns(i);
-            LoadPlayerAiData(i);
-        }
+        archive(priority, unit_id, SpendingRequestValue(type, val));
     }
-    int count, size;
-    fread(&count, 1, 4, file);
-    Ai::Script *prev = nullptr;
-    while (count)
+
+    template <class Archive>
+    void Script::serialize(Archive &archive)
     {
-        size = ReadCompressedChunk();
-        while (size)
+        // Don't archive list, it is handled by Load/SaveAiScripts
+        archive(pos, wait, player, area, center, flags);
+        archive.SetCurrentAiPlayer(player);
+        archive(town);
+    }
+
+    template <class Archive>
+    void Town::serialize(Archive &archive)
+    {
+        // Don't archive list, it is handled by Load/SaveAiTowns
+        archive(OwnedAiList<WorkerAi, 0x0, Town, &WorkerAi::town>(first_worker, this));
+        archive(OwnedAiList<BuildingAi, 0x0, Town, &BuildingAi::town>(first_building, this));
+        archive(player, inited, worker_count, unk1b, resource_area, unk1d, building_was_hit, unk1f);
+        archive(position, main_building, building_scv, mineral, gas_buildings, build_requests);
+    }
+
+    /// Unit pointer which sets unit->ai = ai as well when fixing up the pointer
+    struct AiParent
+    {
+        constexpr AiParent(void *ai, Unit *&ptr) : ai(ai), ptr(ptr) { }
+
+        template <class Archive>
+        void serialize(Archive &archive)
         {
-            if (size < (int)sizeof(Ai::Script))
-                throw SaveReadFail(Ai::Script);
+            archive(ptr);
+        }
 
-            Ai::Script *script = LoadAiScript();
-            if (prev)
-                prev->list.next = script;
-            else
-                *bw::first_active_ai_script = script;
-            script->list.prev = prev;
-            script->list.next = nullptr;
+        void serialize(FixupArchive &archive)
+        {
+            archive(ptr);
+            if (ptr != nullptr)
+                ptr->ai = (UnitAi *)ai;
+        }
 
-            size -= sizeof(Ai::Script);
-            count -= 1;
-            if (size < 0 || (count == 0 && size != 0))
-                throw SaveReadFail(Ai::Script);
-            prev = script;
+        void *ai;
+        Unit *&ptr;
+    };
+
+    template <class Archive>
+    void GuardAi::serialize(Archive &archive)
+    {
+        archive(type, unk_count, unka, AiParent(this, parent), unit_id, home, unk_pos, unk1a, previous_update);
+    }
+
+    template <class Archive>
+    void WorkerAi::serialize(Archive &archive)
+    {
+        archive(type, unk9, unka, wait_timer, unk_count, AiParent(this, parent));
+    }
+
+    template <class Archive>
+    void BuildingAi::serialize(Archive &archive)
+    {
+        archive(type, unke, AiParent(this, parent));
+        for (int i = 0; i < 5; i++)
+        {
+            archive(SpendingRequestValue(train_queue_types[i], train_queue_values[i]));
         }
     }
-    ReadCompressed(file, bw::resource_areas.raw_pointer(), 0x2ee8);
+
+    template <class Archive>
+    void MilitaryAi::serialize(Archive &archive)
+    {
+        archive(type, AiParent(this, parent));
+    }
 }
 
 void Load::LoadPathingChunk()
@@ -2248,7 +2072,10 @@ void Load::LoadGame()
     LoadPathingChunk();
     unit_search->Init();
 
-    LoadAiChunk();
+    // Ai loading is separately here as I'm not sure if it depends
+    // on map/pathing/unitsearch being loaded :/
+    LoadAi(fixup);
+    cereal_archive.ConfirmEmptyBuffer();
     if (!LoadDatChunk((File *)file, 0x3))
         throw SaveException();
     fread(bw::screen_x.raw_pointer(), 1, 4, file);

@@ -61,6 +61,10 @@ namespace Ai
         uint8_t type;
         uint16_t unit_id;
         void *val;
+
+        // Save.cpp
+        template <class Archive>
+        void serialize(Archive &ar);
     };
 
     struct PlayerData
@@ -89,6 +93,10 @@ namespace Ai
         uint8_t unit_build_limits[0xe4]; // 0x3f0
         Unit *free_medic; // 0x4d4
         uint8_t unk4d8[0x10];
+
+        // Save.cpp
+        template <class Archive>
+        void serialize(Archive &ar);
     };
 
     template <class C>
@@ -118,12 +126,19 @@ namespace Ai
         uint32_t total_minerals;
         uint32_t total_gas;
         uint32_t unk10[0x8];
+
+        template <class Archive>
+        void serialize(Archive &ar);
     };
+
     struct ResourceAreaArray
     {
         ResourceArea areas[0xfa];
         uint32_t used_count;
         uint32_t frames_till_update;
+
+        template <class Archive>
+        void serialize(Archive &ar);
     };
 
     struct Region
@@ -148,6 +163,10 @@ namespace Ai
         Unit *slowest_military;
         Unit *first_important; // dunno, may have detectors
         DataList<MilitaryAi> military;
+
+        // Save.cpp
+        template <class Archive>
+        void serialize(Archive &ar);
     };
 
     class Script
@@ -162,12 +181,13 @@ namespace Ai
             Town *town;
             uint32_t flags; // 0x30
 
+            template <class Archive>
+            void serialize(Archive &ar);
+
+            Script() {}
             Script(uint32_t player, uint32_t pos, bool bwscript, Rect32 *area);
             static Script *RawAlloc() { return new Ai::Script; }
             ~Script();
-
-        private:
-            Script() {}
     };
     class Town
     {
@@ -178,7 +198,7 @@ namespace Ai
             uint32_t unused10; // 0x10, Free building ais
             ListHead<BuildingAi, 0x0> first_building;
             uint8_t player;
-            uint8_t inited; // emt
+            uint8_t inited;
             uint8_t worker_count;
             uint8_t unk1b;
             uint8_t resource_area;
@@ -191,6 +211,9 @@ namespace Ai
             Unit *mineral;
             Unit *gas_buildings[0x3];
             uint32_t build_requests[0x64];
+
+            template <class Archive>
+            void serialize(Archive &ar);
     };
     class UnitAi
     {
@@ -213,6 +236,9 @@ namespace Ai
             Point unk_pos;
             uint8_t unk1a[0x2];
             uint32_t previous_update;
+
+            template <class Archive>
+            void serialize(Archive &ar);
     };
     class WorkerAi
     {
@@ -228,6 +254,9 @@ namespace Ai
 
             WorkerAi();
             static WorkerAi *RawAlloc() { return new WorkerAi(true); }
+
+            template <class Archive>
+            void serialize(Archive &ar);
 
         private:
             WorkerAi(bool) {}
@@ -246,6 +275,9 @@ namespace Ai
             BuildingAi();
             static BuildingAi *RawAlloc() { return new BuildingAi(true); }
 
+            template <class Archive>
+            void serialize(Archive &ar);
+
         private:
             BuildingAi(bool) {}
     };
@@ -259,6 +291,9 @@ namespace Ai
             Region *region;
 
             MilitaryAi();
+
+            template <class Archive>
+            void serialize(Archive &ar);
     };
 
     static_assert(sizeof(PlayerData) == 0x4e8, "sizeof(PlayerData)");

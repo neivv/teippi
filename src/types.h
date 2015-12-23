@@ -81,6 +81,7 @@ class Save;
 class Load;
 class GrpFrameHeader;
 class GameTests;
+class FixupArchive;
 
 struct Contour;
 struct PathingData;
