@@ -70,6 +70,8 @@ class SaveFail : public std::exception
         enum Type {
             Version,
             Unit,
+            Bullet,
+            Sprite,
             /// Misc unit globals
             UnitMisc,
             UnitPointer,
@@ -77,6 +79,7 @@ class SaveFail : public std::exception
             BulletPointer,
             Grp,
             ImageRemap,
+            UnsortedList,
             OwnedList,
             AiRegion,
             AiTown,
@@ -113,6 +116,10 @@ class SaveFail : public std::exception
                     return "Unit";
                 case UnitMisc:
                     return "Unit globals";
+                case Bullet:
+                    return "Bullet";
+                case Sprite:
+                    return "Sprite";
                 case UnitPointer:
                     return "Unit *";
                 case SpritePointer:
@@ -123,6 +130,8 @@ class SaveFail : public std::exception
                     return "Grp";
                 case ImageRemap:
                     return "Image remap";
+                case UnsortedList:
+                    return "UnsortedList";
                 case OwnedList:
                     return "Owned list";
                 case AiRegion:
@@ -681,8 +690,16 @@ template <class Archive, class T, uintptr_t N, class A>
 void save(Archive &archive, const UnsortedList<T, N, A> &list)
 {
     archive(list.size());
+    uintptr_t index = 0;
     for (auto &val : list)
-        archive(val);
+    {
+        try {
+            archive(val);
+        } catch (const std::exception &e) {
+            std::throw_with_nested(SaveFail(SaveFail::UnsortedList, index));
+        }
+        index += 1;
+    }
 }
 
 template <class Archive, class T, uintptr_t N, class A>
@@ -693,9 +710,13 @@ void load(Archive &archive, UnsortedList<T, N, A> &list)
     list.clear_keep_capacity();
     for (uintptr_t i = 0; i < size; i++)
     {
-        list.emplace();
-        T &val = list.back();
-        archive(val);
+        try {
+            list.emplace();
+            T &val = list.back();
+            archive(val);
+        } catch (const std::exception &e) {
+            std::throw_with_nested(SaveFail(SaveFail::UnsortedList, i));
+        }
     }
 }
 
@@ -802,7 +823,7 @@ struct OwnedList
         archive(count);
         if (main != nullptr)
         {
-            if (main_pos == ~0)
+            if (main_pos == ~0 && *main != nullptr)
                 throw SaveFail(SaveFail::OwnedList);
             archive(main_pos);
         }
@@ -819,7 +840,12 @@ struct OwnedList
         uintptr_t main_pos;
         archive(count);
         if (main != nullptr)
+        {
             archive(main_pos);
+            if (main_pos == ~0)
+                *main = nullptr;
+        }
+
         head = nullptr;
         end = nullptr;
         for (uintptr_t i = 0; i < count; i++)
@@ -1235,9 +1261,15 @@ void Load::LoadUnits()
 
 void Load::FixupUnits(FixupArchive &fixup)
 {
+    uintptr_t index = 0;
     for (Unit *unit : first_allocated_unit)
     {
-        fixup(*unit);
+        try {
+            fixup(*unit);
+        } catch (const std::exception &e) {
+            std::throw_with_nested(SaveFail(SaveFail::Unit, index));
+        }
+        index += 1;
         unit->sprite->AddToHlines();
     }
 }
@@ -1506,21 +1538,25 @@ void Path::serialize(Archive &archive)
 template <class Archive>
 void Sprite::serialize(Archive &archive)
 {
-    // id (draw ordering tiebreaker) is not saved, due to it being assigned in
-    // Sprite constructor. It is kind of messy but works for now..
-    archive(sprite_id, player, selectionIndex, visibility_mask);
-    archive(elevation, flags, selection_flash_timer, index, width, height, position);
-    archive(sort_order, OwnedList<Image, 0x0>(last_overlay, first_overlay, main_image));
-    // Doing image parent/drawfunc resetting here is simple, even though done unnecessarily when
-    // saving / fixing pointers
-    for (Image *img : first_overlay)
-    {
-        img->parent = this;
-        if (img->IsFlipped())
-            img->Render = bw::image_renderfuncs[img->drawfunc].flipped;
-        else
-            img->Render = bw::image_renderfuncs[img->drawfunc].nonflipped;
-        img->Update = bw::image_updatefuncs[img->drawfunc].func;
+    try {
+        // id (draw ordering tiebreaker) is not saved, due to it being assigned in
+        // Sprite constructor. It is kind of messy but works for now..
+        archive(sprite_id, player, selectionIndex, visibility_mask);
+        archive(elevation, flags, selection_flash_timer, index, width, height, position);
+        archive(sort_order, OwnedList<Image, 0x0>(last_overlay, first_overlay, main_image));
+        // Doing image parent/drawfunc resetting here is simple, even though done unnecessarily when
+        // saving / fixing pointers
+        for (Image *img : first_overlay)
+        {
+            img->parent = this;
+            if (img->IsFlipped())
+                img->Render = bw::image_renderfuncs[img->drawfunc].flipped;
+            else
+                img->Render = bw::image_renderfuncs[img->drawfunc].nonflipped;
+            img->Update = bw::image_updatefuncs[img->drawfunc].func;
+        }
+    } catch (const std::exception &e) {
+        std::throw_with_nested(SaveFail(SaveFail::Sprite));
     }
 }
 
@@ -1648,13 +1684,16 @@ void BulletSystem::serialize(Archive &archive)
 template <class Archive>
 void Bullet::serialize(Archive &archive)
 {
-    // No hitpoints, unused52 or cooldowns
-    archive(list, move_target, move_target_unit, next_move_waypoint, unk_move_waypoint);
-    archive(flingy_flags, facing_direction, flingyTurnRadius, movement_direction, flingy_id, _unknown_0x026);
-    archive(flingyMovementType, position, exact_position, flingyTopSpeed, current_speed, next_speed);
-    archive(speed, acceleration, pathing_direction, unk4b, player, order, order_state, order_signal);
-    archive(order_fow_unit, order_timer, order_target_pos, target, weapon_id, time_remaining, flags);
-    archive(bounces_remaining, parent, previous_target, spread_seed, targeting, spawned, sprite);
+    try {
+        archive(list, move_target, move_target_unit, next_move_waypoint, unk_move_waypoint);
+        archive(flingy_flags, facing_direction, flingyTurnRadius, movement_direction, flingy_id, _unknown_0x026);
+        archive(flingyMovementType, position, exact_position, flingyTopSpeed, current_speed, next_speed);
+        archive(speed, acceleration, pathing_direction, unk4b, player, order, order_state, order_signal);
+        archive(order_fow_unit, order_timer, order_target_pos, target, weapon_id, time_remaining, flags);
+        archive(bounces_remaining, parent, previous_target, spread_seed, targeting, spawned, sprite);
+    } catch (const std::exception &e) {
+        std::throw_with_nested(SaveFail(SaveFail::Bullet));
+    }
 }
 
 template <class Archive>
