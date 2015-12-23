@@ -18,6 +18,7 @@
 #include "unitsearch.h"
 #include "warn.h"
 #include "init.h"
+#include "text.h"
 
 #include "console/assert.h"
 
@@ -53,12 +54,22 @@ namespace Ai {
 
 /// Helper for nicely logging SaveFail info
 /// (Uses global error_log)
-static void PrintNestedExceptions(const std::exception &e)
+static void LogNestedExceptions(const std::exception &e)
 {
     try {
         std::rethrow_if_nested(e);
     } catch (const std::exception &e) {
         error_log->Log("    %s\n", e.what());
+        LogNestedExceptions(e);
+    } catch (...) { }
+}
+
+static void PrintNestedExceptions(const std::exception &e)
+{
+    try {
+        std::rethrow_if_nested(e);
+    } catch (const std::exception &e) {
+        Print("    %s\n", e.what());
         PrintNestedExceptions(e);
     } catch (...) { }
 }
@@ -1438,6 +1449,8 @@ void SaveGame(const char *filename, uint32_t time)
         catch (const std::exception &e)
         {
             error_log->Log("Save failed: %s\n", e.what());
+            LogNestedExceptions(e);
+            Print("Save failed: %s\n", e.what());
             PrintNestedExceptions(e);
         }
         save.Close();
@@ -2148,7 +2161,7 @@ int LoadGameObjects()
     catch (const std::exception &e)
     {
         error_log->Log("Load failed: %s\n", e.what());
-        PrintNestedExceptions(e);
+        LogNestedExceptions(e);
         *bw::load_succeeded = 0;
         *bw::replay_data = nullptr;
         success = false;
