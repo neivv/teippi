@@ -1469,7 +1469,7 @@ void Unit::serialize(Archive &archive)
     else
         archive(everything_c0);
 
-    if (unit_id == Hatchery || unit_id == Lair || unit_id == Hive)
+    if (units_dat_flags[unit_id] & UnitFlags::ResourceContainer)
     {
         archive(resource.resource_amount, resource.resourceIscript, resource.awaiting_workers);
         archive(resource.first_awaiting_worker, resource.resource_area, resource.ai_unk);
