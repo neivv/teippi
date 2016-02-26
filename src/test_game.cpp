@@ -2006,6 +2006,10 @@ struct Test_PathingFlingyGap : public GameTest {
                 TestAssert(pos.y <= y_max);
                 TestAssert(pos.y >= y_min);
                 if (pos.x > 0xf0 && pos.x < 0x110) {
+                    // It should not be dodging either of the gateways
+                    TestAssert(probe->path != nullptr);
+                    TestAssert(probe->path->dodge_unit == nullptr);
+
                     probe->Kill(nullptr);
                     state = 0;
                     variant++;

@@ -5584,11 +5584,6 @@ void Unit::ProgressBuildingConstruction()
     shields = std::min(units_dat_shields[unit_id] * 256, shields + build_shield_gain * build_speed);
 }
 
-Entity *Unit::AsEntity()
-{
-    return (Entity *)this;
-}
-
 Iscript::CmdResult Unit::HandleIscriptCommand(UnitIscriptContext *ctx, Image *img,
                                               Iscript::Script *script, const Iscript::Command &cmd)
 {
