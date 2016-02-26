@@ -1940,6 +1940,84 @@ struct Test_NearbyHelpers : public GameTest {
     }
 };
 
+/// Checks that probes path correctly between two gateways.
+/// Bw has a pathing issue when a flingy.dat movement unit (probe) can't
+/// turn sharply enough to get in a gap between two units (gateways),
+/// even if the path planned to go there and the unit would fit. Bw would
+/// make the probe to dodge one of the gateways, as the flingy momementum
+/// "threw" the probe into gateway and it thought it was in way. This
+/// dodging would sometimes choose a suboptimal path around the gateway,
+/// sometimes even causing the probe to get completely stuck if there were
+/// even more obstacles that made dodging the gateway difficult.
+struct Test_PathingFlingyGap : public GameTest {
+    int variant;
+    Unit *probe;
+    // If the probe goes either past the gap or to wrong direction from start,
+    // something went wrong.
+    int y_min;
+    int y_max;
+    void Init() override {
+        variant = 0;
+        // Create 5 gateways and 3 probes to block the path between 3 highest
+        // and 2 lowest (Just so that the fastest path goes clearly between the
+        // gateways -- for some reason it likes to path above more than below,
+        // but that is not something this test is going to check/fix).
+        for (auto i = 0; i < 5; i++) {
+            CreateUnitForTestAt(Unit::Gateway, 0, Point(0x100, 0x30 + i * 0x60));
+        }
+        CreateUnitForTestAt(Unit::Probe, 0, Point(0x100, 0x64));
+        CreateUnitForTestAt(Unit::Probe, 0, Point(0x100, 0xc4));
+        CreateUnitForTestAt(Unit::Probe, 0, Point(0x100, 0x184));
+    }
+
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                bool left = variant == 0 || variant == 1;
+                bool top = variant == 1 || variant == 3;
+                int x;
+                int y;
+                int target_x;
+                int target_y;
+                const auto &probe_dbox = units_dat_dimensionbox[Unit::Probe];
+                const auto &gateway_dbox = units_dat_dimensionbox[Unit::Gateway];
+                if (top) {
+                    y = 0x120 - gateway_dbox.top - gateway_dbox.bottom;
+                    y_min = y - 16;
+                    y_max = 0xf0 + gateway_dbox.bottom + 1 + probe_dbox.top + 16;
+                } else {
+                    y = 0x120 + gateway_dbox.top + gateway_dbox.bottom;
+                    y_max = y + 16;
+                    y_min = 0xf0 + gateway_dbox.bottom + 1 + probe_dbox.top - 16;
+                }
+                target_y = y;
+                if (left) {
+                    x = 0x100 - gateway_dbox.left - probe_dbox.right - 1;
+                    target_x = 0x100 + gateway_dbox.right + probe_dbox.left + 2;
+                } else {
+                    x = 0x100 + gateway_dbox.right + probe_dbox.left + 1;
+                    target_x = 0x100 - gateway_dbox.left - probe_dbox.right - 2;
+                }
+                probe = CreateUnitForTestAt(Unit::Probe, 0, Point(x, y));
+                IssueOrderTargetingGround(probe, Order::Move, target_x, target_y);
+                state++;
+            } break; case 1: {
+                const auto &pos = probe->sprite->position;
+                TestAssert(pos.y <= y_max);
+                TestAssert(pos.y >= y_min);
+                if (pos.x > 0xf0 && pos.x < 0x110) {
+                    probe->Kill(nullptr);
+                    state = 0;
+                    variant++;
+                    if (variant == 4) {
+                        Pass();
+                    }
+                }
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -1981,6 +2059,7 @@ GameTests::GameTests()
     AddTest("Ai target priority", new Test_AiTargetPriority);
     AddTest("Transmission trigger", new Test_Transmission);
     AddTest("Nearby helpers", new Test_NearbyHelpers);
+    AddTest("Pathing small gap w/ flingy movement", new Test_PathingFlingyGap);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)

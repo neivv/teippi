@@ -6,6 +6,7 @@
 #include "perfclock.h"
 #include "warn.h"
 #include "rng.h"
+#include "yms.h"
 
 Flingy::Flingy()
 {
@@ -17,7 +18,7 @@ bool Flingy::Initialize(Iscript::Context *ctx, int flingy_id_, int player, int d
 {
     flingy_id = flingy_id_;
     position = pos;
-    exact_position = Point32(pos.x * 256, pos.y * 256);
+    exact_position = Point32(pos.x * 256 + 128, pos.y * 256 + 128);
 
     flingy_flags = 0x1;
     next_speed = 0;
@@ -75,16 +76,53 @@ void Flingy::DeleteAll()
     }
 }
 
-void Flingy::ProgressFlingy()
+FlingyMoveResults Flingy::ProgressFlingy()
 {
+    FlingyMoveResults ret;
+
     *bw::current_flingy_flags = flingy_flags;
     ChangeDirectionToMoveWaypoint(this);
     ProgressSpeed(this);
     UpdateIsMovingFlag(this);
-    ProgressMove(this);
+    ProgressMove(&ret);
 
     *bw::previous_flingy_flags = flingy_flags;
     flingy_flags = *bw::current_flingy_flags;
+    return ret;
+}
+
+void Flingy::ProgressMove(FlingyMoveResults *ret)
+{
+    ret->moved_speed = current_speed;
+    if (~flingy_flags & 0x2 || current_speed == 0)
+    {
+        *bw::new_flingy_x = position.x;
+        *bw::new_flingy_y = position.y;
+        *bw::new_exact_x = exact_position.x;
+        *bw::new_exact_y = exact_position.y;
+        return;
+    }
+
+    auto distance = Distance(exact_position, Point32(next_move_waypoint) * 256 + Point32(128, 128));
+    if (distance <= current_speed)
+    {
+        *bw::new_flingy_x = next_move_waypoint.x;
+        *bw::new_flingy_y = next_move_waypoint.y;
+        *bw::new_exact_x = (*bw::new_flingy_x << 8) + 0x80;
+        *bw::new_exact_y = (*bw::new_flingy_y << 8) + 0x80;
+        ret->moved_speed = distance;
+    }
+    else
+    {
+        *bw::new_exact_x = exact_position.x + speed[0];
+        *bw::new_exact_y = exact_position.y + speed[1];
+        *bw::new_flingy_x = *bw::new_exact_x >> 8;
+        *bw::new_flingy_y = *bw::new_exact_y >> 8;
+    }
+    if (flingy_movement_type == 2) // Iscript.bin
+    {
+        SetSpeed(this, 0);
+    }
 }
 
 class FlingyIscriptContext : public Iscript::Context

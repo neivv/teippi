@@ -158,10 +158,10 @@
 00495840 = void ChangeDirectionToMoveWaypoint(), esi void *
 00495CB0 = void ProgressSpeed(), esi void *
 00495080 = void UpdateIsMovingFlag(), eax void *
-004956C0 = void ProgressMove(), esi void *
 00495100 = void ChangedDirection(), eax void *
 00495980 = void ProgressMoveWith(), ecx void *, eax int, edx int
 00496030 = bool MoveFlingy(), arg 1 Flingy *
+00494F60 = SetSpeed(), ecx Flingy *flingy, edx new_speed
 
 004983A0 = void PrepareDrawSprite(), eax Sprite *
 00498C50 = void DrawSprite(), eax Sprite *

@@ -57,7 +57,7 @@ void Unit::Order_NukeGround()
 {
     unk_move_waypoint = order_target_pos;
     int sight_range = GetSightRange(false) * 32;
-    int dist = Distance(exact_position, Point32(order_target_pos) * 256) / 256;
+    int dist = Distance(exact_position, Point32(order_target_pos) * 256 + Point32(128, 128)) / 256;
     if (ai && dist <= sight_range * 3)
         Ai_Cloak();
     if (dist > sight_range)

@@ -88,6 +88,7 @@ namespace MovementState
     const int Subunit = 0x3;
     const int Bunker = 0x4;
     const int Flyer = 0x7;
+    const int FollowPath = 0x19;
 }
 
 struct ProgressUnitResults
@@ -629,6 +630,7 @@ class Unit
         int MovementState17();
         int MovementState1c();
         int MovementState20();
+        int MovementState_FollowPath(); // State 19
 
         // Flyer movement state is done a bit later so it can be optimized with position search
         // Ground units won't likeyly be so big problem as you can't (usually) stack 1000 of them on top of each other

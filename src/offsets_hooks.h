@@ -136,6 +136,7 @@ namespace bw
 
     const hook_offset ProgressFlingyTurning = 0x00494FE0;
     const hook_offset SetMovementDirectionToTarget = 0x00496140;
+    const hook_offset ProgressMove = 0x004956C0;
 
     const hook_offset GameEnd = 0x004EE8C0;
 
@@ -193,6 +194,7 @@ namespace bw
     const hook_offset MovementState17 = 0x0046BC30;
     const hook_offset MovementState20 = 0x0046B000;
     const hook_offset MovementState1c = 0x0046BF60;
+    const hook_offset MovementState_FollowPath = 0x0046B950;
     const hook_offset MovementState_Flyer = 0x0046B400;
 
     const hook_offset ChangeMovementTarget = 0x004EB820;

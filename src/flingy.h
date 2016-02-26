@@ -5,6 +5,14 @@
 #include "list.h"
 #include "sprite.h"
 
+/// For getting rid of bw's global variables used with flingy functions.
+/// Not too much here (yet?).
+struct FlingyMoveResults
+{
+    constexpr FlingyMoveResults() : moved_speed(0) { }
+    int32_t moved_speed;
+};
+
 #pragma pack(push, 1)
 class Flingy
 {
@@ -46,12 +54,14 @@ class Flingy
 
         static void ProgressFrames();
         void ProgressFrame();
-        void ProgressFlingy();
+        FlingyMoveResults ProgressFlingy();
 
         static void DeleteAll();
 
         bool ProgressTurning();
         void SetMovementDirectionToTarget();
+        void ProgressMove(FlingyMoveResults *ret);
+
         /// Moves the flingy, based on global variables set by other flingy functions.
         bool Move();
 

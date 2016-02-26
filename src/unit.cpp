@@ -1494,16 +1494,16 @@ bool Unit::IsMovingAwayFrom(const Unit *other) const
         return false;
     switch (GetOthersLocation(this, other))
     {
-        case 0:
+        case Pathing::top:
             return movement_direction > 0x40 && movement_direction < 0xc0;
         break;
-        case 1:
+        case Pathing::right:
             return movement_direction > 0x80;
         break;
-        case 2:
+        case Pathing::bottom:
             return movement_direction < 0x40 || movement_direction > 0xc0;
         break;
-        case 3:
+        case Pathing::left:
             return movement_direction > 0x0 && movement_direction < 0x80;
         break;
     }
@@ -2035,7 +2035,7 @@ void Unit::Order_MoveUnload()
         order_target_pos = target->sprite->position;
     }
      // Always false if non-ai, because target is then own pos
-    int distance = Distance(exact_position, Point32(order_target_pos) * 256) & 0xffffff00;
+    int distance = Distance(exact_position, Point32(order_target_pos) * 256 + Point32(128, 128)) & 0xffffff00;
     if (distance > 0x1000)
     {
         ChangeMovementTarget(order_target_pos);
@@ -3156,7 +3156,8 @@ tuple<int, Unit *> Unit::ChooseTarget_Player(bool check_alliance, Array<Unit *> 
             if (unit->GetRegion() != home_region)
             {
                 Ai::GuardAi *guard = (Ai::GuardAi *)ai;
-                if (((Distance(Point32(unit->sprite->position) * 256, exact_position)) & 0xFFFFFF00) > 0xc000)
+                auto sprite_pos_32 = Point32(unit->sprite->position) * 256 + Point32(128, 128);
+                if (((Distance(sprite_pos_32, exact_position)) & 0xFFFFFF00) > 0xc000)
                     continue;
                 if (!IsPointInArea(this, 0xc0, guard->home.x, guard->home.y))
                     continue;
@@ -3831,7 +3832,7 @@ void Unit::Order_SapLocation(ProgressUnitResults *results)
             case 2:
             {
                 int area = weapons_dat_outer_splash[Weapon::Suicide];
-                if (Distance(exact_position, Point32(order_target_pos) * 256) / 256 > area)
+                if (Distance(exact_position, Point32(order_target_pos) * 256 + Point32(128, 128)) / 256 > area)
                 {
                     // What???
                     OrderDone();
@@ -4712,7 +4713,8 @@ void Unit::Order_InterceptorReturn(ProgressUnitResults *results)
         Kill(results);
         return;
     }
-    int parent_distance = Distance(exact_position, Point32(interceptor.parent->sprite->position) * 256) >> 8;
+    auto parent_pos = interceptor.parent->sprite->position;
+    int parent_distance = Distance(exact_position, Point32(parent_pos) * 256 + Point32(128, 128)) >> 8;
     if (order_state == 0)
     {
         if (parent_distance < 0x3c)

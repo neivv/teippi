@@ -691,6 +691,56 @@ void MainUnitSearch::Remove(Unit *unit)
     Validate();
 }
 
+static int GetOthersLocationForDodging(const Unit *own, const Unit *other, int dispreference)
+{
+    auto other_rect = other->GetCollisionRect();
+    auto own_rect = own->GetCollisionRect();
+    bool is_left = other_rect.right <= own_rect.left;
+    bool is_top = other_rect.bottom <= own_rect.top;
+    bool is_right = other_rect.left >= own_rect.right;
+    bool is_bottom = other_rect.top >= own_rect.bottom;
+
+    if (is_left && dispreference != Pathing::left)
+        return Pathing::left;
+    else if (is_right && dispreference != Pathing::right)
+        return Pathing::right;
+    else if (is_top && dispreference != Pathing::top)
+        return Pathing::top;
+    else if (is_bottom && dispreference != Pathing::bottom)
+        return Pathing::bottom;
+    if (is_left)
+        return Pathing::left;
+    else if (is_right)
+        return Pathing::right;
+    else if (is_top)
+        return Pathing::top;
+    else if (is_bottom)
+        return Pathing::bottom;
+
+    int left_overlap = abs(other_rect.right - own_rect.left);
+    int right_overlap = abs(other_rect.left - own_rect.right);
+    int top_overlap = abs(other_rect.bottom - own_rect.top);
+    int bottom_overlap = abs(other_rect.top - own_rect.bottom);
+    int smallest = right_overlap;
+    int result = Pathing::right;
+    if (left_overlap < smallest)
+    {
+        smallest = left_overlap;
+        result = Pathing::left;
+    }
+    if (bottom_overlap < smallest)
+    {
+        smallest = bottom_overlap;
+        result = Pathing::bottom;
+    }
+    if (top_overlap < smallest)
+    {
+        smallest = top_overlap;
+        result = Pathing::top;
+    }
+    return result;
+}
+
 int MainUnitSearch::GetDodgingDirection(const Unit *self, const Unit *other)
 {
     if (other->sprite->IsHidden())
@@ -704,7 +754,8 @@ int MainUnitSearch::GetDodgingDirection(const Unit *self, const Unit *other)
     if (change >= 0x50)
         return -1;
 
-    int other_location = GetOthersLocation(self, other);
+    int target_location = (((direction + 0x20) & 0xff) / 0x40);
+    int other_location = GetOthersLocationForDodging(self, other, target_location);
     Rect16 other_cbox = other->GetCollisionRect();
     Rect32 dodge_area;
     // Right and bottom might need one higher values??
