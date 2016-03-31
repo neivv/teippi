@@ -14,6 +14,7 @@
 #include "text.h"
 #include "commands.h"
 #include "unitsearch.h"
+#include "game.h"
 
 Unit *FindUnitAtPoint(int x, int y)
 {
@@ -292,20 +293,23 @@ void Command_Targeted(const uint8_t *buf)
                     subunit_order = units_dat_attack_move_order[unit->subunit->unit_id];
             }
         }
-        if (current_order == Order::RallyPointUnit)
+        if (unit->HasRally() && *bw::command_user == unit->player)
         {
-            Unit *rally_target = target;
-            if (!rally_target)
-                rally_target = unit;
-            unit->rally.unit = rally_target;
-            unit->rally.position = rally_target->sprite->position;
-            continue;
-        }
-        else if (current_order == Order::RallyPointTile)
-        {
-            unit->rally.unit = 0;
-            unit->rally.position = Point(x, y);
-            continue;
+            if (current_order == Order::RallyPointUnit)
+            {
+                Unit *rally_target = target;
+                if (!rally_target)
+                    rally_target = unit;
+                unit->rally.unit = rally_target;
+                unit->rally.position = rally_target->sprite->position;
+                continue;
+            }
+            else if (current_order == Order::RallyPointTile)
+            {
+                unit->rally.unit = 0;
+                unit->rally.position = Point(x, y);
+                continue;
+            }
         }
 
         if (target)
@@ -349,6 +353,13 @@ void SendTargetedOrderCommand(uint8_t order, int x, int y, Unit *target, int fow
     cmd[9] = queued;
     cmd[10] = order;
     SendCommand(cmd, 11);
+}
+
+void Test_SendTargetedOrderCommand(uint8_t order, int x, int y, Unit *target, int fow_unit, uint8_t queued)
+{
+    if (game_tests != nullptr) {
+        SendTargetedOrderCommand(order, x, y, target, fow_unit, queued);
+    }
 }
 
 void GetAttackErrorMessage(Unit *target, int targeting_weapon, int16_t *error)

@@ -18,6 +18,8 @@ void __fastcall GameScreenLClickEvent_Targeting(Event *event);
 
 void DoTargetedCommand(int x, int y, Unit *target, int fow_unit);
 
+void Test_SendTargetedOrderCommand(uint8_t order, int x, int y, Unit *target, int fow_unit, uint8_t queued);
+
 namespace RightClickAction
 {
     static const int None = 0;

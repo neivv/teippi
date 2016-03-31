@@ -30,6 +30,21 @@ using std::get;
 
 // This file has special permission for different brace style =)
 
+static void SelectUnit(Unit *unit) {
+    int player = *bw::local_unique_player_id;
+    bw::selection_groups[player][0] = unit;
+    bw::selection_groups[player][1] = nullptr;
+    bw::client_selection_group2[0] = unit;
+    bw::client_selection_group[0] = unit;
+    *bw::primary_selected = unit;
+    for (int i = 1; i < Limits::Selection; i++) {
+        bw::client_selection_group2[i] = nullptr;
+        bw::client_selection_group[i] = nullptr;
+    }
+    *bw::client_selection_changed = 1;
+    RefreshUi();
+}
+
 static void ClearTriggers() {
     for (int i = 0; i < Limits::ActivePlayers; i++)
         FreeTriggerList(&bw::triggers[i]);
@@ -1016,19 +1031,8 @@ struct Test_RightClick : public GameTest {
                 // Screen position is rounded down to eights,
                 // so MoveScreen(300, 200) would do same thing
                 MoveScreen(296, 200);
-                int player = *bw::local_unique_player_id;
                 frames_remaining = 50;
-                bw::selection_groups[player][0] = building;
-                bw::selection_groups[player][1] = nullptr;
-                bw::client_selection_group2[0] = building;
-                bw::client_selection_group[0] = building;
-                *bw::primary_selected = building;
-                for (int i = 1; i < Limits::Selection; i++) {
-                    bw::client_selection_group2[i] = nullptr;
-                    bw::client_selection_group[i] = nullptr;
-                }
-                *bw::client_selection_changed = 1;
-                RefreshUi();
+                SelectUnit(building);
                 Event event;
                 event.ext_type = 0;
                 event.type = 0xe;
@@ -2022,6 +2026,49 @@ struct Test_PathingFlingyGap : public GameTest {
     }
 };
 
+struct Test_RallyPoint : public GameTest {
+    Unit *unit;
+    Point old_rally;
+    void Init() override {
+        unit = nullptr;
+    }
+    void Rally() {
+        old_rally = unit->rally.position;
+        SelectUnit(unit);
+        Test_SendTargetedOrderCommand(Order::RallyPointTile, 50, 50, nullptr, Unit::None, false);
+        frames_remaining = 50;
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                unit = CreateUnitForTestAt(Unit::Nexus, 0, Point(100, 100));
+                Rally();
+                state++;
+            } break; case 1: {
+                if (unit->rally.position != old_rally) {
+                    // Shouldn't be able to change pylon rally.
+                    unit = CreateUnitForTestAt(Unit::Pylon, 0, Point(200, 100));
+                    Rally();
+                    state++;
+                }
+            } break; case 2: {
+                Assert(unit->rally.position == old_rally);
+                if (frames_remaining == 1) {
+                    // Shouldn't be able to change marine rally.
+                    unit = CreateUnitForTestAt(Unit::Marine, 0, Point(300, 100));
+                    Rally();
+                    state++;
+                }
+            } break; case 3: {
+                Assert(unit->rally.position == old_rally);
+                if (frames_remaining == 1) {
+                    Pass();
+                }
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -2064,6 +2111,7 @@ GameTests::GameTests()
     AddTest("Transmission trigger", new Test_Transmission);
     AddTest("Nearby helpers", new Test_NearbyHelpers);
     AddTest("Pathing small gap w/ flingy movement", new Test_PathingFlingyGap);
+    AddTest("Rally point", new Test_RallyPoint);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)
