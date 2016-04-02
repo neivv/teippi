@@ -162,7 +162,7 @@ namespace Ai
             Town *town;
             uint32_t flags; // 0x30
 
-            Script(uint32_t player, uint32_t pos, bool bwscript, Rect32 *area);
+            Script(uint32_t player, uint32_t pos, bool bwscript, const Rect32 *area);
             static Script *RawAlloc() { return new Ai::Script; }
             ~Script();
 
@@ -277,7 +277,7 @@ namespace Ai
     void AddUnitAi(Unit *unit, Town *town);
 
     bool ShouldCancelDamaged(const Unit *unit);
-    void __fastcall RemoveUnitAi(Unit *unit, bool unk);
+    void RemoveUnitAi(Unit *unit, bool unk);
     void ProgressScripts();
 
     bool UpdateAttackTarget(Unit *unit, bool accept_if_sieged, bool accept_critters, bool must_reach);

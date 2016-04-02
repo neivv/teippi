@@ -5,6 +5,10 @@
 #include <stdint.h>
 #include <string>
 #include "memory.h"
+#include "x86.h"
+#include "patch_hook.h"
+
+#include "common/assert.h"
 
 const int PATCH_HOOKBEFORE = 2;
 const int PATCH_HOOK = 2;
@@ -23,37 +27,11 @@ namespace Common
 
 class PatchManager;
 
-#if defined __clang__
-#define REG_EAX(type, var) type var; asm volatile("" : "=ea"(var))
-#define REG_ECX(type, var) type var; asm volatile("" : "=ec"(var))
-#define REG_EDX(type, var) type var; asm volatile("" : "=ed"(var))
-#define REG_EBX(type, var) type var; asm volatile("" : "=eb"(var))
-#define REG_ESI(type, var) type var; asm volatile("" : "=eS"(var))
-#define REG_EDI(type, var) type var; asm volatile("" : "=eD"(var))
-#elif defined __GNUC__
-// Otherwise gcc 5.1 thinks that UnitToIndex can share assembly with IndexToUnit <.<
-#define REG_EAX(type, var) type var; asm volatile("" : "=ea"(var));
-#define REG_ECX(type, var) type var; asm volatile("" : "=ec"(var));\
-{ volatile uint8_t _tmp __attribute__ ((unused)) = 1; }
-#define REG_EDX(type, var) type var; asm volatile("" : "=ed"(var));\
-{ volatile uint8_t _tmp __attribute__ ((unused)) = 2; }
-#define REG_EBX(type, var) type var; asm volatile("" : "=eb"(var));\
-{ volatile uint8_t _tmp __attribute__ ((unused)) = 3; }
-#define REG_ESI(type, var) type var; asm volatile("" : "=eS"(var));\
-{ volatile uint8_t _tmp __attribute__ ((unused)) = 4; }
-#define REG_EDI(type, var) type var; asm volatile("" : "=eD"(var));\
-{ volatile uint8_t _tmp __attribute__ ((unused)) = 5; }
-#else // Assume msvc
-#define REG_EAX(type, var) type var; __asm { mov var, eax }
-#define REG_ECX(type, var) type var; __asm { mov var, ecx }
-#define REG_EDX(type, var) type var; __asm { mov var, edx }
-#define REG_EBX(type, var) type var; __asm { mov var, ebx }
-#define REG_ESI(type, var) type var; __asm { mov var, esi }
-#define REG_EDI(type, var) type var; __asm { mov var, edi }
-#endif
-
 struct Patch
 {
+    Patch() {}
+    constexpr Patch(void *address, uint16_t flags) : address(address), previous_data(nullptr),
+        length(0), flags(flags), applied(true) { }
     void *address;
     uint8_t *previous_data;
     uint16_t length;
@@ -77,11 +55,17 @@ class PatchContext
 
         int GetDiff() const { return diff; }
 
+        template <typename Hook>
+        void Hook(const Hook &hook, typename Hook::Target target);
+
+        template <typename Hook>
+        void Hook(const Hook &hook, typename Hook::MemberFnTarget target);
+
     private:
         PatchContext(PatchManager *parent, const char *module_name, uint32_t expected_base);
 
         UnprotectModule protect;
-        uint32_t diff;
+        uintptr_t diff;
         PatchManager *parent;
 };
 
@@ -107,6 +91,46 @@ class PatchManager
         uint32_t ChangeProtection(void *address, int length, uint32_t protection);
         void *hookcode_heap;
 };
+
+template <typename HookType>
+void PatchContext::Hook(const HookType &hook, typename HookType::Target target) {
+    uint8_t *address = (uint8_t *)(hook.address + diff);
+    struct Patch patch(address, PATCH_HOOK);
+    patch.length = 5;
+    auto wrapper_length = hook.WrapperLength();
+    uint8_t *wrapper = (uint8_t *)parent->AllocExecMem(wrapper_length + patch.length);
+    auto written_length = hook.WriteConversionWrapper(target, wrapper, wrapper_length);
+    Assert(written_length == wrapper_length);
+    patch.previous_data = wrapper + wrapper_length;
+    memcpy(patch.previous_data, address, patch.length);
+    hook::WriteJump(address, 5, wrapper);
+    parent->patches.push_back(patch);
+}
+
+/// Pointers to member functions are fun...
+/// They are a lot more complicated than regular pointers to functions,
+/// as they have to work with virtual functions.
+/// As such, they get stored to memory, and the hook assembly passes that
+/// pointer with any other arguments to a intermediate function,
+/// which does `return (class_var->*func)(args...);`
+/// Sigh.
+template <typename HookType>
+void PatchContext::Hook(const HookType &hook, typename HookType::MemberFnTarget target) {
+    uint8_t *address = (uint8_t *)(hook.address + diff);
+    struct Patch patch(address, PATCH_HOOK);
+    patch.length = 5;
+    auto wrapper_length = hook.MemFnWrapperLength();
+    auto member_fn_size = sizeof(typename HookType::MemberFnTarget);
+    uint8_t *wrapper = (uint8_t *)parent->AllocExecMem(wrapper_length + patch.length + member_fn_size);
+    auto member_fn_addr = (typename HookType::MemberFnTarget *)(wrapper + wrapper_length + patch.length);
+    memcpy(member_fn_addr, &target, member_fn_size);
+    auto written_length = hook.WriteMemFnWrapper(member_fn_addr, wrapper, wrapper_length);
+    Assert(written_length == wrapper_length);
+    patch.previous_data = wrapper + wrapper_length;
+    memcpy(patch.previous_data, address, patch.length);
+    hook::WriteJump(address, 5, wrapper);
+    parent->patches.push_back(patch);
+}
 
 } // namespace Common
 

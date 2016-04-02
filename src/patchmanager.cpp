@@ -5,8 +5,6 @@
 #include <algorithm>
 #include <functional>
 
-#include "x86.h"
-
 template class std::vector<Common::Patch>;
 
 Common::PatchManager *patch_mgr;

@@ -1,7 +1,6 @@
 #include "targeting.h"
 
 #include "unit.h"
-#include "patchmanager.h"
 #include "offsets.h"
 #include "selection.h"
 #include "dialog.h"
@@ -518,7 +517,7 @@ void DoTargetedCommand(int x, int y, Unit *target, int fow_unit)
     }
 }
 
-void __fastcall GameScreenLClickEvent_Targeting(Event *event)
+void GameScreenLClickEvent_Targeting(Event *event)
 {
     if (IsOutsideGameScreen(event->x, event->y))
         return;
@@ -540,7 +539,7 @@ void __fastcall GameScreenLClickEvent_Targeting(Event *event)
     SetCursorSprite(0);
 }
 
-void __fastcall GameScreenRClickEvent(Event *event)
+void GameScreenRClickEvent(Event *event)
 {
     if (IsOutsideGameScreen(event->x, event->y) || bw::client_selection_group2[0] == nullptr)
         return;

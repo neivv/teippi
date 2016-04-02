@@ -4,7 +4,6 @@
 #include "sprite.h"
 #include "offsets.h"
 #include "unitsearch.h"
-#include "patchmanager.h"
 #include "sound.h"
 #include "bullet.h"
 #include "image.h"

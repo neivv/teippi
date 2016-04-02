@@ -21,6 +21,8 @@
 00467250 = int PrepareBuildUnit(), edi Unit *, arg 1 int
 0049EFA0 = int GiveUnit(), ecx Unit *, arg 1 int, arg 2 int
 
+004A0320 = int InitializeUnitBase(), ecx Unit *empty, eax unit_id, arg 1 x, arg 2 y, arg 3 player
+
 00467340 = void SetHp(), eax Unit *, ecx int
 004765B0 = int GetMissChance(), ecx const Unit *attacker, eax const Unit *target
 00476210 = int GetBaseMissChance(), eax const Unit *

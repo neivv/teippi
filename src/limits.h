@@ -17,6 +17,7 @@ namespace Limits
 inline bool IsActivePlayer(int player) { return player >= 0 && player < Limits::ActivePlayers; }
 
 void RemoveLimits(Common::PatchContext *patch);
+void PatchDraw(Common::PatchContext *patch);
 
 #endif // LIMIT_H
 

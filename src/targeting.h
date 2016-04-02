@@ -13,8 +13,8 @@ void ClearOrderTargeting();
 void Command_RightClick(const uint8_t *buf);
 void Command_Targeted(const uint8_t *buf);
 
-void __fastcall GameScreenRClickEvent(Event *event);
-void __fastcall GameScreenLClickEvent_Targeting(Event *event);
+void GameScreenRClickEvent(Event *event);
+void GameScreenLClickEvent_Targeting(Event *event);
 
 void DoTargetedCommand(int x, int y, Unit *target, int fow_unit);
 

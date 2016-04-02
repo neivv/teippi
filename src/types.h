@@ -110,6 +110,11 @@ struct MapDl;
 struct Event;
 struct CycleStruct;
 
+// Trigger-related callback param structures
+struct KillUnitArgs;
+struct ChangeInvincibilityParam;
+struct FindUnitLocationParam;
+
 template <class Type, unsigned size = 15> class UnitList;
 template <class C, unsigned offset> class RevListHead;
 template <class C, unsigned offset> class ListHead;

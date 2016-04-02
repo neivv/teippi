@@ -5,7 +5,6 @@
 #include "offsets.h"
 #include "image.h"
 #include "lofile.h"
-#include "patchmanager.h"
 
 void CreateBunkerShootOverlay(Unit *unit)
 {

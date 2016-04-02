@@ -3,6 +3,6 @@
 
 #include "types.h"
 
-int __stdcall UpdateBuildingPlacementState(Unit *builder, int player, x32 x_tile, y32 y_tile, int unit_id,
+int UpdateBuildingPlacementState(Unit *builder, int player, x32 x_tile, y32 y_tile, int unit_id,
         int placement_state_entry, bool check_vision, bool also_invisible, bool without_vision);
 #endif /* BUILDING_H */

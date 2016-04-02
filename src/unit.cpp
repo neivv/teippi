@@ -172,6 +172,23 @@ Unit *Unit::RawAlloc()
     return new Unit(false);
 }
 
+Unit *Unit::AllocateAndInit(uint8_t player, int unused_seed, uint16_t x, uint16_t y, uint16_t unit_id)
+{
+    if (!DoesFitHere(unit_id, x, y))
+    {
+        *bw::error_message = 0;
+        return nullptr;
+    }
+    Unit *unit = new Unit;
+    auto success = InitializeUnitBase(unit, unit_id, x, y, player);
+    if (!success)
+    {
+        *bw::error_message = NetworkString::UnableToCreateUnit;
+        return nullptr;
+    }
+    return unit;
+}
+
 void Unit::SingleDelete()
 {
     Unit *next = id_lookup[lookup_id % UNIT_ID_LOOKUP_SIZE];
@@ -1794,7 +1811,7 @@ void Unit::UpdateStrength()
     }
 }
 
-bool Unit::CanLoadUnit(Unit *unit) const
+bool Unit::CanLoadUnit(const Unit *unit) const
 {
     if (~flags & UnitStatus::Completed || IsDisabled() || (unit->flags & UnitStatus::Burrowed) || (player != unit->player))
         return false;
@@ -4238,7 +4255,7 @@ void Unit::Order_HarvestMinerals(ProgressUnitResults *results)
     }
 }
 
-void Unit::DeleteSpecificOrder(int order_id)
+void Unit::DeleteSpecificOrder(uint8_t order_id)
 {
     for (Order *order : order_queue_begin)
     {

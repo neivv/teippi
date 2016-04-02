@@ -342,6 +342,9 @@
     <ClInclude Include="src\order.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="src\patch_hook.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
     <ClInclude Include="src\patchmanager.h">
       <Filter>Headers</Filter>
     </ClInclude>

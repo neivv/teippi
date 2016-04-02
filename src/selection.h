@@ -14,13 +14,11 @@ void Command_Select(const uint8_t *buf);
 void Command_SelectionAdd(const uint8_t *buf);
 void Command_SelectionRemove(const uint8_t *buf);
 
-void StatusScreenButton();
-
 void SendChangeSelectionCommand(int count, Unit **units);
 void CenterOnSelectionGroup(uint8_t group_id);
 void SelectHotkeyGroup(uint8_t group_id);
 void Command_SaveHotkeyGroup(int group, bool shift_add);
-void Command_LoadHotkeyGroup(int group_id);
+void Command_LoadHotkeyGroup(uint8_t group_id);
 int TrySelectRecentHotkeyGroup(Unit *unit);
 void StatusScreenButton(Control *clicked_button);
 

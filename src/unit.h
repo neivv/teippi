@@ -430,6 +430,9 @@ class Unit
         Unit();
         ~Unit() { if (unit_id == Pylon) { pylon.aura.~unique_ptr<Sprite>(); } }
 
+        // Bw hook, does also some initialization...
+        static Unit *AllocateAndInit(uint8_t player, int unused_seed, uint16_t x, uint16_t y, uint16_t unit_id);
+
         static std::pair<int, Unit *> SaveAllocate(uint8_t *in, uint32_t size, DummyListHead<Unit, Unit::offset_of_allocated> *list_head, uint32_t *out_id);
 
         Unit *&next() { return list.next; }
@@ -539,7 +542,7 @@ class Unit
 
         int GetUsedSpace() const;
         bool HasLoadedUnits() const { return first_loaded; }
-        bool CanLoadUnit(Unit *unit) const;
+        bool CanLoadUnit(const Unit *unit) const;
         void LoadUnit(Unit *unit);
         bool UnloadUnit(Unit *unit);
 
@@ -557,7 +560,7 @@ class Unit
 
         void IssueSecondaryOrder(int order_id);
         void DeleteOrder(Order *order);
-        void DeleteSpecificOrder(int order_id);
+        void DeleteSpecificOrder(uint8_t order_id);
         bool IsTransport() const;
 
         bool IsEnemy(const Unit *other) const;

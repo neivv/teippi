@@ -62,8 +62,8 @@ void ProgressTriggers();
 
 struct FindUnitLocationParam;
 struct ChangeInvincibilityParam;
-int __fastcall FindUnitInLocation_Check(Unit *unit, FindUnitLocationParam *param);
-int __fastcall ChangeInvincibility(Unit *unit, ChangeInvincibilityParam *param);
+int FindUnitInLocation_Check(Unit *unit, FindUnitLocationParam *param);
+int ChangeInvincibility(Unit *unit, ChangeInvincibilityParam *param);
 
 int Trig_KillUnitGeneric(Unit *unit, KillUnitArgs *args, bool check_height, bool killing_additional_unit);
 

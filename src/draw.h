@@ -34,8 +34,10 @@ struct DrawLayer
 #pragma pack(pop)
 
 void DrawScreen();
-void PatchDraw(Common::PatchContext *patch);
 void AddDrawHook(void (*func)(uint8_t *, xuint, yuint), int priority);
+
+int SDrawLockSurface_Hook(int surface_id, Rect32 *a2, uint8_t **surface, int *width, int unused);
+int SDrawUnlockSurface_Hook(int surface_id, uint8_t *surface, int a3, int a4);
 
 void GenerateFog();
 

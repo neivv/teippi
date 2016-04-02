@@ -4,7 +4,6 @@
 
 #include "offsets.h"
 #include "game.h"
-#include "patchmanager.h"
 #include "limits.h"
 #include "player.h"
 #include "commands.h"
@@ -125,9 +124,8 @@ uint32_t LoadReplayData(const char *filename, uint32_t *error)
     return ret;
 }
 
-void LoadReplayMapDirEntry()
+void LoadReplayMapDirEntry(MapDirEntry *mde)
 {
-    REG_EAX(MapDirEntry *, mde);
     *bw::is_replay = 1;
     if (mde->fully_loaded)
         return;

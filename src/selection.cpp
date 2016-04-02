@@ -3,7 +3,6 @@
 #include "text.h"
 #include "unit.h"
 #include "sprite.h"
-#include "patchmanager.h"
 #include "resolution.h"
 #include "dialog.h"
 #include "targeting.h"
@@ -379,7 +378,7 @@ void SelectHotkeyGroup(uint8_t group_id)
     prev_group = group_id;
 }
 
-void Command_LoadHotkeyGroup(int group_id)
+void Command_LoadHotkeyGroup(uint8_t group_id)
 {
     int player = *bw::select_command_user;
     auto group = bw::selection_hotkeys[player][group_id];

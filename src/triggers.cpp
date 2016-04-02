@@ -83,7 +83,7 @@ static int FindUnitInLocation_Check_Main(Unit *unit, FindUnitLocationParam *para
     return unit->IsTriggerUnitId(param->unit_id);
 }
 
-int __fastcall FindUnitInLocation_Check(Unit *unit, FindUnitLocationParam *param)
+int FindUnitInLocation_Check(Unit *unit, FindUnitLocationParam *param)
 {
     if (param->location_flags && MatchesHeight(unit, param->location_flags)) // location height flags are reversed
         return 0;
@@ -122,7 +122,7 @@ static void ChangeInvincibility_Main(Unit *unit, ChangeInvincibilityParam *param
     }
 }
 
-int __fastcall ChangeInvincibility(Unit *unit, ChangeInvincibilityParam *param)
+int ChangeInvincibility(Unit *unit, ChangeInvincibilityParam *param)
 {
     if (param->location_flags && MatchesHeight(unit, param->location_flags)) // location height flags are reversed
         return 0;

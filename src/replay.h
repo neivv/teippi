@@ -4,7 +4,7 @@
 #include "types.h"
 
 uint32_t LoadReplayData(const char *filename, uint32_t *error);
-void LoadReplayMapDirEntry();
+void LoadReplayMapDirEntry(MapDirEntry *mde);
 void ProgressReplay();
 void SaveReplay(const char *name, bool overwrite);
 

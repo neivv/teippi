@@ -121,7 +121,6 @@ def build(bld):
         noexcept_defines += ['_HAS_EXCEPTIONS=0']
         cxxflags += ['/wd4624'] # Silence a seemingly incorrect warning in game.cpp
         cxxflags += ['/Zi', '/FS']
-        cxxflags += ['/GS-'] # Security cookies break the hooking system
         linkflags += ['/DEBUG']
         if not debug:
             linkflags += ['/OPT:REF', '/OPT:ICF']

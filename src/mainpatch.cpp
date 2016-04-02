@@ -24,7 +24,6 @@
 #include "scconsole.h"
 #include "bullet.h"
 #include "sprite.h"
-#include "building.h"
 #include "replay.h"
 #include "yms.h"
 #include "unit_cache.h"
@@ -214,15 +213,11 @@ void InitialPatch()
     RemoveLimits(&patch);
     patch.Patch(bw::RngSeedPatch, 0, 9, PATCH_NOP);
     patch.Patch(bw::RngSeedPatch, (void *)&GetRngSeed, 0, PATCH_CALLHOOK);
-    patch.JumpHook(bw::UpdateBuildingPlacementState, UpdateBuildingPlacementState);
 
     Common::PatchContext storm_patch = patch_mgr->BeginPatch("storm", bw::base::storm);
     bw::storm::base_diff = storm_patch.GetDiff();
     // #117 is SNetInitializeProvider
     storm_patch.Patch((void *)GetProcAddress(GetModuleHandle("storm"), (char *)117), (void *)&VersionCheckGuard, 0, PATCH_JMPHOOK);
-
-    if (UseConsole)
-        patch.JumpHook(bw::GenerateFog, GenerateFog);
 
     bullet_system = new BulletSystem;
     lone_sprites = new LoneSpriteSystem;

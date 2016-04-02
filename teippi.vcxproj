@@ -117,6 +117,7 @@
     <ClInclude Include="src\offsets.h" />
     <ClInclude Include="src\offsets_hooks.h" />
     <ClInclude Include="src\order.h" />
+    <ClInclude Include="src\patch_hook.h" />
     <ClInclude Include="src\patchmanager.h" />
     <ClInclude Include="src\pathing.h" />
     <ClInclude Include="src\perfclock.h" />

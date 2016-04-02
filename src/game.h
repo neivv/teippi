@@ -6,7 +6,7 @@
 int ProgressFrames();
 void ProgressObjects();
 void GameEnd();
-void BriefingOk(Dialog *dlg, bool leave);
+void BriefingOk(Dialog *dlg, int leave);
 
 struct DoWeaponDamageData
 {

@@ -774,7 +774,7 @@ void __fastcall DrawNormal_Flipped(int x, int y, GrpFrameHeader *frame_header, R
     });
 }
 
-void __fastcall DrawUncloakedPart_NonFlipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, int state)
+void DrawUncloakedPart_NonFlipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, int state)
 {
     uint8_t *remap = (uint8_t *)bw::default_grp_remap.raw_pointer();
     Render_NonFlipped(x, y, frame_header, rect, [&](uint8_t *in, uint8_t *out) {
@@ -784,7 +784,7 @@ void __fastcall DrawUncloakedPart_NonFlipped(int x, int y, GrpFrameHeader *frame
     });
 }
 
-void __fastcall DrawUncloakedPart_Flipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, int state)
+void DrawUncloakedPart_Flipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, int state)
 {
     uint8_t *remap = (uint8_t *)bw::default_grp_remap.raw_pointer();
     Render_Flipped(x, y, frame_header, rect, [&](uint8_t *in, uint8_t *out) {
@@ -794,7 +794,7 @@ void __fastcall DrawUncloakedPart_Flipped(int x, int y, GrpFrameHeader *frame_he
     });
 }
 
-void __fastcall DrawCloaked_NonFlipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *unused)
+void DrawCloaked_NonFlipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *unused)
 {
     uint8_t *remap = (uint8_t *)bw::cloak_remap_palette.raw_pointer();
     uint8_t *surface = (*bw::current_canvas)->image;
@@ -808,7 +808,7 @@ void __fastcall DrawCloaked_NonFlipped(int x, int y, GrpFrameHeader *frame_heade
     });
 }
 
-void __fastcall DrawCloaked_Flipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *unused)
+void DrawCloaked_Flipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, void *unused)
 {
     uint8_t *remap = (uint8_t *)bw::cloak_remap_palette.raw_pointer();
     uint8_t *surface = (*bw::current_canvas)->image;

@@ -233,6 +233,7 @@ namespace bw
     const offset<uint8_t> is_multiplayer = 0x0057F0B4;
     const offset<uint8_t> team_game = 0x00596875;
     const offset<uint32_t> last_error = 0x0066FF60;
+    const offset<uint16_t> error_message = 0x0059CCA0;
 
     const offset<uint32_t> is_replay = 0x006D0F14;
     const offset<uint32_t> replay_show_whole_map = 0x006D0F1C;

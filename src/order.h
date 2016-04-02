@@ -21,7 +21,7 @@ class Order
         static Order *RawAlloc() { return new Order(true); }
         ~Order() {}
 
-        static Order *Allocate(int order, uint32_t position_xy, Unit *target, int fow_unit_id);
+        static Order *Allocate(uint8_t order, uint32_t position_xy, Unit *target, uint16_t fow_unit_id);
         void SingleDelete();
 
         static void DeleteAll();

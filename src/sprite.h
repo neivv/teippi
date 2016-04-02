@@ -13,12 +13,10 @@
 void ShowRallyTarget(Unit *unit);
 void RefreshCursorMarker();
 void DrawCursorMarker();
-void ShowCursorMarker(int x, int y);
+void ShowCursorMarker(uint16_t x, uint16_t y);
 void DrawMinimapUnits();
 Sprite *ShowCommandResponse(int x, int y, Sprite *alternate);
-Sprite *__stdcall FindBlockingFowResource(int x_tile, int y_tile, int radius);
-
-extern "C" void __stdcall SetSpriteDirection(int direction);
+Sprite *FindBlockingFowResource(int x_tile, int y_tile, int radius);
 
 namespace SpriteFlags
 {
@@ -74,6 +72,9 @@ class Sprite
         /// Compatibility hack for a bw hook. Use Allocate() or LoneSpriteSystem::AllocateLone()
         /// instead.
         static Sprite *AllocateWithBasicIscript(int sprite_id, const Point &pos, int player);
+        static Sprite *AllocateWithBasicIscript_Hook(uint16_t sprite_id, uint16_t x, uint16_t y, uint8_t player) {
+            return AllocateWithBasicIscript(sprite_id, Point(x, y), player);
+        }
 
         Sprite *SpawnLoneSpriteAbove(int sprite_id);
         static Sprite *Spawn(Image *spawner, uint16_t sprite_id, const Point &pos, int elevation_level);

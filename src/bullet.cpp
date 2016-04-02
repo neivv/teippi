@@ -13,7 +13,6 @@
 #include "order.h"
 #include "player.h"
 #include "upgrade.h"
-#include "patchmanager.h"
 #include "ai.h"
 #include "log.h"
 #include "perfclock.h"
@@ -645,19 +644,6 @@ void DamageUnit(int damage, Unit *target, vector<Unit *> *killed_units)
     {
         UnitKilled(target, nullptr, -1, killed_units);
     }
-}
-
-void __stdcall DamageUnit_Hook(Unit *attacker, int attacking_player, bool show_attacker)
-{
-    REG_EAX(int, damage);
-    REG_ECX(Unit *, target);
-    // Can't do UnitWasHit here, so warn
-    if (attacker)
-        Warning("DamageUnit hooked");
-    vector<Unit *> killed_units;
-    DamageUnit(damage, target, &killed_units);
-    for (Unit *unit : killed_units)
-        unit->Kill(nullptr);
 }
 
 void HallucinationHit(Unit *target, Unit *attacker, int direction, vector<tuple<Unit *, Unit *>> *unit_was_hit)

@@ -5,7 +5,6 @@
 #include <ctime>
 
 #include "offsets.h"
-#include "patchmanager.h"
 #include "yms.h"
 #include "selection.h"
 #include "targeting.h"

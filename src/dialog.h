@@ -101,9 +101,9 @@ class Dialog : public Control
 #pragma pack(pop)
 
 void TransportStatus_UpdateDrawnValues();
-void DrawStatusScreen_LoadedUnits();
+void DrawStatusScreen_LoadedUnits(Dialog *dlg);
 int TransportStatus_DoesNeedRedraw();
-void StatusScreen_DrawKills();
+void StatusScreen_DrawKills(Dialog *dlg);
 
 
 #endif // DIALOG_H

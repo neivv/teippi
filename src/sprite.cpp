@@ -6,7 +6,6 @@
 #include "offsets.h"
 #include "unit.h"
 #include "image.h"
-#include "patchmanager.h"
 #include "lofile.h"
 #include "limits.h"
 #include "game.h"
@@ -694,7 +693,7 @@ void Sprite::SetIscriptAnimation_Lone(int anim, bool force, Rng *rng, const char
     SpriteIscriptContext(this, MainRng(), caller, false).SetIscriptAnimation(anim, force);
 }
 
-void ShowCursorMarker(int x, int y)
+void ShowCursorMarker(uint16_t x, uint16_t y)
 {
     Sprite *marker = *bw::cursor_marker;
     MoveSprite(marker, x, y);
@@ -713,12 +712,6 @@ void ShowRallyTarget(Unit *unit)
         else
             ShowCursorMarker(x, y);
     }
-}
-
-void ShowRallyTarget_Hook()
-{
-    REG_EAX(Unit *, unit);
-    ShowRallyTarget(unit);
 }
 
 Sprite *ShowCommandResponse(int x, int y, Sprite *alternate)
@@ -769,13 +762,7 @@ void Sprite::SetDirection256(int direction)
     }
 }
 
-extern "C" void __stdcall SetSpriteDirection(int direction)
-{
-    REG_EAX(Sprite *, sprite);
-    sprite->SetDirection32(direction);
-}
-
-Sprite *__stdcall FindBlockingFowResource(int x_tile, int y_tile, int radius)
+Sprite *FindBlockingFowResource(int x_tile, int y_tile, int radius)
 {
     for (ptr<Sprite> &fow : lone_sprites->fow_sprites)
     {

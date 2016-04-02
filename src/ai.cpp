@@ -167,7 +167,7 @@ bool UpdateAttackTarget(Unit *unit, bool accept_if_sieged, bool accept_critters,
     return true;
 }
 
-Script::Script(uint32_t player_, uint32_t pos_, bool bwscript, Rect32 *area_) : pos(pos_), player(player_)
+Script::Script(uint32_t player_, uint32_t pos_, bool bwscript, const Rect32 *area_) : pos(pos_), player(player_)
 {
     flags = bwscript ? 0x1 : 0x0;
     list.Add(*bw::first_active_ai_script);
@@ -190,12 +190,6 @@ Script::Script(uint32_t player_, uint32_t pos_, bool bwscript, Rect32 *area_) : 
 Script::~Script()
 {
     list.Remove(*bw::first_active_ai_script);
-}
-
-Script *__stdcall CreateScript(uint32_t player, uint32_t pos, bool bwscript)
-{
-    REG_ESI(Rect32 *, area);
-    return new Script(player, pos, bwscript, area);
 }
 
 void ProgressScripts()
@@ -236,7 +230,7 @@ void RemoveTownGasReferences(Unit *unit)
     }
 }
 
-void __fastcall RemoveUnitAi(Unit *unit, bool unk)
+void RemoveUnitAi(Unit *unit, bool unk)
 {
     // If ai is not guard, it will be deleted by following funcs
     bool is_guard = unit->ai && unit->ai->type == 1;
@@ -268,15 +262,8 @@ GuardAi *CreateGuardAi(int player, Unit *unit, int unit_id, Point pos)
     return ai;
 }
 
-void __stdcall PreCreateGuardAi(int unit_id, int x)
+void PreCreateGuardAi(uint8_t player, uint16_t unit_id, uint16_t x, uint16_t y)
 {
-    REG_EDI(int, y);
-    REG_ESI(int, player);
-    y &= 0xffff;
-    x &= 0xffff;
-    player &= 0xff;
-    unit_id &= 0xffff;
-
     GuardAi *ai = CreateGuardAi(player, 0, unit_id, Point(x, y));
     ai->list.Add(needed_guards[player]);
 }
@@ -309,7 +296,7 @@ void AddGuardAiToUnit(Unit *unit)
     ai->list.Add(bw::first_guard_ai[unit->player]);
 }
 
-void __stdcall UpdateGuardNeeds(int player)
+void UpdateGuardNeeds(int player)
 {
     GuardAi *ai = bw::first_guard_ai[player];
     GuardAi *next;
@@ -402,13 +389,6 @@ void DeleteGuardNeeds(int player)
         delete ai;
     }
     needed_guards[player] = 0;
-}
-
-void Hook_DeleteGuardNeeds()
-{
-    REG_ESI(int, player);
-    player &= 0xff;
-    DeleteGuardNeeds(player);
 }
 
 WorkerAi::WorkerAi()
@@ -529,25 +509,14 @@ void AddUnitAi(Unit *unit, Town *town)
     }
 }
 
-void AddUnitAi_Hook()
+void DeleteWorkerAi(WorkerAi *ai, DataList<WorkerAi> *first_ai)
 {
-    REG_EBX(Unit *, unit);
-    REG_EDI(Town *, town);
-    AddUnitAi(unit, town);
-}
-
-void DeleteWorkerAi()
-{
-    REG_EAX(WorkerAi *, ai);
-    REG_EDX(DataList<WorkerAi> *, first_ai);
     ai->list.Remove(*first_ai);
     delete ai;
 }
 
-void DeleteBuildingAi()
+void DeleteBuildingAi(BuildingAi *ai, DataList<BuildingAi> *first_ai)
 {
-    REG_EAX(BuildingAi *, ai);
-    REG_EDX(DataList<BuildingAi> *, first_ai);
     ai->list.Remove(*first_ai);
     delete ai;
 }
@@ -560,13 +529,6 @@ void DeleteMilitaryAi(MilitaryAi *ai, Region *region)
     ai->list.Remove(region->military);
     ai->parent->ai = nullptr;
     delete ai;
-}
-
-void Hook_DeleteMilitaryAi()
-{
-    REG_EAX(MilitaryAi *, ai);
-    REG_EDX(Region *, region);
-    DeleteMilitaryAi(ai, region);
 }
 
 void AddMilitaryAi(Unit *unit, Region *region, bool always_use_this_region)
@@ -591,13 +553,6 @@ void AddMilitaryAi(Unit *unit, Region *region, bool always_use_this_region)
         Ai_UpdateSlowestUnitInRegion(region);
 }
 
-void __stdcall Hook_AddMilitaryAi(bool always_use_this_region)
-{
-    REG_EBX(Unit *, unit);
-    REG_EAX(Region *, region);
-    AddMilitaryAi(unit, region, always_use_this_region);
-}
-
 void UnitAi::Delete()
 {
     switch (type)
@@ -618,14 +573,9 @@ void UnitAi::Delete()
     }
 }
 
-Town *__stdcall CreateTown(int x, int y)
+Town *CreateTown(uint8_t player, uint16_t x, uint16_t y)
 {
-    REG_EBX(int, player);
-    player &= 0xff;
-    x &= 0xffff;
-    y &= 0xffff;
     Town *town = new Town;
-
     memset(town, 0, sizeof(Town));
 
     town->list.Add(bw::active_ai_towns[player]);
@@ -789,10 +739,8 @@ void SetSuicideTarget(Unit *unit)
     RemoveUnitAi(unit, false);
 }
 
-void SetFinishedUnitAi()
+void SetFinishedUnitAi(Unit *unit, Unit *parent)
 {
-    REG_EAX(Unit *, unit);
-    REG_ECX(Unit *, parent);
     if (unit->unit_id == Unit::Guardian || unit->unit_id == Unit::Devourer)
         return;
 
@@ -852,9 +800,8 @@ void SetFinishedUnitAi()
     }
 }
 
-int __stdcall AddToRegionMilitary(int unit_id, int unkx6)
+int AddToRegionMilitary(Region *region, int unit_id, int unkx6)
 {
-    REG_EAX(Region *, region);
     int player = region->player;
     Region *other = bw::player_ai_regions[player] + region->target_region_id;
     Pathing::Region *pathreg = (*bw::pathing)->regions + region->region_id;
@@ -892,11 +839,8 @@ int __stdcall AddToRegionMilitary(int unit_id, int unkx6)
     return 1;
 }
 
-bool __stdcall DoesNeedGuardAi(int unit_id)
+int DoesNeedGuardAi(int player, int unit_id)
 {
-    REG_EBX(int, player);
-    player &= 0xff;
-    unit_id &= 0xffff;
     for (GuardAi *ai = needed_guards[player]; ai; ai = ai->list.next)
     {
         if (ai->unit_id != unit_id)
@@ -909,12 +853,8 @@ bool __stdcall DoesNeedGuardAi(int unit_id)
     return false;
 }
 
-void ForceGuardAiRefresh()
+void ForceGuardAiRefresh(uint8_t player, uint16_t unit_id)
 {
-    REG_EAX(int, player);
-    REG_EDX(int, unit_id);
-    player &= 0xff;
-    unit_id &= 0xffff;
     for (GuardAi *ai = needed_guards[player]; ai; ai = ai->list.next)
     {
         if (!ai->previous_update)
@@ -1034,7 +974,7 @@ static bool IsAtBuildLimit(int player, int unit_id)
     return count >= limit;
 }
 
-int __stdcall SpendReq_TrainUnit(int player, Unit *unit, bool no_retry)
+int SpendReq_TrainUnit(int player, Unit *unit, int no_retry)
 {
     SpendingRequest *req = bw::player_ai[player].requests;
     Unit *parent = unit;
@@ -1132,10 +1072,8 @@ int __stdcall SpendReq_TrainUnit(int player, Unit *unit, bool no_retry)
     }
 }
 
-void __stdcall SuicideMission(int player)
+void SuicideMission(int player, uint8_t random)
 {
-    REG_EAX(int, random);
-    random &= 0xff;
     if (random)
     {
         for (Unit *unit : bw::first_player_unit[player])
@@ -1187,10 +1125,8 @@ void __stdcall SuicideMission(int player)
     }
 }
 
-void AiScript_SwitchRescue()
+void AiScript_SwitchRescue(uint8_t player)
 {
-    REG_EDX(int, player);
-    player &= 0xff;
     bw::players[player].type = 3;
     for (unsigned i = 0; i < Limits::Players; i++)
     {
@@ -1215,10 +1151,8 @@ void AiScript_SwitchRescue()
     }
 }
 
-static void __stdcall AiScript_MoveDt(int x, int y)
+static void AiScript_MoveDt(uint8_t player, int x, int y)
 {
-    REG_EAX(int, player);
-    player &= 0xff;
     for (Unit *unit : bw::first_player_unit[player])
     {
         if (!unit->sprite || unit->order == Order::Die)
@@ -1229,23 +1163,6 @@ static void __stdcall AiScript_MoveDt(int x, int y)
             RemoveUnitAi(unit, false);
         AddMilitaryAi(unit, GetAiRegion(unit), true);
     }
-}
-
-static void AiScript_Stop()
-{
-    REG_EAX(Script *, script);
-    delete script;
-}
-
-extern "C" void __stdcall AiScript_InvalidOpcode(Script * script)
-{
-    delete script;
-}
-
-static void MedicRemoveHook()
-{
-    REG_EAX(Unit *, medic);
-    MedicRemove(medic);
 }
 
 static int RemoveWorkerOrBuildingAi(Unit *unit, bool only_building)
@@ -1282,60 +1199,40 @@ static int RemoveWorkerOrBuildingAi(Unit *unit, bool only_building)
     return 1;
 }
 
-static int __stdcall RemoveWorkerOrBuildingAi_Hook(bool only_building)
-{
-    REG_EDI(Unit *, unit);
-    return RemoveWorkerOrBuildingAi(unit, only_building);
-}
-
-static void __stdcall AddGuardAiToUnit_Hook(Unit *unit)
-{
-    AddGuardAiToUnit(unit);
-}
-
-static void RemoveTownGasReferences_Hook()
-{
-    REG_ECX(Unit *, unit);
-    RemoveTownGasReferences(unit);
-}
-
 void RemoveLimits(Common::PatchContext *patch)
 {
-    patch->JumpHook(bw::CreateAiScript, CreateScript);
-    patch->JumpHook(bw::RemoveAiTownGasReferences, RemoveTownGasReferences_Hook);
-    patch->JumpHook(bw::DeleteWorkerAi, DeleteWorkerAi);
-    patch->JumpHook(bw::DeleteBuildingAi, DeleteBuildingAi);
-    patch->JumpHook(bw::AddUnitAi, AddUnitAi_Hook);
-    patch->JumpHook(bw::DeleteMilitaryAi, Hook_DeleteMilitaryAi);
-    patch->JumpHook(bw::CreateAiTown, CreateTown);
-    patch->JumpHook(bw::PreCreateGuardAi, PreCreateGuardAi);
-    patch->JumpHook(bw::AddGuardAiToUnit, AddGuardAiToUnit_Hook);
-    patch->JumpHook(bw::RemoveUnitAi, RemoveUnitAi);
-    patch->JumpHook(bw::RemoveWorkerOrBuildingAi, RemoveWorkerOrBuildingAi_Hook);
+    patch->Hook(bw::CreateAiScript, [](const Rect32 *area, uint8_t player, uint32_t pos, int is_bwscript) {
+        return new Script(player, pos, is_bwscript, area);
+    });
+    patch->Hook(bw::RemoveAiTownGasReferences, RemoveTownGasReferences);
+    patch->Hook(bw::DeleteWorkerAi, DeleteWorkerAi);
+    patch->Hook(bw::DeleteBuildingAi, DeleteBuildingAi);
+    patch->Hook(bw::AddUnitAi, AddUnitAi);
+    patch->Hook(bw::DeleteMilitaryAi, DeleteMilitaryAi);
+    patch->Hook(bw::CreateAiTown, CreateTown);
+    patch->Hook(bw::PreCreateGuardAi, PreCreateGuardAi);
+    patch->Hook(bw::AddGuardAiToUnit, AddGuardAiToUnit);
+    patch->Hook(bw::RemoveUnitAi, [](Unit *unit, int unk) { RemoveUnitAi(unit, unk); });
+    patch->Hook(bw::RemoveWorkerOrBuildingAi, [](Unit *a, int b) { return RemoveWorkerOrBuildingAi(a, b); });
 
-    patch->JumpHook(bw::Ai_DeleteGuardNeeds, Hook_DeleteGuardNeeds);
-    patch->JumpHook(bw::Ai_UpdateGuardNeeds, UpdateGuardNeeds);
-    patch->JumpHook(bw::Ai_SetFinishedUnitAi, SetFinishedUnitAi);
-    patch->JumpHook(bw::Ai_AddToRegionMilitary, AddToRegionMilitary);
-    patch->JumpHook(bw::DoesNeedGuardAi, DoesNeedGuardAi);
-    patch->JumpHook(bw::ForceGuardAiRefresh, ForceGuardAiRefresh);
-    patch->JumpHook(bw::AiSpendReq_TrainUnit, SpendReq_TrainUnit);
+    patch->Hook(bw::Ai_DeleteGuardNeeds, [](uint8_t player) { DeleteGuardNeeds(player); });
+    patch->Hook(bw::Ai_UpdateGuardNeeds, UpdateGuardNeeds);
+    patch->Hook(bw::Ai_SetFinishedUnitAi, SetFinishedUnitAi);
+    patch->Hook(bw::Ai_AddToRegionMilitary, AddToRegionMilitary);
+    patch->Hook(bw::DoesNeedGuardAi, [](uint8_t player, uint16_t unit_id) -> int {
+        return DoesNeedGuardAi(player, unit_id);
+    });
+    patch->Hook(bw::ForceGuardAiRefresh, ForceGuardAiRefresh);
+    patch->Hook(bw::AiSpendReq_TrainUnit, SpendReq_TrainUnit);
 
-    patch->JumpHook(bw::AiScript_MoveDt, AiScript_MoveDt);
-    patch->JumpHook(bw::AddMilitaryAi, Hook_AddMilitaryAi);
-    patch->JumpHook(bw::AiScript_InvalidOpcode, AiScript_InvalidOpcode);
-    patch->JumpHook(bw::AiScript_Stop, AiScript_Stop);
+    patch->Hook(bw::AiScript_MoveDt, AiScript_MoveDt);
+    patch->Hook(bw::AddMilitaryAi, [](Unit *a, Region *b, int c) { AddMilitaryAi(a, b, c); });
+    patch->Hook(bw::AiScript_InvalidOpcode, [](Script *script) { delete script; });
+    patch->Hook(bw::AiScript_Stop, [](Script *script) { delete script; });
 
-    patch->JumpHook(bw::Ai_SuicideMission, SuicideMission);
-    patch->JumpHook(bw::MedicRemove, MedicRemoveHook);
-    patch->JumpHook(bw::AiScript_SwitchRescue, AiScript_SwitchRescue);
-
-    unsigned char patch1[] = { 0x56 };
-    unsigned char patch2[] = { 0xeb, 0xef };
-    patch->Patch(bw::AiScript_InvalidOpcode, patch1, 1, PATCH_REPLACE);
-    patch->Patch((uint8_t *)(bw::AiScript_InvalidOpcode.raw_pointer()) + 1, patch2, 5, PATCH_NOP);
-    patch->Patch((uint8_t *)(bw::AiScript_InvalidOpcode.raw_pointer()) + 1, (void *)&AiScript_InvalidOpcode, 5, PATCH_CALLHOOK);
-    patch->Patch((uint8_t *)(bw::AiScript_InvalidOpcode.raw_pointer()) + 6, patch2, 2, PATCH_REPLACE);
+    patch->Hook(bw::Ai_SuicideMission, SuicideMission);
+    patch->Hook(bw::MedicRemove, MedicRemove);
+    patch->Hook(bw::AiScript_SwitchRescue, AiScript_SwitchRescue);
 }
 
 bool ShouldCancelDamaged(const Unit *unit)

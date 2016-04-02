@@ -17,6 +17,7 @@ namespace GluAll
 
 namespace NetworkString
 {
+    const int UnableToCreateUnit = 0x3e;
     const int SaveDialogMsg = 0x6d;
 }
 

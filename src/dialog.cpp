@@ -1,7 +1,6 @@
 #include "dialog.h"
 #include "offsets.h"
 #include "unit.h"
-#include "patchmanager.h"
 #include "strings.h"
 #include <stdio.h>
 #include <vector>
@@ -43,10 +42,8 @@ int TransportStatus_DoesNeedRedraw()
     return GenericStatus_DoesNeedRedraw();
 }
 
-void DrawStatusScreen_LoadedUnits()
+void DrawStatusScreen_LoadedUnits(Dialog *dlg)
 {
-    REG_EAX(Dialog *, dlg);
-
     Unit *transport = *bw::primary_selected;
     Control *first_button = dlg->FindChild(StatusScreen::TransportLargeUnit);
     Control *large_unit_button, *medium_unit_button, *small_unit_button;
@@ -122,9 +119,8 @@ void DrawStatusScreen_LoadedUnits()
 
 static char ss_kills[0x20];
 
-void StatusScreen_DrawKills()
+void StatusScreen_DrawKills(Dialog *dlg)
 {
-    REG_EBX(Dialog *, dlg);
     Unit *unit = *bw::primary_selected;
     int unit_id = unit->unit_id;
     if (unit_id == Unit::Scourge || unit_id == Unit::InfestedTerran || unit->IsKnownHallucination() || (!unit->HasWayOfAttacking() && !unit->kills))

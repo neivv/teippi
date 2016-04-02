@@ -462,7 +462,7 @@ void GameEnd()
     *bw::gameid = 0;
 }
 
-void BriefingOk(Dialog *dlg, bool leave)
+void BriefingOk(Dialog *dlg, int leave)
 {
     dlg->val = nullptr; // No clue what this clears
     Ctrl_LeftUp(dlg->FindChild(0xd));

@@ -1,8 +1,6 @@
 #include "draw.h"
 
-#include "offsets_hooks.h"
 #include "offsets.h"
-#include "patchmanager.h"
 #include "memory.h"
 #include <vector>
 #include "game.h"
@@ -125,7 +123,7 @@ void DrawScreen()
     }
 }
 
-int __stdcall SDrawLockSurface_Hook(int surface_id, Rect32 *a2, uint8_t **surface, int *width, int unused)
+int SDrawLockSurface_Hook(int surface_id, Rect32 *a2, uint8_t **surface, int *width, int unused)
 {
     if (surface_id == 0)
     {
@@ -139,7 +137,7 @@ int __stdcall SDrawLockSurface_Hook(int surface_id, Rect32 *a2, uint8_t **surfac
     }
 }
 
-int __stdcall SDrawUnlockSurface_Hook(int surface_id, uint8_t *surface, int a3, int a4)
+int SDrawUnlockSurface_Hook(int surface_id, uint8_t *surface, int a3, int a4)
 {
     if (surface == fake_screenbuf)
         return 1;
@@ -235,13 +233,4 @@ void AddDrawHook(void (*func)(uint8_t *, xuint, yuint), int priority)
     drawhook hook(func, priority);
     auto it = lower_bound(draw_hooks.begin(), draw_hooks.end(), hook);
     draw_hooks.insert(it, hook);
-}
-
-
-void PatchDraw(Common::PatchContext *patch)
-{
-    patch->JumpHook(bw::SDrawLockSurface, SDrawLockSurface_Hook);
-    patch->JumpHook(bw::SDrawUnlockSurface, SDrawUnlockSurface_Hook);
-
-    patch->JumpHook(bw::DrawScreen, DrawScreen);
 }

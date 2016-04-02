@@ -9,7 +9,7 @@ Order::Order()
     allocated.Add(first_allocated_order);
 }
 
-Order *Order::Allocate(int order_id, uint32_t position_xy, Unit *target, int fow_unit_id)
+Order *Order::Allocate(uint8_t order_id, uint32_t position_xy, Unit *target, uint16_t fow_unit_id)
 {
     Order *order;
     order = new Order;
