@@ -112,7 +112,6 @@ namespace bw
 
     const hook_offset GetEmptyImage = 0x004D4E30;
     const hook_offset DeleteImage = 0x004D4CE0;
-    const hook_offset IscriptEndRetn = 0x004D7BD2;
     const hook_offset CreateSprite = 0x004990F0;
     const hook_offset ProgressSpriteFrame = 0x00497920;
     const hook_offset DeleteSprite = 0x00497B40;

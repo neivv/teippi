@@ -887,7 +887,6 @@ void RemoveLimits(Common::PatchContext *patch)
 
     patch->JumpHook(bw::GetEmptyImage, AllocateImage);
     patch->JumpHook(bw::DeleteImage, DeleteImage);
-    patch->Patch(bw::IscriptEndRetn, (uint8_t *)bw::IscriptEndRetn.raw_pointer() + 0xe, 0, PATCH_JMPHOOK);
 
     patch->JumpHook(bw::CreateSprite, CreateSprite);
     patch->JumpHook(bw::ProgressSpriteFrame, ProgressSpriteFrame);
