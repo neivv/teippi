@@ -580,7 +580,9 @@ void Unit::Order_Hallucination(ProgressUnitResults *results)
     for (int i = 0; i < Spell::HallucinationCount; i++)
     {
         Unit *hallu = Hallucinate(player, target);
-        Assert(hallu);
+        if (hallu == nullptr) {
+            break;
+        }
         if (PlaceHallucination(hallu) == 0)
         {
             hallu->Remove(results);
