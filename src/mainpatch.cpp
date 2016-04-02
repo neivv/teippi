@@ -207,8 +207,8 @@ void InitialPatch()
     patch_mgr = new Common::PatchManager;
     Common::PatchContext patch = patch_mgr->BeginPatch(nullptr, bw::base::starcraft);
 
-    patch.Patch(bw::WinMain, (void *)&WinMainPatch, 0, PATCH_HOOKBEFORE | PATCH_CALLHOOK);
-    patch.Patch(bw::WindowCreated, (void *)&WindowCreatedPatch, 0, PATCH_HOOKBEFORE | PATCH_SAFECALLHOOK);
+    patch.CallHook(bw::WinMain, WinMainPatch);
+    patch.CallHook(bw::WindowCreated, WindowCreatedPatch);
 
     RemoveLimits(&patch);
     patch.Patch(bw::RngSeedPatch, 0, 9, PATCH_NOP);

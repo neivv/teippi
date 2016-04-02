@@ -61,6 +61,12 @@ class PatchContext
         template <typename Hook>
         void Hook(const Hook &hook, typename Hook::MemberFnTarget target);
 
+        template <typename Hook>
+        void CallHook(const Hook &hook, typename Hook::Target target);
+
+        template <typename Hook>
+        void CallHook(const Hook &hook, typename Hook::MemberFnTarget target);
+
     private:
         PatchContext(PatchManager *parent, const char *module_name, uint32_t expected_base);
 
@@ -97,9 +103,9 @@ void PatchContext::Hook(const HookType &hook, typename HookType::Target target) 
     uint8_t *address = (uint8_t *)(hook.address + diff);
     struct Patch patch(address, PATCH_HOOK);
     patch.length = 5;
-    auto wrapper_length = hook.WrapperLength();
+    auto wrapper_length = hook.WrapperLength(false);
     uint8_t *wrapper = (uint8_t *)parent->AllocExecMem(wrapper_length + patch.length);
-    auto written_length = hook.WriteConversionWrapper(target, wrapper, wrapper_length);
+    auto written_length = hook.WriteConversionWrapper(target, wrapper, wrapper_length, false);
     Assert(written_length == wrapper_length);
     patch.previous_data = wrapper + wrapper_length;
     memcpy(patch.previous_data, address, patch.length);
@@ -119,16 +125,52 @@ void PatchContext::Hook(const HookType &hook, typename HookType::MemberFnTarget 
     uint8_t *address = (uint8_t *)(hook.address + diff);
     struct Patch patch(address, PATCH_HOOK);
     patch.length = 5;
-    auto wrapper_length = hook.MemFnWrapperLength();
+    auto wrapper_length = hook.MemFnWrapperLength(false);
     auto member_fn_size = sizeof(typename HookType::MemberFnTarget);
     uint8_t *wrapper = (uint8_t *)parent->AllocExecMem(wrapper_length + patch.length + member_fn_size);
     auto member_fn_addr = (typename HookType::MemberFnTarget *)(wrapper + wrapper_length + patch.length);
     memcpy(member_fn_addr, &target, member_fn_size);
-    auto written_length = hook.WriteMemFnWrapper(member_fn_addr, wrapper, wrapper_length);
+    auto written_length = hook.WriteMemFnWrapper(member_fn_addr, wrapper, wrapper_length, false);
     Assert(written_length == wrapper_length);
     patch.previous_data = wrapper + wrapper_length;
     memcpy(patch.previous_data, address, patch.length);
     hook::WriteJump(address, 5, wrapper);
+    parent->patches.push_back(patch);
+}
+
+/// A hook that doesn't replace anything.
+template <typename HookType>
+void PatchContext::CallHook(const HookType &hook, typename HookType::Target target) {
+    uint8_t *address = (uint8_t *)(hook.address + diff);
+    struct Patch patch(address, PATCH_HOOK);
+    patch.length = CountInstructionLength(address, 5);
+    auto wrapper_length = hook.WrapperLength(true);
+    uint8_t *wrapper = (uint8_t *)parent->AllocExecMem(wrapper_length + patch.length + 5);
+    auto written_length = hook.WriteConversionWrapper(target, wrapper, wrapper_length, true);
+    Assert(written_length == wrapper_length);
+    patch.previous_data = wrapper + wrapper_length;
+    CopyInstructions(patch.previous_data, address, patch.length);
+    hook::WriteJump(address, 5, wrapper);
+    hook::WriteJump(patch.previous_data + patch.length, 5, address + patch.length);
+    parent->patches.push_back(patch);
+}
+
+template <typename HookType>
+void PatchContext::CallHook(const HookType &hook, typename HookType::MemberFnTarget target) {
+    uint8_t *address = (uint8_t *)(hook.address + diff);
+    struct Patch patch(address, PATCH_HOOK);
+    patch.length = CountInstructionLength(address, 5);
+    auto wrapper_length = hook.MemFnWrapperLength(true);
+    auto member_fn_size = sizeof(typename HookType::MemberFnTarget);
+    uint8_t *wrapper = (uint8_t *)parent->AllocExecMem(wrapper_length + patch.length + 5 + member_fn_size);
+    auto member_fn_addr = (typename HookType::MemberFnTarget *)(wrapper + wrapper_length + patch.length + 5);
+    memcpy(member_fn_addr, &target, member_fn_size);
+    auto written_length = hook.WriteMemFnWrapper(member_fn_addr, wrapper, wrapper_length, true);
+    Assert(written_length == wrapper_length);
+    patch.previous_data = wrapper + wrapper_length;
+    memcpy(patch.previous_data, address, patch.length);
+    hook::WriteJump(address, 5, wrapper);
+    hook::WriteJump(patch.previous_data + patch.length, 5, address + patch.length);
     parent->patches.push_back(patch);
 }
 

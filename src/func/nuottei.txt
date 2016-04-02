@@ -668,6 +668,8 @@
 0049F380 = InitUnitSystem()
 00493360 = InitPylonSystem()
 
+004D2E80 = LoadDat(), eax void *out, arg 1 const char *filename
+
 004DEF80 = GetReplayPath(), arg 1 const char *base_name, eax void *out, esi max_len
 004CE1C0 = bool WriteReplayData(), esi ReplayData *data, edi File *file
 004CC6E0 = void *ReadChk(), arg 1 dword *out_filesize, eax char *map_path

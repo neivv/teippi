@@ -712,7 +712,8 @@ class Unit
         void ProgressSpellTimers(ProgressUnitResults *results);
         void DoIrradiateDamage(ProgressUnitResults *results);
 
-        static Unit ** const id_lookup;
+        static const int UNIT_ID_LOOKUP_SIZE = 0x2000;
+        static Unit *id_lookup[UNIT_ID_LOOKUP_SIZE];
         static vector<Unit *>temp_flagged;
 
         // Returns all attackers with which UnitWasHit has to be called

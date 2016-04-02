@@ -105,11 +105,6 @@ Unit *FindNearestUnit(Rect16 *area, Unit *a, uint16_t b, uint16_t c, int d, int 
     return unit_search->FindNearestUnit(a, Point(b, c), h, i, *area);
 }
 
-void ClearPositionSearch()
-{
-    unit_search->Clear();
-}
-
 void CancelZergBuilding(Unit *unit)
 {
     //Warning("Calling Unit::Kill with nullptr from CancelZergBuilding (Extractor)");
@@ -191,12 +186,6 @@ int DoesBuildingBlock(Unit *builder, int x_tile, int y_tile)
     if (crect.top >= (y_tile + 1) * 32 || crect.bottom <= y_tile * 32)
         return true;
     return false;
-}
-
-void InitPosSearch()
-{
-    // Won't be called when loading save tho
-    unit_search->Init();
 }
 
 class SimpleIscriptContext : public Iscript::Context
@@ -336,16 +325,6 @@ void CreateSimplePath_Hook(Unit *unit, uint32_t waypoint_xy, uint32_t end_xy)
     CreateSimplePath(unit, Point(waypoint_xy & 0xffff, waypoint_xy >> 16), Point(end_xy & 0xffff, end_xy >> 16));
 }
 
-static void InitUnitSystem_Hook()
-{
-    Unit::DeleteAll();
-}
-
-static void InitSpriteSystem_Hook()
-{
-    lone_sprites->DeleteAll();
-}
-
 static void ProgressMove_Hook(Flingy *flingy)
 {
     FlingyMoveResults unused;
@@ -449,15 +428,12 @@ void RemoveLimits(Common::PatchContext *patch)
 
     patch->Hook(bw::SetSpriteDirection, &Sprite::SetDirection32);
     patch->Hook(bw::FindBlockingFowResource, FindBlockingFowResource);
-
     patch->Hook(bw::DrawAllMinimapUnits, DrawMinimapUnits);
-
-    patch->Patch(bw::InitSprites_JmpSrc, bw::InitSprites_JmpDest, 0, PATCH_JMPHOOK);
     patch->Hook(bw::CreateBunkerShootOverlay, CreateBunkerShootOverlay);
 
     patch->Hook(bw::AllocateUnit, &Unit::AllocateAndInit);
-    patch->Patch(bw::InitUnitSystem, (void *)&InitUnitSystem_Hook, 0, PATCH_SAFECALLHOOK);
-    patch->Patch(bw::InitSpriteSystem, (void *)&InitSpriteSystem_Hook, 0, PATCH_SAFECALLHOOK);
+    patch->CallHook(bw::InitUnitSystem, []{ Unit::DeleteAll(); });
+    patch->Hook(bw::InitSpriteSystem, Sprite::InitSpriteSystem);
 
     patch->Hook(bw::CreateBullet,
             [](Unit *parent, int x, int y, uint8_t player, uint8_t direction, uint8_t weapon_id) {
@@ -474,7 +450,7 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->Hook(bw::DoUnitsCollide, [](const Unit *a, const Unit *b) { return unit_search->DoUnitsCollide(a, b); });
     patch->Hook(bw::CheckMovementCollision, CheckMovementCollision);
     patch->Hook(bw::FindUnitBordersRect, FindUnitBordersRect);
-    patch->Patch(bw::ClearPositionSearch, (void *)&ClearPositionSearch, 0, PATCH_SAFECALLHOOK);
+    patch->CallHook(bw::ClearPositionSearch, []{ unit_search->Clear(); });
 
     patch->Hook(bw::ChangeUnitPosition, [](Unit *unit, int x_diff, int y_diff) {
         unit_search->ChangeUnitPosition(unit, x_diff, y_diff);
@@ -483,9 +459,6 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->Hook(bw::GetNearbyBlockingUnits, [](PathingData *pd) { unit_search->GetNearbyBlockingUnits(pd); });
     patch->Hook(bw::RemoveFromPosSearch, [](Unit *unit) { unit_search->Remove(unit); });
     patch->Hook(bw::FindUnitsPoint, FindUnitsPoint);
-    uint8_t zero_unitsearch_asm[] = { 0x31, 0xc0, 0x90 };
-    patch->Patch(bw::ZeroOldPosSearch, &zero_unitsearch_asm, 3, PATCH_REPLACE);
-    patch->Patch((uint8_t *)bw::ZeroOldPosSearch.raw_pointer() + 0xf, &zero_unitsearch_asm, 3, PATCH_NOP);
 
     patch->Hook(bw::GetDodgingDirection, [](const Unit *self, const Unit *other) {
         return unit_search->GetDodgingDirection(self, other);
@@ -499,11 +472,12 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->Hook(bw::UnitToIndex, [](Unit *val) { return (uint32_t)val; });
     patch->Hook(bw::IndexToUnit, [](uint32_t val) { return (Unit *)val; });
 
-    patch->Patch(bw::MakeDrawnSpriteList_Call, 0, 5, PATCH_NOP);
-    patch->Patch(bw::PrepareDrawSprites, (void *)&Sprite::CreateDrawSpriteList, 0, PATCH_JMPHOOK);
-    patch->Patch(bw::FullRedraw, (void *)&Sprite::CreateDrawSpriteListFullRedraw, 0, PATCH_CALLHOOK);
+    patch->Hook(bw::MakeDrawnSpriteList, [] {});
+    patch->Hook(bw::PrepareDrawSprites, Sprite::CreateDrawSpriteList);
+    patch->CallHook(bw::FullRedraw, Sprite::CreateDrawSpriteListFullRedraw);
     patch->Hook(bw::DrawSprites, Sprite::DrawSprites);
-    patch->Patch(bw::DisableVisionSync, (uint8_t *)bw::DisableVisionSync.raw_pointer() + 12, 0, PATCH_JMPHOOK);
+    // Disabled as I can't be bothered to figure it out.
+    patch->Hook(bw::VisionSync, [](void *, int) { return 1; });
 
     patch->Hook(bw::RemoveUnitFromBulletTargets, RemoveFromBulletTargets);
     patch->Hook(bw::DamageUnit, DamageUnit_Hook);
@@ -538,7 +512,8 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->Hook(bw::Order_AttackMove_ReactToAttack, &Unit::Order_AttackMove_ReactToAttack);
     patch->Hook(bw::Order_AttackMove_TryPickTarget, &Unit::Order_AttackMove_TryPickTarget);
 
-    patch->Patch(bw::PathingInited, (void *)&InitPosSearch, 0, PATCH_SAFECALLHOOK);
+    // Won't be called when loading save though.
+    patch->CallHook(bw::PathingInited, [] { unit_search->Init(); });
 
     patch->Hook(bw::ProgressUnstackMovement, &Unit::ProgressUnstackMovement);
 
@@ -576,7 +551,7 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->Hook(bw::DeletePath, &Unit::DeletePath);
     patch->Hook(bw::DeletePath2, &Unit::DeletePath);
     patch->Hook(bw::CreateSimplePath, CreateSimplePath_Hook);
-    patch->Patch(bw::InitPathArray, (void *)0xc3, 1, PATCH_REPLACE_DWORD);
+    patch->Hook(bw::InitPathArray, [] {});
 
     patch->Hook(bw::StatusScreenButton, StatusScreenButton);
     patch->Hook(bw::LoadReplayMapDirEntry, LoadReplayMapDirEntry);

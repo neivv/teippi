@@ -927,3 +927,11 @@ void Sprite::IscriptToIdle(Iscript::Context *ctx)
     }
     SetIscriptAnimation(ctx, anim, true);
 }
+
+void Sprite::InitSpriteSystem()
+{
+    lone_sprites->DeleteAll();
+    LoadDat(&bw::sprites_dat[0][0], "arr\\sprites.dat");
+    std::fill(bw::horizontal_sprite_lines.begin(), bw::horizontal_sprite_lines.end(), nullptr);
+    std::fill(bw::horizontal_sprite_lines_rev.begin(), bw::horizontal_sprite_lines_rev.end(), nullptr);
+}

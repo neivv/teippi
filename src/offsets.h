@@ -415,7 +415,6 @@ namespace bw
     const array_offset<uint32_t, 0x4> position_search_results_offsets = 0x006BEE70;
     const offset<x32> unit_max_width = 0x006BEE68;
     const offset<y32> unit_max_height = 0x006BB930;
-    const offset<uint8_t> unit_positions_x = 0x0066FF78;
 
     const offset<uint8_t> units = 0x0059CCA8; // Repurposed
     const offset<x16u> screen_pos_x_tiles = 0x0057F1D0;
@@ -572,6 +571,8 @@ namespace bw
     const offset<uint32_t> nooks_and_crannies_error = 0x006D5BF8;
     const array_offset<char, 13, 218> chat_messages = 0x00640B60;
     const array_offset<uint8_t, 12> starting_player_types = 0x0057F1B4;
+
+    const array_offset<uint8_t, 0xc, 0x6> sprites_dat = 0x00513FB8;
 
     // Some kind of league thing? Most likely those 0xc00 bytes contain
     // other related data

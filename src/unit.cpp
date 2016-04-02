@@ -41,13 +41,11 @@ using std::min;
 
 EnemyUnitCache *enemy_unit_cache;
 
-// Unused static var abuse D:
-Unit ** const Unit::id_lookup = (Unit **)bw::unit_positions_x.raw_pointer();
 uint32_t Unit::next_id = 1;
 DummyListHead<Unit, Unit::offset_of_allocated> first_allocated_unit;
 DummyListHead<Unit, Unit::offset_of_allocated> first_movementstate_flyer;
 vector<Unit *> Unit::temp_flagged;
-const int UNIT_ID_LOOKUP_SIZE = 0x2000;
+Unit *Unit::id_lookup[UNIT_ID_LOOKUP_SIZE];
 
 bool late_unit_frames_in_progress = false;
 

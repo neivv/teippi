@@ -22,13 +22,16 @@ namespace hook {
     template <class C> struct Edi {};
 
     struct StackState {
-        constexpr StackState(int stack_args) : arg_pos(0), stack_diff(0), stack_arg_count(stack_args) { }
+        constexpr StackState(int stack_args)
+            : arg_pos(0), hook_stack_amt(0), stack_diff(0), stack_arg_count(stack_args) { }
         /// Incremented by 1 when a value is pushed from stack,
         /// so e.g. Stdcall<int(int, int, int)> behaves as
         /// Stdcall<int(Stack<0, int>, Stack<1, int>, Stack<2, int>)>
         int arg_pos;
         /// Incremented by 1 whenever a value is pushed to stack.
         /// (So it's for every argument)
+        int hook_stack_amt;
+        /// hook_stack_amt and a possible 8 for pushad
         int stack_diff;
         /// Total amount of stack args.
         const int stack_arg_count;
@@ -151,6 +154,7 @@ REG_IMPLS(Edi, 0x57)
             return false;
         int written2 = WriteArgument<C>::Write(stack_state, out + written, out_size - written);
         stack_state->stack_diff += 1;
+        stack_state->hook_stack_amt += 1;
         if (written2 < 0)
             return false;
         return written + written2;
@@ -167,6 +171,7 @@ REG_IMPLS(Edi, 0x57)
         int length = WriteArgumentsLength<Arguments...>(state);
         length += WriteArgument<C>::Length(state);
         state->stack_diff += 1;
+        state->hook_stack_amt += 1;
         return length;
     }
 
@@ -199,6 +204,24 @@ REG_IMPLS(Edi, 0x57)
         auto ptr = &value;
         memcpy(out, ptr, 4);
         return 5;
+    }
+
+    inline int WritePushad(StackState *state, uint8_t *out, int out_size) {
+        if (out_size < 1) {
+            return -1;
+        }
+        *out++ = 0x60;
+        state->stack_diff += 8;
+        return 1;
+    }
+
+    inline int WritePopad(StackState *state, uint8_t *out, int out_size) {
+        if (out_size < 1) {
+            return -1;
+        }
+        *out++ = 0x61;
+        state->stack_diff -= 8;
+        return 1;
     }
 
     inline int WriteStackArgPop(uint8_t *out, int out_size, int arg_count) {
@@ -294,7 +317,9 @@ REG_IMPLS(Edi, 0x57)
             constexpr Stdcall(uintptr_t address) : address(address) {
             }
 
-            static int WriteConversionWrapper(typename Base::Target target, uint8_t *out, int buf_size) {
+            /// `call_hook` is true for call hooks.
+            static int WriteConversionWrapper(typename Base::Target target, uint8_t *out,
+                    int buf_size, bool call_hook) {
                 StackState stack_state(StackSize);
                 uint8_t *pos = out;
                 auto Write = [&](int amt) {
@@ -302,34 +327,47 @@ REG_IMPLS(Edi, 0x57)
                     buf_size -= amt;
                     return amt;
                 };
-                int written = Write(WriteArguments<Args...>(&stack_state, pos, buf_size));
+                int written;
+                if (call_hook) {
+                    written = Write(WritePushad(&stack_state, pos, buf_size));
+                    if (written < 0) { return written; }
+                }
+                written = Write(WriteArguments<Args...>(&stack_state, pos, buf_size));
                 if (written < 0) { return written; }
                 written = Write(WriteCall(pos, buf_size, target));
                 if (written < 0) { return written; }
-                written = Write(WriteStackArgPop(pos, buf_size, stack_state.stack_diff));
+                written = Write(WriteStackArgPop(pos, buf_size, stack_state.hook_stack_amt));
                 if (written < 0) { return written; }
-                written = Write(WriteReturn(pos, buf_size, stack_state.arg_pos));
-                if (written < 0) { return written; }
+                if (!call_hook) {
+                    written = Write(WriteReturn(pos, buf_size, stack_state.arg_pos));
+                    if (written < 0) { return written; }
+                } else {
+                    written = Write(WritePopad(&stack_state, pos, buf_size));
+                    if (written < 0) { return written; }
+                }
                 return pos - out;
             }
 
             /// Returns the buf_size required in WriteArgumentConversion
-            static int WrapperLength() {
+            static int WrapperLength(bool call_hook) {
                 StackState stack_state(StackSize);
                 int arg_len = WriteArgumentsLength<Args...>(&stack_state);
                 int stack_revert_ins_size = [=]() {
-                    if (stack_state.stack_diff == 0) { return 0; }
-                    else if (stack_state.stack_diff < 0x20) { return 3; }
+                    if (stack_state.hook_stack_amt == 0) { return 0; }
+                    else if (stack_state.hook_stack_amt < 0x20) { return 3; }
                     else { return 6; }
                 }();
                 int ret_ins_size = [=]() {
+                    if (call_hook) { return 0; }
                     if (stack_state.arg_pos == 0) { return 1; }
                     else { return 3; }
                 }();
-                return arg_len + 5 + stack_revert_ins_size + ret_ins_size;
+                int call_pushpop_size = call_hook ? 2 : 0;
+                return arg_len + 5 + stack_revert_ins_size + ret_ins_size + call_pushpop_size;
             }
 
-            static int WriteMemFnWrapper(typename MemFn::MemberFnTarget *target, uint8_t *out, int buf_size) {
+            static int WriteMemFnWrapper(typename MemFn::MemberFnTarget *target, uint8_t *out,
+                    int buf_size, bool call_hook) {
                 StackState stack_state(StackSize);
                 uint8_t *pos = out;
                 auto Write = [&](int amt) {
@@ -339,34 +377,48 @@ REG_IMPLS(Edi, 0x57)
                 };
                 auto intermediate_target =
                     MemberFnHelper<typename MemFn::MemberFnTarget, typename Base::Target>::Func;
-                int written = Write(WriteArguments<Args...>(&stack_state, pos, buf_size));
+
+                int written;
+                if (call_hook) {
+                    written = Write(WritePushad(&stack_state, pos, buf_size));
+                    if (written < 0) { return written; }
+                }
+                written = Write(WriteArguments<Args...>(&stack_state, pos, buf_size));
                 if (written < 0) { return written; }
                 written = Write(WritePushConstant(pos, buf_size, target));
                 if (written < 0) { return written; }
                 written = Write(WriteCall(pos, buf_size, intermediate_target));
                 if (written < 0) { return written; }
-                written = Write(WriteStackArgPop(pos, buf_size, stack_state.stack_diff + 1));
+                written = Write(WriteStackArgPop(pos, buf_size, stack_state.hook_stack_amt + 1));
                 if (written < 0) { return written; }
-                written = Write(WriteReturn(pos, buf_size, stack_state.arg_pos));
-                if (written < 0) { return written; }
+                if (!call_hook) {
+                    written = Write(WriteReturn(pos, buf_size, stack_state.arg_pos));
+                    if (written < 0) { return written; }
+                } else {
+                    written = Write(WritePopad(&stack_state, pos, buf_size));
+                    if (written < 0) { return written; }
+                }
                 return pos - out;
             }
 
             /// Returns the buf_size required in WriteArgumentConversion
-            static int MemFnWrapperLength() {
+            static int MemFnWrapperLength(bool call_hook) {
                 StackState stack_state(StackSize);
                 int arg_len = WriteArgumentsLength<Args...>(&stack_state);
                 stack_state.stack_diff += 1;
+                stack_state.hook_stack_amt += 1;
                 int stack_revert_ins_size = [=]() {
-                    if (stack_state.stack_diff == 0) { return 0; }
-                    else if (stack_state.stack_diff < 0x20) { return 3; }
+                    if (stack_state.hook_stack_amt == 0) { return 0; }
+                    else if (stack_state.hook_stack_amt < 0x20) { return 3; }
                     else { return 6; }
                 }();
                 int ret_ins_size = [=]() {
+                    if (call_hook) { return 0; }
                     if (stack_state.arg_pos == 0) { return 1; }
                     else { return 3; }
                 }();
-                return arg_len + 5 + 5 + stack_revert_ins_size + ret_ins_size;
+                int call_pushpop_size = call_hook ? 2 : 0;
+                return arg_len + 5 + 5 + stack_revert_ins_size + ret_ins_size + call_pushpop_size;
             }
 
             uintptr_t address;

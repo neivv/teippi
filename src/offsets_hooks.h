@@ -25,8 +25,8 @@ namespace bw
     using hook::Esi;
     using hook::Edi;
 
-    const hook_offset WinMain = 0x004E0AE0;
-    const hook_offset WindowCreated = 0x004E0842;
+    const Stdcall<void()> WinMain = 0x004E0AE0;
+    const Stdcall<void()> WindowCreated = 0x004E0842;
 
     const hook_offset Sc_fwrite = 0x00411931;
     const hook_offset Sc_fread = 0x004117DE;
@@ -125,15 +125,12 @@ namespace bw
     const Stdcall<void(Esi<Sprite *>)> ProgressSpriteFrame = 0x00497920;
     const Stdcall<void(Edi<Sprite *>)> DeleteSprite = 0x00497B40;
 
-    const hook_offset InitSprites_JmpSrc = 0x00499940;
-    const hook_offset InitSprites_JmpDest = 0x00499A05;
-
     const Stdcall<void(Ebx<Sprite *>, Eax<uint16_t>, int, int, int, int)> AddMultipleOverlaySprites = 0x00499660;
 
     const Stdcall<Unit *(uint8_t player, int, Esi<uint16_t>, Edx<uint16_t>, Edi<uint16_t>)>
         AllocateUnit = 0x004A06C0;
-    const hook_offset InitUnitSystem = 0x0049F380;
-    const hook_offset InitSpriteSystem = 0x00499900;
+    const Stdcall<void()> InitUnitSystem = 0x0049F380;
+    const Stdcall<void()> InitSpriteSystem = 0x00499900;
 
     const Stdcall<void(Ecx<Image *>, uint8_t)> SetIscriptAnimation = 0x004D8470;
     const Stdcall<void(Ecx<Image *>, Iscript::Script *, int, uint32_t *)> ProgressIscriptFrame = 0x004D74C0;
@@ -147,7 +144,6 @@ namespace bw
 
     const Stdcall<void()> GameEnd = 0x004EE8C0;
 
-    const hook_offset ZeroOldPosSearch = 0x0049F46B;
     const Stdcall<void(Esi<Unit *>)> AddToPositionSearch = 0x0046A3A0;
     const Stdcall<int(int)> FindUnitPosition = 0x00469B00;
     const Stdcall<Unit **(Ecx<Unit *>, int, int)> FindNearbyUnits = 0x00430190;
@@ -156,7 +152,7 @@ namespace bw
     const Stdcall<int(Ecx<const Unit *>, Eax<const Unit *>)> DoUnitsCollide = 0x00469B60;
     const Stdcall<Unit **(Ecx<Unit *>, Eax<int>, int)> CheckMovementCollision = 0x004304D0;
     const Stdcall<Unit **(Eax<const Rect16 *>)> FindUnitBordersRect = 0x0042FF80;
-    const hook_offset ClearPositionSearch = 0x0042FEE0;
+    const Stdcall<void()> ClearPositionSearch = 0x0042FEE0;
     const Stdcall<void(Esi<Unit *>, Eax<int>, int)> ChangeUnitPosition = 0x0046A000;
     const Stdcall<Unit *(Eax<Rect16 *>, Unit *, uint16_t, uint16_t, int, int, int, int,
            int (__fastcall *)(const Unit *, void *), void *)>
@@ -172,17 +168,17 @@ namespace bw
     const Stdcall<uint32_t(Unit *)> UnitToIndex = 0x0047B1D0;
     const Stdcall<Unit *(uint32_t)> IndexToUnit = 0x0047B210;
 
-    const hook_offset PathingInited = 0x0048433E;
+    const Stdcall<void()> PathingInited = 0x0048433E;
 
-    const hook_offset MakeDrawnSpriteList_Call = 0x0041CA06;
-    const hook_offset PrepareDrawSprites = 0x00498CB0;
+    const Stdcall<void()> MakeDrawnSpriteList = 0x004BD3A0;
+    const Stdcall<void()> PrepareDrawSprites = 0x00498CB0;
     const Stdcall<void()> DrawSprites = 0x00498D40;
 
     const Stdcall<Sprite *(uint16_t, uint16_t, Edi<uint16_t>, uint8_t)> CreateLoneSprite = 0x00488210;
     const Stdcall<Sprite *(uint16_t, Sprite *)> CreateFowSprite = 0x00488410;
     const Stdcall<void()> InitLoneSprites = 0x00488550;
-    const hook_offset DisableVisionSync = 0x0047CDE5;
-    const hook_offset FullRedraw = 0x004BD595;
+    const Stdcall<int(void *, Eax<int>)> VisionSync = 0x0047CCD0;
+    const Stdcall<void()> FullRedraw = 0x004BD595;
     const Stdcall<void(Eax<Sprite *>, int)> SetSpriteDirection = 0x00401140;
     const Stdcall<Sprite *(int, int, int)> FindBlockingFowResource = 0x00487B00;
 
@@ -222,7 +218,7 @@ namespace bw
     const Stdcall<void(Esi<Unit *>)> DeletePath = 0x004E42A0;
     const Stdcall<void(Esi<Unit *>)> DeletePath2 = 0x0042F740;
     const Stdcall<void(Eax<Unit *>, uint32_t, uint32_t)> CreateSimplePath = 0x0042F830;
-    const hook_offset InitPathArray = 0x0042F4F0;
+    const Stdcall<void()> InitPathArray = 0x0042F4F0;
 
     const Stdcall<void(Eax<MapDirEntry *>)> LoadReplayMapDirEntry = 0x004A7C30;
     const Stdcall<uint32_t(Eax<const char *>, Edi<uint32_t *>)> LoadReplayData = 0x004DF570;
@@ -249,8 +245,6 @@ namespace bw
         DrawImage_Cloaked = 0x0040B155;
     const Stdcall<void(Ecx<int>, Edx<int>, GrpFrameHeader *, Rect32 *, void *)>
         DrawImage_Cloaked_Flipped = 0x0040B9A9;
-    const hook_offset MaskWarpTexture = 0x0040AD04;
-    const hook_offset MaskWarpTexture_Flipped = 0x0040AE63;
     const hook_offset DrawGrp = 0x0040ABBE;
     const hook_offset DrawGrp_Flipped = 0x0040BF60;
 
