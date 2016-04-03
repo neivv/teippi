@@ -298,7 +298,7 @@ static bool ProgressFrame()
             SetFrameState(6);
             break;
         }
-        if (unk_sync && (!IsReplay() || *bw::unk_6D11E8 == 0))
+        if (unk_sync)
         {
             SetFrameState(7);
             break;
@@ -373,14 +373,14 @@ void GameEnd()
         *bw::popup_dialog_active = 0;
         if (*bw::scmain_state == 3)
         {
-            *bw::unk_6D120C = *bw::unk_596898;
-            *bw::unk_5968E0 = *bw::unk_5968FC;
+            *bw::active_accelerators = *bw::previous_accelerators;
+            *bw::wm_command_handler = *bw::previous_wm_command_handler;
         }
     }
     if (*bw::has_effects_scode)
         FreeEffectsSCodeUnk();
     for(int i = 0; i < 3; i++)
-        bw::unk_6CEF8C[i][0] = 0;
+        bw::unk_placement_box[i][0] = 0;
 
     FreeUnkSound(&*bw::unk_sound);
     for (int i = 0; i < Limits::ActivePlayers; i++)

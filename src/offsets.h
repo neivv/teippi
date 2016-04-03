@@ -193,7 +193,6 @@ namespace bw
     const offset<uint8_t> draw_sprites = 0x006D11EC;
     const offset<uint32_t> is_paused = 0x006509C4;
     const offset<uint32_t> next_frame_tick = 0x0051CE94;
-    const offset<uint32_t> unk_6D11E8 = 0x006D11E8;
     const offset<uint32_t> ai_interceptor_target_switch = 0x006957D0;
     const offset<uint32_t> lurker_hits_used = 0x0064DEA8;
     const offset<uint32_t> lurker_hits_pos = 0x0064EEC8;
@@ -267,7 +266,7 @@ namespace bw
     const offset<uint16_t *> original_tiles = 0x006D0C68;
     const offset<uint8_t *> creep_tile_borders = 0x006D0E80;
     const offset<uint16_t *> map_tile_ids = 0x005993C4;
-    const offset<uint32_t *> megatiles = 0x00628494; // Scenario.chk MTXM
+    const offset<uint16_t *> megatiles = 0x00628494; // Scenario.chk MTXM
     const offset<void *> scenario_chk_STR = 0x005993D4;
     const offset<uint32_t> scenario_chk_STR_size = 0x005994D8;
 
@@ -490,18 +489,19 @@ namespace bw
 
     const offset<ReplayData *> replay_data = 0x00596BBC;
 
-    const offset<uint32_t> unk_57F240 = 0x0057F240;
-    const offset<uint32_t> unk_59CC7C = 0x0059CC7C;
-    const offset<uint32_t> unk_6D5BCC = 0x006D5BCC;
+    const offset<uint32_t> saved_elapsed_seconds = 0x0057F240;
+    const offset<uint32_t> game_start_tick = 0x0059CC7C;
+    const offset<uint32_t> elapsed_time_modifier = 0x006D5BCC;
     const array_offset<char, 0x104> map_path = 0x0057FD3C;
     const offset<uint16_t> campaign_mission = 0x0057F244;
     const offset<GameData> game_data = 0x005967F8;
     const offset<File *> loaded_save = 0x006D1218;
     const offset<uint8_t> load_succeeded = 0x006D121C;
-    const offset<uint32_t> unk_51CA1C = 0x0051CA1C;
-    const offset<uint8_t> unk_57F1E3 = 0x0057F1E3;
+    // Why are there two separate variables ._.
+    const offset<uint32_t> single_player_custom_game = 0x0051CA1C;
+    const offset<uint8_t> single_player_custom_game_saved = 0x0057F1E3;
 
-    const array_offset<uint8_t, 3, 0x14> unk_6CEF8C = 0x006CEF8C;
+    const array_offset<uint8_t, 3, 0x14> unk_placement_box = 0x006CEF8C;
     const offset<uint8_t *> pylon_power_mask = 0x006D5BD8;
     const offset<void *> map_mpq_handle = 0x00596BC4;
     const array_offset<PlacementBox, 2> placement_boxes = 0x00640960;
@@ -511,10 +511,10 @@ namespace bw
     const offset<uint32_t> menu_screen_id = 0x006D11BC;
     const offset<uint8_t> scmain_state = 0x00596904;
 
-    const offset<void *> unk_6D120C = 0x006D120C;
-    const offset<void *> unk_596898 = 0x00596898;
-    const offset<void *> unk_5968E0 = 0x005968E0;
-    const offset<void *> unk_5968FC = 0x005968FC;
+    const offset<void *> active_accelerators = 0x006D120C;
+    const offset<void *> previous_accelerators = 0x00596898;
+    const offset<void *> wm_command_handler = 0x005968E0;
+    const offset<void *> previous_wm_command_handler = 0x005968FC;
     const offset<uint32_t> popup_dialog_active = 0x006D1214;
     const offset<Control *> popup_dialog = 0x006D5BF4;
     const offset<uint32_t> is_ingame2 = 0x006D5BC8;

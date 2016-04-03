@@ -978,7 +978,7 @@ void Save::SaveGame(uint32_t time)
     WriteReadableSaveHeader((File *)file, filename.c_str());
     WriteSaveHeader((File *)file, time);
 
-    *bw::unk_57F240 = (GetTickCount() - *bw::unk_59CC7C) / 1000 + *bw::unk_6D5BCC;
+    *bw::saved_elapsed_seconds = (GetTickCount() - *bw::game_start_tick) / 1000 + *bw::elapsed_time_modifier;
     WriteCompressed((File *)file, bw::players.raw_pointer(), sizeof(Player) * Limits::Players);
     if (!*bw::campaign_mission)
         ReplaceWithShortPath(&bw::map_path[0], MAX_PATH);
@@ -1888,7 +1888,7 @@ void Load::LoadGame()
     RestorePylons();
     AddSelectionOverlays();
     if (!IsMultiplayer())
-        *bw::unk_51CA1C = *bw::unk_57F1E3;
+        *bw::single_player_custom_game = *bw::single_player_custom_game_saved;
 
     MoveScreen(*bw::screen_x, *bw::screen_y);
     InitCursorMarker();
