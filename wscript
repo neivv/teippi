@@ -82,6 +82,7 @@ def build(bld):
     sync_test = bld.env.sync_test or bld.options.sync_test
     forced_seed = bld.options.forced_seed or bld.env.forced_seed
     msvc = 'msvc' in bld.env.CC_NAME
+    clang = 'clang' in bld.env.CXX_NAME
 
     cflags = []
     cxxflags = []
@@ -188,6 +189,8 @@ def build(bld):
     includes += [bld.bldnode.find_dir('src')]
     if msvc:
         bld(rule = 'py -3 ${SRC} ${TGT} --msvc', source = ['src/func/genfuncs.py', 'src/func/nuottei.txt'], target = 'src/funcs.autogen')
+    elif clang:
+        bld(rule = 'py -3 ${SRC} ${TGT} --clang', source = ['src/func/genfuncs.py', 'src/func/nuottei.txt'], target = 'src/funcs.autogen')
     else:
         bld(rule = 'py -3 ${SRC} ${TGT}', source = ['src/func/genfuncs.py', 'src/func/nuottei.txt'], target = 'src/funcs.autogen')
 

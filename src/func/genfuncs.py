@@ -101,7 +101,7 @@ def ToGccConstraint(name):
         return 'eD'
     return name[:2]
 
-def GenerateGccAsm(func):
+def GenerateGccAsm(func, clang):
     ret = ''
     ret += 'inline {type} {name}({args})\n{{\n'.format(type=ToCType(func.ret), name=func.name, args=CArgs(func.args))
     stack_size = 0
@@ -152,24 +152,30 @@ def GenerateGccAsm(func):
         ret += '\\n\\t"\n' + indent + '    "add ${}, %%esp'.format(stack_size)
 
     ret += '"\n{ind}    '.format(ind=indent)
+    outputs = ''
     clobber = '"memory"'
     #if freeregs[0] == 'ebx' or freeregs[0] == 'esi' or freeregs[0] == 'edi':
         #clobber += ', "{}"'.format(freeregs[0])
     
     inputs += '"{}"(_target) '.format(freeregs[0])
-    if 'eax' in freeregs[1:]:
-        clobber += ', "eax"'
-    if 'ecx' in freeregs[1:]:
-        clobber += ', "ecx"'
-    if 'edx' in freeregs[1:]:
-        clobber += ', "edx"'
+    # Gcc doesn't accept conflicting clobber/ret, but clang may place something between
+    # the call statement and empty clobber statement. Maybe gcc can do it as well?
+    if clang:
+        if func.ret != 'void':
+            outputs += '"=ea"(ret)'
+        else:
+            clobber += ', "eax"'
+        clobber += ', "ecx", "edx"'
 
-    ret += ': : {}: {});\n'.format(inputs, clobber)
+    ret += ': {}: {}: {});\n'.format(outputs, inputs, clobber)
+
+    if not clang:
+        if func.ret != 'void':
+            ret += indent + 'asm volatile("" : "=ea"(ret): : "ecx", "edx");\n'
+        else:
+            ret += indent + 'asm volatile("" : : : "eax", "ecx", "edx");\n'
     if func.ret != 'void':
-        ret += indent + 'asm volatile("" : "=ea"(ret): : "ecx", "edx");\n'
         ret += '{ind}return ({type})ret;\n'.format(ind=indent, type=ToCType(func.ret))
-    else:
-        ret += indent + 'asm volatile("" : : : "eax", "ecx", "edx");\n'
 
     ret += '}\n'
     return ret
@@ -225,7 +231,7 @@ def GenerateMsvcAsm(func):
     ret += '}\n'
     return ret
 
-def GenerateFuncs(nuottei, msvc_asm):
+def GenerateFuncs(nuottei, msvc_asm, clang_asm):
     filu = open(nuottei)
     funcs = []
     out = b''
@@ -244,7 +250,7 @@ def GenerateFuncs(nuottei, msvc_asm):
         if msvc_asm:
             out += bytes(GenerateMsvcAsm(func), 'utf-8')
         else:
-            out += bytes(GenerateGccAsm(func), 'utf-8')
+            out += bytes(GenerateGccAsm(func, clang_asm), 'utf-8')
         out += b'\n'
     return out
     
@@ -257,7 +263,9 @@ def main():
         return
 
     msvc_asm = '--msvc' in sys.argv
-    data = GenerateFuncs(nuottei, msvc_asm)
+    clang_asm = '--clang' in sys.argv
+    assert(not (msvc_asm and clang_asm))
+    data = GenerateFuncs(nuottei, msvc_asm, clang_asm)
     out = open(output, 'wb') # Windows line endingit voi painua hiitee
     out.write(data)
 
