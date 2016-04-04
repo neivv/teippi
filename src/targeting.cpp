@@ -185,16 +185,18 @@ void Command_RightClick(const uint8_t *buf)
                 if (order == Order::Attack)
                 {
                     Unit *subunit = unit->subunit;
-                    if (subunit)
-                        IssueOrderTargetingUnit(subunit, target, queued, units_dat_attack_unit_order[subunit->unit_id]);
-
+                    if (subunit != nullptr)
+                    {
+                        int subunit_order = units_dat_attack_unit_order[subunit->unit_id];
+                        subunit->TargetedOrder(subunit_order, target, Point(0, 0), Unit::None, queued);
+                    }
                     order = units_dat_attack_unit_order[unit->unit_id];
                 }
                 if (CanIssueOrder(unit, order, *bw::command_user) == 1)
                 {
                     if (target)
                     {
-                        IssueOrderTargetingUnit(unit, target, queued, order);
+                        unit->TargetedOrder(order, target, Point(0, 0), Unit::None, queued);
                     }
                     else
                     {
@@ -202,7 +204,8 @@ void Command_RightClick(const uint8_t *buf)
                         {
                             GetFormationMovementTarget(unit, &formation);
                         }
-                        IssueOrderTargetingGround2(unit, order, formation.current_target[0], formation.current_target[1], fow_unit, queued);
+                        Point pos(formation.current_target[0], formation.current_target[1]);
+                        unit->TargetedOrder(order, nullptr, pos, fow_unit, queued);
                     }
                     unit->order_flags |= 2;
                 }
@@ -311,11 +314,11 @@ void Command_Targeted(const uint8_t *buf)
             }
         }
 
-        if (target)
+        if (target != nullptr)
         {
-            IssueOrderTargetingUnit(unit, target, queued, current_order);
+            unit->TargetedOrder(current_order, target, Point(0, 0), Unit::None, queued);
             if (subunit_order != Order::Nothing)
-                IssueOrderTargetingUnit(unit->subunit, target, queued, subunit_order);
+                unit->subunit->TargetedOrder(subunit_order, target, Point(0, 0), Unit::None, queued);
         }
         else
         {
@@ -323,9 +326,12 @@ void Command_Targeted(const uint8_t *buf)
             {
                 GetFormationMovementTarget(unit, &formation);
             }
-            IssueOrderTargetingGround2(unit, current_order, formation.current_target[0], formation.current_target[1], fow_unit, queued);
+            Point pos(formation.current_target[0], formation.current_target[1]);
+            unit->TargetedOrder(current_order, nullptr, pos, fow_unit, queued);
             if (subunit_order != Order::Nothing) // Is this even possible?
-                IssueOrderTargetingGround2(unit->subunit, subunit_order, formation.current_target[0], formation.current_target[1], fow_unit, queued);
+            {
+                unit->subunit->TargetedOrder(subunit_order, nullptr, pos, fow_unit, queued);
+            }
         }
     }
 }

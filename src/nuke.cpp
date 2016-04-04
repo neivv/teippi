@@ -42,8 +42,8 @@ void Unit::Order_NukeTrack()
     {
         if (related && related->order_state != 5)
             return;
-        if (!order_queue_begin)
-            AppendOrderTargetingGround(this, units_dat_return_to_idle_order[unit_id], 0);
+        if (order_queue_begin == nullptr)
+            AppendOrderTargetingNothing(units_dat_return_to_idle_order[unit_id]);
         DoNextQueuedOrderIfAble(this);
         SetButtons(unit_id);
         SetIscriptAnimation(Iscript::Animation::Idle, true, "Order_NukeTrack state 6", nullptr);
@@ -92,12 +92,12 @@ void Unit::Order_NukeGround()
         silo->silo.nuke = nullptr;
         silo->silo.has_nuke = 0;
         PlaySound(Sound::NukeLaser, this, 1, 0);
-        IssueOrderTargetingGround(nuke, Order::NukeLaunch, order_target_pos.x, order_target_pos.y);
+        nuke->IssueOrderTargetingGround(Order::NukeLaunch, order_target_pos);
         related = nuke;
         nuke->related = this;
         nuke->sprite->SetDirection32(0);
         ShowUnit(nuke);
-        IssueOrderTargetingGround(this, Order::NukeTrack, sprite->position.x, sprite->position.y);
+        IssueOrderTargetingGround(Order::NukeTrack, sprite->position);
         if (!IsDisabled() || units_dat_flags[unit_id] & UnitFlags::Building) // Huh?
             buttons = 0xed;
         RefreshUi();

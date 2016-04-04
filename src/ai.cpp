@@ -369,7 +369,7 @@ void UpdateGuardNeeds(int player)
                         ai->home = ai->unk_pos;
                         ai->parent = unit;
                         unit->ai = (UnitAi *)ai;
-                        IssueOrderTargetingNothing(unit, Order::ComputerAi);
+                        unit->IssueOrderTargetingNothing(Order::ComputerAi);
                         continue;
                     }
                 }
@@ -442,7 +442,7 @@ void AddUnitAi(Unit *unit, Town *town)
         {
             if (unit->flags & UnitStatus::Completed)
             {
-                IssueOrderTargetingNothing(unit, Order::ComputerAi);
+                unit->IssueOrderTargetingNothing(Order::ComputerAi);
                 unit->IssueSecondaryOrder(Order::SpreadCreep);
             }
         }
@@ -715,25 +715,14 @@ void SetSuicideTarget(Unit *unit)
             }
             else
             {
-                IssueOrderTargetingNothing(unit, Order::TankMode);
-                AppendOrder(unit, units_dat_attack_unit_order[Unit::SiegeTankTankMode], target->sprite->position.AsDword(), target, Unit::None, 0);
+                unit->IssueOrderTargetingNothing(Order::TankMode);
+                unit->AppendOrderTargetingUnit(units_dat_attack_unit_order[Unit::SiegeTankTankMode], target);
             }
         }
     }
     else
     {
-        unit->order_flags |= 0x1;
-        if (unit->order == Order::Die) // ???
-        {
-            for (Order *order = unit->order_queue_end; order; order = unit->order_queue_end)
-            {
-                if (!orders_dat_interruptable[order->order_id] && order->order_id != Order::Move)
-                    break;
-                unit->DeleteOrder(order);
-            }
-            AddOrder(unit, Order::Move, nullptr, Unit::None, target->sprite->position.AsDword(), target);
-        }
-        unit->DoNextQueuedOrder();
+        unit->IssueOrderTargetingUnit(Order::Move, target);
     }
 
     RemoveUnitAi(unit, false);
@@ -956,8 +945,8 @@ bool Merge(int player, int unit_id, int order, const bool check_energy)
             return false;
     }
 
-    IssueOrderTargetingUnit_Simple(units[0], order, units[1]);
-    IssueOrderTargetingUnit_Simple(units[1], order, units[0]);
+    units[0]->IssueOrderTargetingUnit(order, units[1]);
+    units[1]->IssueOrderTargetingUnit(order, units[0]);
     return true;
 }
 
@@ -1048,7 +1037,7 @@ int SpendReq_TrainUnit(int player, Unit *unit, int no_retry)
         }
         PopSpendingRequest(player, true);
         if (parent->unit_id == Unit::Larva || parent->unit_id == Unit::Hydralisk || parent->unit_id == Unit::Mutalisk)
-            IssueOrderTargetingNothing(parent, Order::UnitMorph);
+            parent->IssueOrderTargetingNothing(Order::UnitMorph);
         else
             parent->IssueSecondaryOrder(Order::Train);
         return 1;
@@ -1138,16 +1127,7 @@ void AiScript_SwitchRescue(uint8_t player)
         if (!unit->sprite || unit->order == Order::Die)
             continue;
         RemoveUnitAi(unit, false);
-        unit->order_flags |= 0x1;
-        while (unit->order_queue_end)
-        {
-            Order *order = unit->order_queue_end;
-            if (!orders_dat_interruptable[order->order_id] && order->order_id != Order::RescuePassive)
-                break;
-            unit->DeleteOrder(order);
-        }
-        AddOrder(unit, Order::RescuePassive, nullptr, Unit::None, 0, nullptr);
-        unit->DoNextQueuedOrder();
+        unit->IssueOrderTargetingNothing(Order::RescuePassive);
     }
 }
 
@@ -1350,7 +1330,7 @@ void Hide(Unit *own)
         break;
         case Unit::Lurker:
             if (~own->flags & UnitStatus::Burrowed && own->order != Order::Burrow)
-                IssueOrderTargetingNothing(own, Order::Burrow);
+                own->IssueOrderTargetingNothing(Order::Burrow);
         break;
     }
 }

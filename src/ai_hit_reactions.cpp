@@ -266,7 +266,7 @@ void HitReactions::UnitWasHit(Unit *own, Unit *attacker, bool important_hit, boo
             if (own->HasLoadedUnits())
             {
                 if (own->order != Order::Unload)
-                    IssueOrderTargetingNothing(own, Order::Unload);
+                    own->IssueOrderTargetingNothing(Order::Unload);
                 return;
             }
             else
@@ -375,10 +375,11 @@ void HitReactions::React(Unit *own, Unit *attacker, bool important_hit)
     {
         if (order == Order::AiPatrol)
         {
-            uint32_t flee_pos = PrepareFlee(own, attacker);
-            if ((flee_pos & 0xffff) != own->sprite->position.x || (flee_pos >> 16) != own->sprite->position.y)
+            uint32_t flee_pos_dword = PrepareFlee(own, attacker);
+            Point flee_pos(flee_pos_dword & 0xffff, flee_pos_dword >> 16);
+            if (flee_pos != own->sprite->position)
             {
-                IssueOrder(own, Order::Move, flee_pos, 0);
+                own->IssueOrderTargetingGround(Order::Move, flee_pos);
                 return;
             }
         }

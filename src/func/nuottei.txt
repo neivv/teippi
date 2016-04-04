@@ -133,6 +133,7 @@
 0048EE30 = void ShowInfoMessage(), edi int, esi int, ebx int
 0048EF30 = void ShowErrorMessage(), eax const char *, ecx int, edx Unit *
 0048CCB0 = void PrintInfoMessage(), eax const char *
+0048CF00 = void PrintInfoMessageForLocalPlayer(), eax const char *str, ecx player
 
 0040C360 = int Distance_(), ecx x32, arg 1 y32, edx x32, arg 2 y32
 00401240 = bool IsPointInArea(), ecx const Unit *, arg 1 int, arg 2 x32, eax y32
@@ -222,23 +223,8 @@
 0046DC20 = int CanIssueOrder(), eax Unit *, ebx int, arg 1 int
 00474D90 = bool CanTargetOrder(), ebx Unit *, esi Unit *, eax int, arg 1 int16_t *
 004746D0 = bool CanTargetOrderOnFowUnit(), ebx Unit *, ecx int, edx int, edi int16_t *
-004756E0 = void IssueOrderTargetingUnit(), esi Unit *, edx Unit *, arg 1 int queued, arg 2 int order
-004752B0 = IssueOrderTargetingUnit2(), esi Unit *self, arg 1 order, eax Unit *target
-00475310 = void IssueOrderTargetingNothing(), esi Unit *, ecx int
-00475260 = void IssueOrderTargetingGround(), esi Unit *, arg 1 int, arg 2 x32, arg 3 y32
-004756B0 = void IssueOrderTargetingGround2(), esi Unit *, edx int, arg 2 x32, arg 3 y32, ebx int, arg 1 int
 
-00474810 = void AppendOrder(), edx Unit *, ecx int, arg 1 dword, arg 2 const Unit *, arg 3 int, eax int
-00474D60 = void AppendOrderTargetingGround(), edx Unit *, ecx int, arg 1 dword
-004745F0 = void AddOrder(), esi Unit *, ebx int, edi Order *, edx int, arg 1 dword, arg 2 const Unit *
-
-00474C30 = void IssueOrder(), esi Unit *, arg 1 int, arg 2 dword, arg 3 const Unit *
 00475420 = void DoNextQueuedOrderIfAble(), eax Unit *
-00474B40 = void PrependOrderTargetingNothing(), ecx Unit *, eax int
-00474A20 = PrependOrderTargetingGround(), arg 1 Unit *unit, eax order_id, edx x, ecx y
-004752B0 = void IssueOrderTargetingUnit_Simple(), esi Unit *, arg 1 int order, eax const Unit *
-00474760 = InsertOrderTargetingNothing(), esi Unit *self, ebx order, edi Order *insert_before
-00474540 = void InsertOrder(), esi Unit *unit, ebx int order, arg 2 const Unit *target, arg 1 dword position_xy, edx int fow_unit, edi Order *insert_before
 
 00476A50 = dword PrepareFlee(), arg 1 Unit *, eax const Unit *
 0043E400 = bool Flee(), eax Unit *, arg 1 Unit *
@@ -532,9 +518,6 @@
 00491790 = void Order_Cloak(), eax Unit *unit
 004633E0 = void Order_Decloak(), eax Unit *unit
 00491C20 = void Order_CloakNearbyUnits(), edi Unit *unit
-
-00474790 = InsertOrderTargetingGround(), arg 1 x, arg 2 y, esi Unit *self, ebx order, edi Order *insert_before
-00474FB0 = IssueOrderTargetingGround(), esi Unit *self, arg 1 order, arg 2 fow_unit_id, arg 3 x, arg 4 y
 
 00475BE0 = bool CheckFiringAngle(), esi const Unit *unit, ecx x, eax y, arg 1 weapon
 00402A90 = bool IsMovingToMoveWaypoint(), eax Unit *unit

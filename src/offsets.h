@@ -679,6 +679,7 @@ namespace bw
         const orders_dat<uint8_t> orders_dat_fleeable = 0x00664C80;
         const orders_dat<uint8_t> orders_dat_unknown7 = 0x00665100;
         const orders_dat<uint8_t> orders_dat_subunit_inheritance = 0x00664A40;
+        const orders_dat<uint8_t> orders_dat_can_be_queued = 0x00665700;
     }
     namespace storm
     {

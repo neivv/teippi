@@ -27,13 +27,13 @@ void Unit::Order_AiGuard()
         if (guard->home != sprite->position)
         {
             if (unit_id == SiegeTank_Sieged)
-                AppendOrderTargetingGround(this, Order::TankMode, 0); // 0??
-            AppendOrder(this, Order::ComputerReturn, guard->home.AsDword(), nullptr, None, 0);
+                AppendOrderTargetingNothing(Order::TankMode);
+            AppendOrderTargetingGround(Order::ComputerReturn, guard->home);
             OrderDone();
             return;
         }
     }
-    IssueOrderTargetingNothing(this, Order::ComputerAi);
+    IssueOrderTargetingNothing(Order::ComputerAi);
 }
 
 void Unit::Order_ComputerReturn()
@@ -64,12 +64,12 @@ void Unit::Order_ComputerReturn()
             {
                 GuardAi *guard = (GuardAi *)ai;
                 guard->home = sprite->position;
-                IssueOrderTargetingNothing(this, Order::Guard);
+                IssueOrderTargetingNothing(Order::Guard);
             }
         }
         else
         {
-            IssueOrderTargetingNothing(this, Order::ComputerAi);
+            IssueOrderTargetingNothing(Order::ComputerAi);
         }
     }
 }
@@ -115,6 +115,6 @@ bool Unit::Ai_TryReturnHome(bool dont_issue)
     if (order_queue_begin && order_queue_begin->order_id == Order::Patrol)
         return false;
     if (!dont_issue)
-        IssueOrderTargetingGround(this, Order::ComputerReturn, guard->home.x, guard->home.y);
+        IssueOrderTargetingGround(Order::ComputerReturn, guard->home);
     return true;
 }

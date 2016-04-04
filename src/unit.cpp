@@ -437,9 +437,9 @@ void Unit::ProgressOrder_Hidden(ProgressUnitResults *results)
             return;
         case Order::PlayerGuard: case Order::TurretGuard: case Order::TurretAttack: case Order::EnterTransport:
             if (flags & UnitStatus::InBuilding)
-                IssueOrderTargetingNothing(this, Order::BunkerGuard);
+                IssueOrderTargetingNothing(Order::BunkerGuard);
             else
-                IssueOrderTargetingNothing(this, Order::Nothing);
+                IssueOrderTargetingNothing(Order::Nothing);
             return;
         case Order::HarvestGas:
             Order_HarvestGas(this);
@@ -1893,7 +1893,7 @@ void Unit::OrderDone()
     }
     else
     {
-        IssueOrderTargetingNothing(this, GetIdleOrder());
+        IssueOrderTargetingNothing(GetIdleOrder());
     }
 }
 
@@ -1934,7 +1934,7 @@ bool Unit::UnloadUnit(Unit *unit)
     if (unit->HasSubunit())
         unit->subunit->DeleteMovement();
 
-    IssueOrderTargetingNothing(unit, unit->GetIdleOrder());
+    unit->IssueOrderTargetingNothing(unit->GetIdleOrder());
 
     RefreshUi();
     if (~flags & UnitStatus::Building)
@@ -2013,32 +2013,9 @@ void Unit::Order_Unload()
             return;
         }
     }
-    else if (first_loaded)
+    else if (first_loaded == nullptr)
     {
-        return;
-    }
-
-    // Out of units, lets do something else
-    order_flags |= 0x1;
-    if (order_queue_begin)
-    {
-        DoNextQueuedOrder();
-    }
-    else if (ai)
-    {
-        while (order_queue_end)
-        {
-            Order *order = order_queue_end;
-            if (!orders_dat_interruptable[order->order_id] && order->order_id != Order::ComputerAi)
-                break;
-            DeleteOrder(order);
-        }
-        AddOrder(this, Order::ComputerAi, nullptr, Unit::None, 0, nullptr);
-        DoNextQueuedOrder();
-    }
-    else
-    {
-        IssueOrderTargetingNothing(this, units_dat_return_to_idle_order[unit_id]);
+        OrderDone();
     }
 }
 
@@ -2073,13 +2050,13 @@ void Unit::Order_MoveUnload()
                 if (!GetUnloadPosition(pos, this, unit))
                     return;
             }
-            PrependOrderTargetingNothing(this, Order::Unload);
+            PrependOrderTargetingNothing(Order::Unload);
             DoNextQueuedOrder();
         }
     }
     else
     {
-        PrependOrderTargetingNothing(this, Order::Unload);
+        PrependOrderTargetingNothing(Order::Unload);
         DoNextQueuedOrder();
     }
 }
@@ -2207,7 +2184,7 @@ void Unit::ReactToHit(Unit *attacker)
             if (GetBaseMissChance(self) != 0xff) // Not under dark swarm
             {
                 uint32_t flee_pos = PrepareFlee(self, attacker);
-                IssueOrder(self, Order::Move, flee_pos, 0);
+                IssueOrderTargetingGround(Order::Move, Point(flee_pos & 0xffff, flee_pos >> 16));
             }
         }
     }
@@ -2230,16 +2207,6 @@ Unit *Unit::GetActualTarget(Unit *target) const
     if ((flags & UnitStatus::Reacts) || IsInAttackRange(target->interceptor.parent))
         return target->interceptor.parent;
     return target;
-}
-
-void Unit::Attack(Unit *enemy)
-{
-    order_flags |= 0x1;
-    Point pos(0, 0);
-    if (enemy)
-        pos = enemy->sprite->position;
-    AppendOrder(this, units_dat_attack_unit_order[unit_id], pos.AsDword(), enemy, None, 1);
-    DoNextQueuedOrder();
 }
 
 bool Unit::IsInvisibleTo(const Unit *unit) const
@@ -2379,12 +2346,12 @@ void Unit::Kill(ProgressUnitResults *results)
         }
     }
     DropPowerup(this);
-    while (order_queue_begin)
+    while (order_queue_begin != nullptr)
+    {
         DeleteOrder(order_queue_begin);
+    }
 
-    order_flags |= 0x1;
-    AddOrder(this, Order::Die, nullptr, Unit::None, order_target_pos.AsDword(), nullptr);
-    DoNextQueuedOrder();
+    IssueOrderTargetingNothing(Order::Die);
     Ai::RemoveUnitAi(this, false);
 }
 
@@ -2835,7 +2802,7 @@ void Unit::CancelConstruction(ProgressUnitResults *results)
         ReplaceSprite(old_image, 0, sprite.get());
         order_signal &= ~0x4;
         SetIscriptAnimation(Iscript::Animation::Special2, true, "CancelConstruction", results);
-        IssueOrderTargetingNothing(this, Order::Birth);
+        IssueOrderTargetingNothing(Order::Birth);
     }
     else
     {
@@ -2897,8 +2864,8 @@ void Unit::CancelZergBuilding(ProgressUnitResults *results)
                 lowest->flags |= 0x1;
             }
             PrepareDrawSprite(sprite.get());
-            IssueOrderTargetingNothing(this, Order::ResetCollision1);
-            AppendOrder(this, units_dat_return_to_idle_order[unit_id], 0, 0, None, 0);
+            IssueOrderTargetingNothing(Order::ResetCollision1);
+            AppendOrderTargetingNothing(units_dat_return_to_idle_order[unit_id]);
             SetHp(this, prev_hp);
             UpdateCreepDisappearance(old_id, sprite->position.x, sprite->position.y, 0);
         }
@@ -3479,8 +3446,8 @@ int Unit::Order_AttackMove_ReactToAttack(int order)
             else
             {
                 StopMoving(this);
-                PrependOrder(order, target, order_target_pos);
-                InsertOrder(this, units_dat_attack_unit_order[unit_id], previous_attacker, previous_attacker->sprite->position.AsDword(), None, order_queue_begin.AsRawPointer());
+                PrependOrder(order, target, order_target_pos, None);
+                PrependOrderTargetingUnit(units_dat_attack_unit_order[unit_id], previous_attacker);
                 previous_attacker = nullptr;
                 DoNextQueuedOrderIfAble(this);
                 AllowSwitchingTarget();
@@ -3507,8 +3474,8 @@ void Unit::Order_AttackMove_TryPickTarget(int order)
         if (auto_target)
         {
             StopMoving(this);
-            PrependOrder(order, target, order_target_pos);
-            InsertOrder(this, units_dat_attack_unit_order[unit_id], auto_target, auto_target->sprite->position.AsDword(), None, order_queue_begin.AsRawPointer());
+            PrependOrder(order, target, order_target_pos, None);
+            PrependOrderTargetingUnit(units_dat_attack_unit_order[unit_id], auto_target);
             DoNextQueuedOrderIfAble(this);
             AllowSwitchingTarget();
         }
@@ -3647,7 +3614,7 @@ void Unit::DoNextQueuedOrder()
         {
             if (unit_id != Lurker || (next->order_id != Order::Guard && next->order_id != Order::AttackFixedRange))
             {
-                InsertOrderTargetingGround(sprite->position.x, sprite->position.y, this, Order::Unburrow, next);
+                InsertOrderBefore(Order::Unburrow, nullptr, sprite->position, None, next);
                 flags &= ~UnitStatus::UninterruptableOrder;
                 OrderDone();
                 return;
@@ -3699,10 +3666,10 @@ void Unit::DoNextQueuedOrder()
             subunit_order = order;
         else
             return;
-        if (target)
-            IssueOrder(subunit, subunit_order, next_order_pos.AsDword(), target);
+        if (target != nullptr)
+            subunit->IssueOrder(subunit_order, target, next_order_pos, None);
         else
-            IssueOrderTargetingGround(subunit, subunit_order, order_fow_unit, next_order_pos.x, next_order_pos.y);
+            subunit->IssueOrder(subunit_order, nullptr, next_order_pos, order_fow_unit);
     }
 }
 
@@ -3780,7 +3747,7 @@ void Unit::Order_SapUnit(ProgressUnitResults *results)
     if (!target)
         OrderDone();
     else if (!CanAttackUnit(target, true))
-        IssueOrderTargetingGround(this, Order::Move, target->sprite->position.x, target->sprite->position.y);
+        IssueOrderTargetingGround(Order::Move, target->sprite->position);
     else
     {
         switch (order_state)
@@ -3971,7 +3938,7 @@ void Unit::Order_AttackUnit(ProgressUnitResults *results)
         }
         else if (ai == nullptr)
         {
-            PrependOrderTargetingGround(this, Order::Move, target->sprite->position.x, target->sprite->position.y);
+            PrependOrderTargetingGround(Order::Move, target->sprite->position);
         }
         OrderDone();
         return;
@@ -4154,7 +4121,7 @@ void Unit::Order_DroneMutate(ProgressUnitResults *results)
     if (sprite->last_overlay->drawfunc == Image::Shadow)
         sprite->last_overlay->SetOffset(sprite->last_overlay->x_off, 7);
     PrepareDrawSprite(sprite.get()); // ?
-    PrependOrderTargetingNothing(this, Order::ResetCollision1);
+    PrependOrderTargetingNothing(Order::ResetCollision1);
     DoNextQueuedOrder();
 }
 
@@ -4177,7 +4144,7 @@ void Unit::MutateExtractor(ProgressUnitResults *results)
             sprite->last_overlay->flags |= 0x4;
         }
         unk_move_waypoint = sprite->position;
-        PrependOrderTargetingNothing(this, Order::ResetCollision1);
+        PrependOrderTargetingNothing(Order::ResetCollision1);
         DoNextQueuedOrder();
     }
 }
@@ -4214,9 +4181,9 @@ void Unit::Order_HarvestMinerals(ProgressUnitResults *results)
                 FinishedMining(target, this);
                 DeleteSpecificOrder(Order::Harvest3);
                 if (carried_powerup_flags)
-                    IssueOrderTargetingNothing(this, Order::ReturnMinerals);
+                    IssueOrderTargetingNothing(Order::ReturnMinerals);
                 else
-                    IssueOrderTargetingNothing(this, Order::MoveToMinerals); // Huh?
+                    IssueOrderTargetingNothing(Order::MoveToMinerals); // Huh?
             }
             break;
         }
@@ -4236,20 +4203,7 @@ void Unit::Order_HarvestMinerals(ProgressUnitResults *results)
             }
         }
         DeleteSpecificOrder(Order::Harvest3);
-        order_flags |= 0x1;
-        if (order != Order::Die)
-        {
-            while (order_queue_end)
-            {
-                Order *order = order_queue_end;
-                if (orders_dat_interruptable[order->order_id] || order->order_id == Order::MoveToMinerals)
-                    DeleteOrder(order);
-                else
-                    break;
-            }
-            AddOrder(this, Order::MoveToMinerals, nullptr, None, 0, nullptr);
-            DoNextQueuedOrder();
-        }
+        IssueOrderTargetingNothing(Order::MoveToMinerals);
     }
 }
 
@@ -4343,7 +4297,7 @@ void Unit::Order_WarpingArchon(int merge_distance, int close_distance, int resul
     if (flags & UnitStatus::Collides && IsInArea(this, current_speed * 2 / 256, target))
     {
         flags &= ~UnitStatus::Collides;
-        PrependOrderTargetingNothing(this, Order::ResetCollision1);
+        PrependOrderTargetingNothing(Order::ResetCollision1);
     }
     int distance = Distance(sprite->position, target->sprite->position);
     if (distance > merge_distance)
@@ -4392,7 +4346,7 @@ void Unit::Order_WarpingArchon(int merge_distance, int close_distance, int resul
         if ((sprite->elevation >= 12) || !(pathing_flags & 1))
             pathing_flags &= ~1;
 
-        IssueOrderTargetingNothing(this, Order::CompletingArchonSummon);
+        IssueOrderTargetingNothing(Order::CompletingArchonSummon);
     }
 }
 
@@ -4611,12 +4565,12 @@ void Unit::Order_ComputerAi(ProgressUnitResults *results)
         if (Ai_IsMilitaryAtRegionWithoutState0(this))
             Ai_ReturnToNearestBaseForced(this);
         else
-            IssueOrderTargetingNothing(this, Order::Medic);
+            IssueOrderTargetingNothing(Order::Medic);
         return;
     }
     if (!ai)
     {
-        IssueOrderTargetingNothing(this, units_dat_ai_idle_order[unit_id]);
+        IssueOrderTargetingNothing(units_dat_ai_idle_order[unit_id]);
         return;
     }
     if (Ai_UnitSpecific(this))
@@ -4624,7 +4578,7 @@ void Unit::Order_ComputerAi(ProgressUnitResults *results)
     switch (ai->type)
     {
         case 1:
-            IssueOrderTargetingNothing(this, units_dat_ai_idle_order[unit_id]);
+            IssueOrderTargetingNothing(units_dat_ai_idle_order[unit_id]);
         break;
         case 2:
             Ai_WorkerAi(this);
@@ -4648,7 +4602,7 @@ void Unit::Order_ComputerAi(ProgressUnitResults *results)
            {
                Unit *scv = Ai_FindNearestRepairer(this);
                if (scv)
-                   IssueOrderTargetingUnit_Simple(this, Order::Follow, scv);
+                   IssueOrderTargetingUnit(Order::Follow, scv);
                return;
            }
         }
@@ -4663,7 +4617,7 @@ void Unit::Order_Interceptor(ProgressUnitResults *results)
 {
     if (interceptor.parent && shields < GetMaxShields() * 256 / 2)
     {
-        IssueOrderTargetingNothing(this, Order::InterceptorReturn);
+        IssueOrderTargetingNothing(Order::InterceptorReturn);
         return;
     }
     if (Interceptor_Attack(this) == 0)
@@ -4741,7 +4695,7 @@ void Unit::Order_InterceptorReturn(ProgressUnitResults *results)
     if (parent_distance < 0xa)
     {
         LoadFighter(interceptor.parent, this);
-        IssueOrderTargetingNothing(this, Order::Nothing);
+        IssueOrderTargetingNothing(Order::Nothing);
         RefreshUi();
     }
     else
@@ -4924,34 +4878,9 @@ void Unit::Order_Land(ProgressUnitResults *results)
 {
     if (flags & UnitStatus::Building) // Is already landed
     {
-        order_flags |= 0x1;
-        if (order != Order::Die)
-        {
-            while (order_queue_end)
-            {
-                Order *order = order_queue_end;
-                if (orders_dat_interruptable[order->order_id] || order->order_id == Order::LiftOff)
-                    DeleteOrder(order);
-                else
-                    break;
-            }
-            AddOrder(this, Order::LiftOff, nullptr, None, 0, nullptr);
-            DoNextQueuedOrder();
-        }
-        if (order != Order::Die)
-        {
-            // Why it deletes only if last is land ;_;
-            while (order_queue_end)
-            {
-                Order *order = order_queue_end;
-                if (order->order_id == Order::Land)
-                    DeleteOrder(order);
-                else
-                    break;
-            }
-            AddOrder(this, Order::Land, nullptr, None, order_target_pos.AsDword(), target);
-            AppendOrder(this, units_dat_return_to_idle_order[unit_id], 0, 0, Unit::None, 0);
-        }
+        IssueOrderTargetingNothing(Order::LiftOff);
+        AppendOrder(Order::Land, target, order_target_pos, None, false);
+        AppendOrderTargetingNothing(units_dat_return_to_idle_order[unit_id]);
         return;
     }
     switch (order_state)
@@ -5035,15 +4964,19 @@ void Unit::Order_Land(ProgressUnitResults *results)
                     other->Kill(results);
                 return false;
             });
-            if (order_queue_begin)
+            if (order_queue_begin != nullptr)
             {
                 if (order_queue_begin->order_id == Order::Move || order_queue_begin->order_id == Order::Follow)
-                    InsertOrderTargetingNothing(this, Order::LiftOff, order_queue_begin);
+                {
+                    PrependOrderTargetingNothing(Order::LiftOff);
+                }
                 else if (order_queue_begin->order_id != Order::PlaceAddon)
                 {
                     while (order_queue_end != nullptr)
+                    {
                         DeleteOrder(order_queue_end);
-                    IssueOrderTargetingNothing(this, units_dat_return_to_idle_order[unit_id]);
+                    }
+                    IssueOrderTargetingNothing(units_dat_return_to_idle_order[unit_id]);
                 }
             }
             // Should never do anything
@@ -5089,7 +5022,7 @@ void Unit::Order_SiegeMode(ProgressUnitResults *results)
             if (flingy_flags & 0x2 || subunit->flingy_flags & 0x2 || subunit->flags & UnitStatus::Nobrkcodestart)
                 return;
             SetMoveTargetToNearbyPoint(units_dat_direction[unit_id], (Flingy *)this);
-            IssueOrderTargetingUnit2(subunit, Order::Nothing3, this);
+            subunit->IssueOrderTargetingUnit(Order::Nothing3, this);
             SetMoveTargetToNearbyPoint(units_dat_direction[subunit->unit_id], (Flingy *)subunit);
             subunit->SetIscriptAnimation(Iscript::Animation::Special1, true, "Order_SiegeMode", results);
             bool killed = false;
@@ -5122,15 +5055,15 @@ void Unit::Order_SiegeMode(ProgressUnitResults *results)
             order_signal &= ~0x1;
             if (order_queue_begin && order_queue_begin->order_id != Order::WatchTarget)
             {
-                IssueOrderTargetingNothing(this, units_dat_return_to_idle_order[unit_id]);
+                IssueOrderTargetingNothing(units_dat_return_to_idle_order[unit_id]);
             }
             else if (order_queue_begin == nullptr)
             {
-                AppendOrder(this, units_dat_return_to_idle_order[unit_id], 0, 0, Unit::None, 0);
+                AppendOrderTargetingNothing(units_dat_return_to_idle_order[unit_id]);
             }
             ForceOrderDone();
             if (subunit->order_queue_begin == nullptr)
-                AppendOrder(subunit, units_dat_return_to_idle_order[subunit->unit_id], 0, 0, Unit::None, 0);
+                subunit->AppendOrderTargetingNothing(units_dat_return_to_idle_order[subunit->unit_id]);
             subunit->ForceOrderDone();
     }
 }
@@ -5370,16 +5303,16 @@ void Unit::GiveTo(int new_player, ProgressUnitResults *results)
     switch (bw::players[player].type)
     {
         case 1:
-            IssueOrderTargetingNothing(this, units_dat_ai_idle_order[unit_id]);
+            IssueOrderTargetingNothing(units_dat_ai_idle_order[unit_id]);
         break;
         case 3:
-            IssueOrderTargetingNothing(this, Order::RescuePassive);
+            IssueOrderTargetingNothing(Order::RescuePassive);
         break;
         case 7:
-            IssueOrderTargetingNothing(this, Order::Neutral);
+            IssueOrderTargetingNothing(Order::Neutral);
         break;
         default:
-            IssueOrderTargetingNothing(this, units_dat_human_idle_order[unit_id]);
+            IssueOrderTargetingNothing(units_dat_human_idle_order[unit_id]);
         break;
     }
 }
@@ -5770,4 +5703,132 @@ void Unit::IscriptToIdle()
     sprite->flags &= ~SpriteFlags::Nobrkcodestart;
     UnitIscriptContext(this, nullptr, "IscriptToIdle", MainRng(), false).IscriptToIdle();
     flingy_flags &= ~0x8;
+}
+
+static bool CanQueueOnOrder(int order)
+{
+    switch (order)
+    {
+        case Order::Guard:
+        case Order::PlayerGuard:
+        case Order::Nothing:
+        case Order::TransportIdle:
+        case Order::Patrol:
+        case Order::Medic:
+            return false;
+        default:
+            return true;
+    }
+}
+
+void Unit::TargetedOrder(int new_order, Unit *target, const Point &pos, int fow_unit, bool queued)
+{
+    if (queued && orders_dat_can_be_queued[new_order] && CanQueueOnOrder(order))
+    {
+        if (highlighted_order_count > 8)
+        {
+            const char *string = (*bw::stat_txt_tbl)->GetTblString(String::WaypointListFull);
+            PrintInfoMessageForLocalPlayer(string, player);
+            return;
+        }
+        InsertOrderAfter(new_order, target, pos, fow_unit, nullptr);
+    }
+    else
+    {
+        IssueOrder(new_order, target, pos, fow_unit);
+    }
+}
+
+void Unit::IssueOrder(int order, Unit *target, const Point &pos, int fow_unit)
+{
+    order_flags |= 0x1;
+    AppendOrder(order, target, pos, fow_unit, true);
+    DoNextQueuedOrder();
+}
+
+void Unit::AppendOrder(int new_order, Unit *order_target, const Point &pos, int fow_unit, bool clear_others)
+{
+    auto &current_order = order;
+    auto &current_target = target;
+    if (current_order == Order::Die)
+        return;
+
+    while (order_queue_end != nullptr)
+    {
+        Order *order = order_queue_end;
+        if (clear_others && orders_dat_interruptable[order->order_id])
+            DeleteOrder(order);
+        else if (order->order_id == new_order)
+            DeleteOrder(order);
+        else
+            break;
+    }
+    if (new_order == Order::Cloak)
+    {
+        PrependOrder(current_order, current_target, order_target_pos, order_fow_unit);
+        PrependOrder(Order::Cloak, order_target, pos, None);
+        ForceOrderDone();
+    }
+    else
+    {
+        InsertOrderAfter(new_order, order_target, pos, fow_unit, nullptr);
+    }
+}
+
+void Unit::PrependOrder(int order, Unit *target, const Point &pos, int fow_unit)
+{
+    if (order_queue_begin != nullptr)
+        InsertOrderBefore(order, target, pos, fow_unit, order_queue_begin);
+    else
+        InsertOrderAfter(order, target, pos, fow_unit, nullptr);
+}
+
+void Unit::InsertOrderAfter(int order_id, Unit *target, const Point &pos, int fow_unit, Order *insert_after)
+{
+    Order *new_order = Order::Allocate(order_id, pos, target, fow_unit);
+    if (orders_dat_highlight[order_id] != 0xffff)
+        highlighted_order_count += 1;
+
+    if (insert_after == nullptr)
+    {
+        if (order_queue_end == nullptr)
+        {
+            order_queue_begin = new_order;
+            order_queue_end = new_order;
+        }
+        else
+        {
+            order_queue_end->list.next = new_order;
+            new_order->list.prev = order_queue_end;
+            order_queue_end = new_order;
+        }
+    }
+    else
+    {
+        if (order_queue_end == insert_after)
+            order_queue_end = new_order;
+        new_order->list.prev = insert_after;
+        new_order->list.next = insert_after->list.next;
+        if (insert_after->list.next != nullptr)
+            insert_after->list.next->list.prev = new_order;
+        insert_after->list.next = new_order;
+    }
+}
+
+void Unit::InsertOrderBefore(int order_id, Unit *target, const Point &pos, int fow_unit, Order *insert_before)
+{
+    if (ai != nullptr && highlighted_order_count > 8)
+        return;
+
+    Order *new_order = Order::Allocate(order_id, pos, target, fow_unit);
+    if (orders_dat_highlight[order_id] != 0xffff)
+        highlighted_order_count += 1;
+
+    if (order_queue_begin == insert_before)
+        order_queue_begin = new_order;
+    new_order->list.prev = insert_before->list.prev;
+    new_order->list.next = insert_before;
+    if (insert_before->list.prev != nullptr)
+        insert_before->list.prev->list.next = new_order;
+    insert_before->list.prev = new_order;
 }

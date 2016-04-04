@@ -546,7 +546,42 @@ class Unit
         void LoadUnit(Unit *unit);
         bool UnloadUnit(Unit *unit);
 
-        void PrependOrder(int order, const Unit *target, const Point &pos);
+        void TargetedOrder(int new_order, Unit *target, const Point &pos, int fow_unit, bool queued);
+        void IssueOrderTargetingNothing(int order) {
+            IssueOrder(order, nullptr, Point(0, 0), None);
+        }
+        void IssueOrderTargetingGround(int order_id, const Point &pos) {
+            IssueOrder(order_id, nullptr, pos, None);
+        }
+        void IssueOrderTargetingUnit(int order, Unit *target) {
+            IssueOrder(order, target, target->sprite->position, None);
+        }
+        /// IssueOrder changes the current order - at least once uninterruptable state is over.
+        void IssueOrder(int new_order, Unit *target, const Point &pos, int fow_unit);
+        /// PrependOrder/AppendOrder/InsertOrder do not change the currently executed order
+        void PrependOrderTargetingNothing(int order) {
+            PrependOrder(order, nullptr, Point(0, 0), None);
+        }
+        void PrependOrderTargetingGround(int order_id, const Point &pos) {
+            PrependOrder(order_id, nullptr, pos, None);
+        }
+        void PrependOrderTargetingUnit(int order, Unit *target) {
+            PrependOrder(order, target, target->sprite->position, None);
+        }
+        void PrependOrder(int order, Unit *target, const Point &pos, int fow_unit);
+        void AppendOrderTargetingNothing(int order_id) {
+            AppendOrder(order_id, nullptr, Point(0, 0), None, false);
+        }
+        void AppendOrderTargetingGround(int order_id, const Point &pos) {
+            AppendOrder(order_id, nullptr, pos, None, false);
+        }
+        void AppendOrderTargetingUnit(int order_id, Unit *target) {
+            AppendOrder(order_id, target, target->sprite->position, None, false);
+        }
+        void AppendOrder(int order_id, Unit *target, const Point &pos, int fow_unit, bool clear_others);
+        void InsertOrderAfter(int order_id, Unit *target, const Point &pos, int fow_unit, Order *insert_after);
+        void InsertOrderBefore(int order_id, Unit *target, const Point &pos, int fow_unit, Order *insert_before);
+
         void Recall(Unit *other);
 
         int Order_AttackMove_ReactToAttack(int order);
@@ -588,7 +623,9 @@ class Unit
         bool CanTargetSelf(int order) const;
         bool CanUseTargetedOrder(int order) const;
 
-        void Attack(Unit *enemy);
+        void Attack(Unit *enemy) {
+            IssueOrderTargetingUnit(units_dat_attack_unit_order[unit_id], enemy);
+        }
         void ReactToHit(Unit *attacker);
 
         bool HasWayOfAttacking() const;

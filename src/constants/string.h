@@ -30,6 +30,7 @@ namespace String // Note: 1-based
     const int NotEnoughEnergy_Terran = 0x361;
     const int NotEnoughEnergy_Protoss = 0x362;
     const int NotEnoughEnergy = NotEnoughEnergy_Zerg;
+    const int WaypointListFull = 0x367;
     const int GeyserDepleted = 0x36b;
     const int Error_InvalidTarget = 0x36c;
     const int Error_InvalidTargetStructure = 0x36d;

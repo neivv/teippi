@@ -396,7 +396,9 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->Hook(bw::ProgressObjects, ProgressObjects);
     patch->Hook(bw::GameFunc, ProgressFrames);
 
-    patch->Hook(bw::CreateOrder, Order::Allocate);
+    patch->Hook(bw::CreateOrder, [](uint8_t order, uint32_t pos, Unit *target, uint16_t fow) {
+        return Order::Allocate(order, Point(pos & 0xffff, pos >> 16), target, fow);
+    });
     patch->Hook(bw::DeleteOrder, DeleteOrder_Hook);
     patch->Hook(bw::DeleteSpecificOrder, &Unit::DeleteSpecificOrder);
 

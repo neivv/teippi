@@ -559,7 +559,7 @@ void Unit::Recall(Unit *other)
     MoveUnit(other, new_pos[0], new_pos[1]); // Huh?
     FinishMoveUnit(other);
     if (other->unit_id != Cocoon)
-        IssueOrderTargetingNothing(other, units_dat_return_to_idle_order[other->unit_id]);
+        other->IssueOrderTargetingNothing(units_dat_return_to_idle_order[other->unit_id]);
     Sprite *recall = lone_sprites->AllocateLone(Sprite::Recall, Point(new_pos[0], new_pos[1]), player);
     recall->elevation = other->sprite->elevation + 1;
     recall->UpdateVisibilityPoint();

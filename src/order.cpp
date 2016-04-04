@@ -9,14 +9,14 @@ Order::Order()
     allocated.Add(first_allocated_order);
 }
 
-Order *Order::Allocate(uint8_t order_id, uint32_t position_xy, Unit *target, uint16_t fow_unit_id)
+Order *Order::Allocate(int order_id, const Point &position, Unit *target, uint16_t fow_unit_id)
 {
     Order *order;
     order = new Order;
     order->list.prev = nullptr;
     order->list.next = nullptr;
     order->order_id = order_id;
-    order->position = Point(position_xy & 0xffff, position_xy >> 16);
+    order->position = position;
     order->target = target;
     order->fow_unit = fow_unit_id;
 
@@ -53,17 +53,5 @@ bool IsTargetableOrder(int order)
             return false;
         default:
             return true;
-    }
-}
-
-void Unit::PrependOrder(int order, const Unit *target, const Point &pos)
-{
-    if (order_queue_begin)
-    {
-        InsertOrder(this, order, target, pos.AsDword(), None, order_queue_begin.AsRawPointer());
-    }
-    else
-    {
-        AddOrder(this, order, nullptr, None, pos.AsDword(), target);
     }
 }
