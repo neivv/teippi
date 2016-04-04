@@ -578,8 +578,14 @@ void RemoveLimits(Common::PatchContext *patch)
         [](int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, uint8_t *blend_table) {
         DrawBlended_Flipped(x, y, frame_header, rect, blend_table);
     });
-    patch->Hook(bw::DrawUncloakedPart, DrawUncloakedPart_NonFlipped);
-    patch->Hook(bw::DrawUncloakedPart_Flipped, DrawUncloakedPart_Flipped);
+    patch->Hook(bw::DrawUncloakedPart,
+        [](int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, int state) {
+        DrawUncloakedPart_NonFlipped(x, y, frame_header, rect, state & 0xff);
+    });
+    patch->Hook(bw::DrawUncloakedPart_Flipped,
+        [](int x, int y, GrpFrameHeader *frame_header, Rect32 *rect, int state) {
+        DrawUncloakedPart_Flipped(x, y, frame_header, rect, state & 0xff);
+    });
     patch->Hook(bw::DrawImage_Cloaked, DrawCloaked_NonFlipped);
     patch->Hook(bw::DrawImage_Cloaked_Flipped, DrawCloaked_Flipped);
     bw::image_renderfuncs[Image::Normal].nonflipped = &DrawNormal_NonFlipped;
