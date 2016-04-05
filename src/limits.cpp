@@ -602,8 +602,9 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->Patch(bw::DrawGrp_Flipped, (void *)&DrawGrp_Flipped_Hook, 12, PATCH_OPTIONALHOOK | PATCH_SAFECALLHOOK);
 
     patch->Hook(bw::FindUnitAtPoint, FindUnitAtPoint);
-    patch->Hook(bw::MakeJoinedGameCommand, [](int a, int b, int c, int d, uint32_t e, int f) {
-        MakeJoinedGameCommand(a, b, c, d, e, f != 0);
+    patch->Hook(bw::MakeJoinedGameCommand, [](int flags, int x4, int proto_ver, int save_uniq_player,
+                                              int save_player, uint32_t save_hash, int create) {
+        MakeJoinedGameCommand(flags, x4, save_player, save_uniq_player, save_hash, create != 0);
     });
     patch->Hook(bw::Command_GameData, Command_GameData);
     patch->Hook(bw::InitGame, InitGame);

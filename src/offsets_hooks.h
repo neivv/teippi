@@ -248,7 +248,7 @@ namespace bw
     const hook_offset DrawGrp = 0x0040ABBE;
     const hook_offset DrawGrp_Flipped = 0x0040BF60;
 
-    const Stdcall<void(int, int, int, int, uint32_t, int)> MakeJoinedGameCommand = 0x00471FB0;
+    const Stdcall<void(int, int, int, int, int, uint32_t, int)> MakeJoinedGameCommand = 0x00471FB0;
     const Stdcall<void(const uint8_t *, int)> Command_GameData = 0x00470840;
 
     const Stdcall<int()> InitGame = 0x004EEE00;
