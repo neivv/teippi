@@ -1,27 +1,34 @@
 #ifdef DEBUG
 #include "test_game.h"
 
-#include "unit.h"
-#include "offsets.h"
-#include "limits.h"
-#include "player.h"
+#include <algorithm>
+
 #include "common/assert.h"
-#include "tech.h"
-#include "order.h"
-#include "text.h"
-#include "bullet.h"
-#include "unitsearch.h"
-#include "targeting.h"
-#include "dialog.h"
-#include "yms.h"
+#include "console/windows_wrap.h"
+
+#include "constants/image.h"
+#include "constants/order.h"
+#include "constants/tech.h"
+#include "constants/unit.h"
+#include "constants/weapon.h"
 #include "ai.h"
 #include "ai_hit_reactions.h"
+#include "bullet.h"
+#include "commands.h"
+#include "dialog.h"
+#include "limits.h"
+#include "offsets.h"
+#include "order.h"
+#include "player.h"
+#include "targeting.h"
+#include "tech.h"
+#include "text.h"
 #include "triggers.h"
+#include "unit.h"
+#include "unitsearch.h"
+#include "yms.h"
 
 #include "possearch.hpp"
-
-#include <algorithm>
-#include "console/windows_wrap.h"
 
 using std::min;
 using std::get;
@@ -45,17 +52,31 @@ static void SelectUnit(Unit *unit) {
     RefreshUi();
 }
 
+static void CommandToBuild(Unit *builder, UnitType building, const Point &pos, OrderType order) {
+    SelectUnit(builder);
+    uint16_t x_tile = (pos.x - building.PlacementBox().width / 2) / 32;
+    uint16_t y_tile = (pos.y - building.PlacementBox().height / 2) / 32;
+    uint16_t building_id = building.Raw();
+    uint8_t cmd[8];
+    cmd[0] = commands::Build;
+    cmd[1] = order.Raw();
+    memcpy(cmd + 2, &x_tile, 2);
+    memcpy(cmd + 4, &y_tile, 2);
+    memcpy(cmd + 6, &building_id, 2);
+    SendCommand(cmd, sizeof cmd);
+}
+
 static void ClearTriggers() {
     for (int i = 0; i < Limits::ActivePlayers; i++)
         FreeTriggerList(&bw::triggers[i]);
 }
 
-Unit *GameTest::CreateUnitForTest(int unit_id, int player) {
+Unit *GameTest::CreateUnitForTest(UnitType unit_id, int player) {
     return CreateUnitForTestAt(unit_id, player, Point(100, 100));
 }
 
-Unit *GameTest::CreateUnitForTestAt(int unit_id, int player, const Point &point) {
-    Unit *unit = CreateUnit(unit_id, point.x, point.y, player);
+Unit *GameTest::CreateUnitForTestAt(UnitType unit_id, int player, const Point &point) {
+    Unit *unit = CreateUnit(unit_id.Raw(), point.x, point.y, player);
     Assert(unit != nullptr);
     FinishUnit_Pre(unit);
     FinishUnit(unit);
@@ -82,10 +103,11 @@ static void ClearUnits() {
     }
 }
 
-static Unit *FindUnit(int unit_id) {
+static Unit *FindUnit(UnitType unit_id) {
     for (Unit *unit : *bw::first_active_unit) {
-        if (unit->unit_id == unit_id)
+        if (unit->Type() == unit_id) {
             return unit;
+        }
     }
     return nullptr;
 }
@@ -137,20 +159,22 @@ static bool NoUnits() {
 }
 
 static void GiveAllTechs() {
-    for (int i = 0; i < Tech::None; i++) {
-        for (int player = 0; player < Limits::Players; player++)
-            SetTechLevel(i, player, 1);
+    for (int i = 0; i < TechId::None.Raw(); i++) {
+        for (int player = 0; player < Limits::Players; player++) {
+            SetTechLevel(TechType(i), player, 1);
+        }
     }
 }
 
-static void GiveTech(int tech, int player) {
+static void GiveTech(TechType tech, int player) {
     SetTechLevel(tech, player, 1);
 }
 
 static void ClearTechs() {
-    for (int i = 0; i < Tech::None; i++) {
-        for (int player = 0; player < Limits::Players; player++)
-            SetTechLevel(i, player, 0);
+    for (int i = 0; i < TechId::None.Raw(); i++) {
+        for (int player = 0; player < Limits::Players; player++) {
+            SetTechLevel(TechType(i), player, 0);
+        }
     }
 }
 
@@ -180,10 +204,10 @@ struct Test_Hallucination : public GameTest {
             case 0:
                 state++;
             break; case 1:
-                ht = CreateUnitForTest(Unit::HighTemplar, 0);
-                real = CreateUnitForTest(Unit::Marine, 1);
-                outsider = CreateUnitForTest(Unit::Marine, 2);
-                ht->IssueOrderTargetingUnit(Order::Hallucination, real);
+                ht = CreateUnitForTest(UnitId::HighTemplar, 0);
+                real = CreateUnitForTest(UnitId::Marine, 1);
+                outsider = CreateUnitForTest(UnitId::Marine, 2);
+                ht->IssueOrderTargetingUnit(OrderId::Hallucination, real);
                 state++;
             break; case 2: {
                 int hallu_count = 0;
@@ -198,9 +222,9 @@ struct Test_Hallucination : public GameTest {
                     TestAssert(hallu_count == Spell::HallucinationCount);
                     TestAssert(hallu->player == ht->player);
                     TestAssert(hallu->ai == nullptr);
-                    hallu->IssueOrderTargetingUnit(Order::AttackUnit, outsider);
-                    real->IssueOrderTargetingUnit(Order::AttackUnit, hallu);
-                    outsider->IssueOrderTargetingUnit(Order::AttackUnit, real);
+                    hallu->IssueOrderTargetingUnit(OrderId::AttackUnit, outsider);
+                    real->IssueOrderTargetingUnit(OrderId::AttackUnit, hallu);
+                    outsider->IssueOrderTargetingUnit(OrderId::AttackUnit, real);
                     state++;
                 }
             } break; case 3: {
@@ -236,16 +260,16 @@ struct Test_Plague : public GameTest {
             case 0:
                 state++;
             break; case 1:
-                defi = CreateUnitForTest(Unit::Defiler, 0);
-                target = CreateUnitForTest(Unit::Marine, 0);
-                defi->IssueOrderTargetingUnit(Order::Plague, target);
+                defi = CreateUnitForTest(UnitId::Defiler, 0);
+                target = CreateUnitForTest(UnitId::Marine, 0);
+                defi->IssueOrderTargetingUnit(OrderId::Plague, target);
                 state++;
             break; case 2: {
                 int dmg = target->GetMaxHitPoints() - target->GetHitPoints();
                 if (dmg != 0) {
                     TestAssert(target->plague_timer != 0);
                     TestAssert(defi->plague_timer == 0);
-                    TestAssert(dmg == weapons_dat_damage[Weapon::Plague] / (Spell::PlagueTime + 1));
+                    TestAssert(dmg == WeaponId::Plague.Damage() / (Spell::PlagueTime + 1));
                     SetHp(target, 5 * 256); // Test that it doesn't kill
                     state++;
                 }
@@ -270,16 +294,16 @@ struct Test_Storm : public GameTest {
             case 0:
                 state++;
             break; case 1: {
-                ht1 = CreateUnitForTestAt(Unit::HighTemplar, 0, Point(100, 100));
+                ht1 = CreateUnitForTestAt(UnitId::HighTemplar, 0, Point(100, 100));
                 auto crect = ht1->GetCollisionRect();
-                ht2 = CreateUnitForTestAt(Unit::HighTemplar, 0, Point(100 + crect.Width(), 100));
-                target = CreateUnitForTestAt(Unit::Battlecruiser, 0, Point(300, 100));
-                ht1->IssueOrderTargetingUnit(Order::PsiStorm, target);
+                ht2 = CreateUnitForTestAt(UnitId::HighTemplar, 0, Point(100 + crect.Width(), 100));
+                target = CreateUnitForTestAt(UnitId::Battlecruiser, 0, Point(300, 100));
+                ht1->IssueOrderTargetingUnit(OrderId::PsiStorm, target);
                 state++;
             // Cases 2 and 3 should behave same, no matter if 2 storms are casted or 1
             } break; case 2: case 3: {
                 int dmg = target->GetMaxHitPoints() - target->GetHitPoints();
-                int storm_dmg = weapons_dat_damage[Weapon::PsiStorm];
+                int storm_dmg = WeaponId::PsiStorm.Damage();
                 TestAssert(dmg % storm_dmg == 0);
                 if (dmg != 0) {
                     TestAssert(dmg < storm_dmg * 10);
@@ -289,13 +313,13 @@ struct Test_Storm : public GameTest {
                     if (!dmg_done) {
                         TestAssert(storms_active);
                     } else if (state == 2 && !storms_active) {
-                        target = CreateUnitForTestAt(Unit::Battlecruiser, 0, Point(100, 300));
-                        ht1->IssueOrderTargetingUnit(Order::PsiStorm, target);
-                        ht2->IssueOrderTargetingUnit(Order::PsiStorm, target);
+                        target = CreateUnitForTestAt(UnitId::Battlecruiser, 0, Point(100, 300));
+                        ht1->IssueOrderTargetingUnit(OrderId::PsiStorm, target);
+                        ht2->IssueOrderTargetingUnit(OrderId::PsiStorm, target);
                         state++;
                     } else if (state == 3 && !storms_active) {
                         ht1->energy = 200 * 256;
-                        ht1->IssueOrderTargetingUnit(Order::Hallucination, target);
+                        ht1->IssueOrderTargetingUnit(OrderId::Hallucination, target);
                         state++;
                     }
                 }
@@ -303,16 +327,16 @@ struct Test_Storm : public GameTest {
                 for (Unit *unit : *bw::first_active_unit) {
                     if (unit->flags & UnitStatus::Hallucination) {
                         target = unit;
-                        target->IssueOrderTargetingGround(Order::Move, ht1->sprite->position);
+                        target->IssueOrderTargetingGround(OrderId::Move, ht1->sprite->position);
                         state++;
                         break;
                     }
                 }
             break; case 5:
-                if (target->order != Order::Move) {
+                if (target->order != OrderId::Move) {
                     TestAssert(target->GetCollisionRect().top < ht2->sprite->position.y);
-                    ht2->IssueOrderTargetingUnit(Order::PsiStorm, target);
-                    storm_area = Rect16(target->sprite->position, weapons_dat_outer_splash[Weapon::PsiStorm]);
+                    ht2->IssueOrderTargetingUnit(OrderId::PsiStorm, target);
+                    storm_area = Rect16(target->sprite->position, WeaponId::PsiStorm.OuterSplash());
                     state++;
                 }
             break; case 6: { // The units are so close that both hts die and the hallu as well
@@ -341,22 +365,22 @@ struct Test_ShieldOverlay : public GameTest {
             case 0:
                 state++;
             break; case 1:
-                attacker = CreateUnitForTest(Unit::Marine, 0);
-                target = CreateUnitForTest(Unit::Zealot, 0);
-                attacker->IssueOrderTargetingUnit(Order::AttackUnit, target);
+                attacker = CreateUnitForTest(UnitId::Marine, 0);
+                target = CreateUnitForTest(UnitId::Zealot, 0);
+                attacker->IssueOrderTargetingUnit(OrderId::AttackUnit, target);
                 state++;
             break; case 2: {
                 // Fail if taken hp dmg and still hasn't found overlay
                 TestAssert(target->GetHitPoints() == target->GetMaxHitPoints());
                 for (Image *img : target->sprite->first_overlay) {
-                    if (img->image_id == Image::ShieldOverlay)
+                    if (img->image_id == ImageId::ShieldOverlay)
                         state++;
                 }
             } break; case 3: {
                 TestAssert(attacker->target != nullptr);
                 target->shields = 0;
                 for (Image *img : target->sprite->first_overlay) {
-                    if (img->image_id == Image::ShieldOverlay)
+                    if (img->image_id == ImageId::ShieldOverlay)
                         return;
                 }
                 state++;
@@ -365,7 +389,7 @@ struct Test_ShieldOverlay : public GameTest {
                     Pass();
                 else {
                     for (Image *img : target->sprite->first_overlay) {
-                        TestAssert(img->image_id != Image::ShieldOverlay);
+                        TestAssert(img->image_id != ImageId::ShieldOverlay);
                     }
                 }
             }
@@ -382,16 +406,16 @@ struct Test_ShieldOverlayHallu : public Test_ShieldOverlay {
             default:
                 Test_ShieldOverlay::NextFrame();
             break; case 1: {
-                attacker = CreateUnitForTest(Unit::Marine, 0);
-                target = CreateUnitForTest(Unit::Zealot, 0);
-                Unit *ht = CreateUnitForTest(Unit::HighTemplar, 0);
-                ht->IssueOrderTargetingUnit(Order::Hallucination, target);
+                attacker = CreateUnitForTest(UnitId::Marine, 0);
+                target = CreateUnitForTest(UnitId::Zealot, 0);
+                Unit *ht = CreateUnitForTest(UnitId::HighTemplar, 0);
+                ht->IssueOrderTargetingUnit(OrderId::Hallucination, target);
                 state = 100;
             } break; case 100: {
                 for (Unit *unit : *bw::first_active_unit) {
                     if (unit->flags & UnitStatus::Hallucination) {
                         target = unit;
-                        attacker->IssueOrderTargetingUnit(Order::AttackUnit, target);
+                        attacker->IssueOrderTargetingUnit(OrderId::AttackUnit, target);
                         state = 2;
                     }
                 }
@@ -410,9 +434,9 @@ struct Test_ShieldDamage : public GameTest {
             case 0:
                 state++;
             break; case 1: {
-                attacker = CreateUnitForTest(Unit::Marine, 0);
-                target = CreateUnitForTest(Unit::Zealot, 0);
-                attacker->IssueOrderTargetingUnit(Order::AttackUnit, target);
+                attacker = CreateUnitForTest(UnitId::Marine, 0);
+                target = CreateUnitForTest(UnitId::Zealot, 0);
+                attacker->IssueOrderTargetingUnit(OrderId::AttackUnit, target);
                 state++;
             } break; case 2: {
                 // Test that unit will not take hp damage as long as it has shields
@@ -439,11 +463,11 @@ struct Test_LurkerAi : public GameTest {
             case 0:
                 state++;
             break; case 1: {
-                flyer = CreateUnitForTest(Unit::Scout, 0);
-                lurker = CreateUnitForTest(Unit::Lurker, 1);
+                flyer = CreateUnitForTest(UnitId::Scout, 0);
+                lurker = CreateUnitForTest(UnitId::Lurker, 1);
                 TestAssert(lurker->ai != nullptr);
-                lurker->IssueOrderTargetingNothing(Order::Burrow);
-                flyer->IssueOrderTargetingUnit(Order::AttackUnit, lurker);
+                lurker->IssueOrderTargetingNothing(OrderId::Burrow);
+                flyer->IssueOrderTargetingUnit(OrderId::AttackUnit, lurker);
                 state++;
             } break; case 2: case 3: {
                 TestAssert(flyer->target != nullptr);
@@ -478,12 +502,12 @@ struct Test_BurrowerAi : public GameTest {
             case 0:
                 state++;
             break; case 1: {
-                flyer = CreateUnitForTestAt(Unit::Valkyrie, 0, Point(100, 500));
-                hydra = CreateUnitForTest(Unit::Hydralisk, 1);
+                flyer = CreateUnitForTestAt(UnitId::Valkyrie, 0, Point(100, 500));
+                hydra = CreateUnitForTest(UnitId::Hydralisk, 1);
                 state++;
             } break; case 2: {
                 if (hydra->flags & UnitStatus::Burrowed) {
-                    flyer->IssueOrderTargetingGround(Order::Move, hydra->sprite->position);
+                    flyer->IssueOrderTargetingGround(OrderId::Move, hydra->sprite->position);
                     state++;
                 }
             } break; case 3: {
@@ -505,7 +529,7 @@ struct Test_Vision : public GameTest {
             case 0:
                 state++;
             break; case 1: {
-                unit = CreateUnitForTest(Unit::Overlord, *bw::local_player_id);
+                unit = CreateUnitForTest(UnitId::Overlord, *bw::local_player_id);
                 begin_frame = *bw::frame_count;
                 state++;
             } break; case 2: {
@@ -528,15 +552,15 @@ struct Test_Carrier : public GameTest {
             case 0:
                 state++;
             break; case 1: {
-                carrier = CreateUnitForTest(Unit::Carrier, 0);
-                target = CreateUnitForTest(Unit::Overlord, 0);
-                carrier->IssueSecondaryOrder(Order::TrainFighter);
-                carrier->build_queue[carrier->current_build_slot] = Unit::Interceptor;
+                carrier = CreateUnitForTest(UnitId::Carrier, 0);
+                target = CreateUnitForTest(UnitId::Overlord, 0);
+                carrier->IssueSecondaryOrder(OrderId::TrainFighter);
+                carrier->build_queue[carrier->current_build_slot] = UnitId::Interceptor;
                 state++;
             } break; case 2: {
                 if (carrier->carrier.in_child != nullptr) {
                     interceptor = carrier->carrier.in_child;
-                    carrier->IssueOrderTargetingUnit(Order::CarrierAttack, target);
+                    carrier->IssueOrderTargetingUnit(OrderId::CarrierAttack, target);
                     state++;
                 }
             } break; case 3: {
@@ -546,7 +570,7 @@ struct Test_Carrier : public GameTest {
                     state++;
                 }
             } break; case 4: {
-                if (interceptor->order == Order::InterceptorReturn)
+                if (interceptor->order == OrderId::InterceptorReturn)
                     state++;
             } break; case 5: {
                 if (carrier->target == nullptr) {
@@ -574,10 +598,10 @@ struct Test_Bunker : public GameTest {
             case 0:
                 state++;
             break; case 1: {
-                marine = CreateUnitForTest(Unit::Marine, 0);
-                bunker = CreateUnitForTest(Unit::Bunker, 0);
-                enemy = CreateUnitForTest(Unit::Zergling, 1);
-                marine->IssueOrderTargetingUnit(Order::EnterTransport, bunker);
+                marine = CreateUnitForTest(UnitId::Marine, 0);
+                bunker = CreateUnitForTest(UnitId::Bunker, 0);
+                enemy = CreateUnitForTest(UnitId::Zergling, 1);
+                marine->IssueOrderTargetingUnit(OrderId::EnterTransport, bunker);
                 state++;
             } break; case 2: {
                 if (marine->flags & UnitStatus::InBuilding) {
@@ -590,7 +614,7 @@ struct Test_Bunker : public GameTest {
                 }
             } break; case 4: {
                 if (enemy->IsDying()) {
-                    bunker->IssueOrderTargetingNothing(Order::DisableDoodad);
+                    bunker->IssueOrderTargetingNothing(OrderId::DisableDoodad);
                     state++;
                 } else {
                     TestAssert(marine->target == enemy);
@@ -603,11 +627,33 @@ struct Test_Bunker : public GameTest {
                 }
             } break; case 6: {
                 // The marine should die as well as it cannot be unloaded
-                if (FindUnit(Unit::Marine) == nullptr) {
-                    Pass();
+                if (FindUnit(UnitId::Marine) == nullptr) {
+                    state++;
                 } else {
-                    TestAssert(FindUnit(Unit::Marine)->related != nullptr);
-                    TestAssert(!FindUnit(Unit::Bunker)->IsDying());
+                    TestAssert(FindUnit(UnitId::Marine)->related != nullptr);
+                    TestAssert(!FindUnit(UnitId::Bunker)->IsDying());
+                }
+            } break; case 7: {
+                // Check that unloading doesn't break anything
+                marine = CreateUnitForTest(UnitId::Marine, 0);
+                bunker = CreateUnitForTest(UnitId::Bunker, 0);
+                marine->IssueOrderTargetingUnit(OrderId::EnterTransport, bunker);
+                state++;
+            } break; case 8: {
+                if (marine->flags & UnitStatus::InBuilding) {
+                    SelectUnit(bunker);
+                    uint8_t cmd[] = {commands::UnloadAll, 0};
+                    SendCommand(cmd, sizeof cmd);
+                    state++;
+                }
+            } break; case 9: {
+                if (~marine->flags & UnitStatus::InBuilding) {
+                    marine->IssueOrderTargetingUnit(OrderId::EnterTransport, bunker);
+                    state++;
+                }
+            } break; case 10: {
+                if (marine->flags & UnitStatus::InBuilding) {
+                    Pass();
                 }
             }
         }
@@ -635,10 +681,10 @@ struct Test_DrawfuncSync : public GameTest {
             case 0: case 3: case 6:
                 if (NoUnits()) { state++; }
             break; case 1: {
-                arbiter = CreateUnitForTest(Unit::Arbiter, 0);
-                archon = CreateUnitForTest(Unit::Archon, 0);
+                arbiter = CreateUnitForTest(UnitId::Arbiter, 0);
+                archon = CreateUnitForTest(UnitId::Archon, 0);
                 archon->sprite->main_image->drawfunc = 1;
-                archon->IssueOrderTargetingGround(Order::Move, Point(100, 500));
+                archon->IssueOrderTargetingGround(OrderId::Move, Point(100, 500));
                 state++;
             } break; case 2: {
                 if (archon->invisibility_effects == 0) {
@@ -651,10 +697,10 @@ struct Test_DrawfuncSync : public GameTest {
                     }
                 }
             } break; case 4: {
-                vision = CreateUnitForTest(Unit::Wraith, 0);
-                arbiter = CreateUnitForTest(Unit::Arbiter, 1);
-                archon = CreateUnitForTest(Unit::Archon, 1);
-                archon->IssueOrderTargetingGround(Order::Move, Point(100, 500));
+                vision = CreateUnitForTest(UnitId::Wraith, 0);
+                arbiter = CreateUnitForTest(UnitId::Arbiter, 1);
+                archon = CreateUnitForTest(UnitId::Archon, 1);
+                archon->IssueOrderTargetingGround(OrderId::Move, Point(100, 500));
                 archon->sprite->main_image->drawfunc = 1;
                 state++;
             } break; case 5: {
@@ -668,14 +714,14 @@ struct Test_DrawfuncSync : public GameTest {
                     }
                 }
             } break; case 7: {
-                arbiter = CreateUnitForTest(Unit::Arbiter, 1);
-                archon = CreateUnitForTest(Unit::Archon, 1);
+                arbiter = CreateUnitForTest(UnitId::Arbiter, 1);
+                archon = CreateUnitForTest(UnitId::Archon, 1);
                 archon->sprite->main_image->drawfunc = 1;
                 state++;
             } break; case 8: {
                 TestAssert(archon->invisibility_effects == 1);
-                vision = CreateUnitForTest(Unit::Overlord, 0);
-                archon->IssueOrderTargetingGround(Order::Move, Point(100, 500));
+                vision = CreateUnitForTest(UnitId::Overlord, 0);
+                archon->IssueOrderTargetingGround(OrderId::Move, Point(100, 500));
                 state++;
             } break; case 9: {
                 if (archon->invisibility_effects == 0) {
@@ -703,28 +749,28 @@ struct Test_DrawfuncSync : public GameTest {
 };
 
 struct AiSpell {
-    int tech;
-    int caster_unit_id;
-    int target_unit_id;
-    int attacker_unit_id;
+    TechType tech;
+    UnitType caster_unit_id;
+    UnitType target_unit_id;
+    UnitType attacker_unit_id;
 };
 
 const AiSpell revenge_spells[] = {
-    { Tech::Lockdown, Unit::Ghost, Unit::Wraith, Unit::None },
+    { TechId::Lockdown, UnitId::Ghost, UnitId::Wraith, UnitId::None },
     // Requires detector with hp > 80
-    { Tech::OpticalFlare, Unit::Medic, Unit::Overlord, Unit::Marine },
-    { Tech::Irradiate, Unit::ScienceVessel, Unit::Mutalisk, Unit::None },
+    { TechId::OpticalFlare, UnitId::Medic, UnitId::Overlord, UnitId::Marine },
+    { TechId::Irradiate, UnitId::ScienceVessel, UnitId::Mutalisk, UnitId::None },
     // Requires unit which can attack the vessel and has over 200 shields
-    { Tech::EmpShockwave, Unit::ScienceVessel, Unit::Archon, Unit::None },
-    { Tech::Ensnare, Unit::Queen, Unit::Wraith, Unit::None },
-    { Tech::SpawnBroodlings, Unit::Queen, Unit::Hydralisk, Unit::None },
-    { Tech::Plague, Unit::Defiler, Unit::Marine, Unit::None },
-    { Tech::PsionicStorm, Unit::HighTemplar, Unit::Marine, Unit::None },
-    { Tech::Feedback, Unit::DarkArchon, Unit::Ghost, Unit::None },
-    { Tech::Maelstrom, Unit::DarkArchon, Unit::Ultralisk, Unit::None },
-    { Tech::StasisField, Unit::Arbiter, Unit::Battlecruiser, Unit::None },
-    { Tech::DisruptionWeb, Unit::Corsair, Unit::Dragoon, Unit::None },
-    { -1, -1, -1 }
+    { TechId::EmpShockwave, UnitId::ScienceVessel, UnitId::Archon, UnitId::None },
+    { TechId::Ensnare, UnitId::Queen, UnitId::Wraith, UnitId::None },
+    { TechId::SpawnBroodlings, UnitId::Queen, UnitId::Hydralisk, UnitId::None },
+    { TechId::Plague, UnitId::Defiler, UnitId::Marine, UnitId::None },
+    { TechId::PsionicStorm, UnitId::HighTemplar, UnitId::Marine, UnitId::None },
+    { TechId::Feedback, UnitId::DarkArchon, UnitId::Ghost, UnitId::None },
+    { TechId::Maelstrom, UnitId::DarkArchon, UnitId::Ultralisk, UnitId::None },
+    { TechId::StasisField, UnitId::Arbiter, UnitId::Battlecruiser, UnitId::None },
+    { TechId::DisruptionWeb, UnitId::Corsair, UnitId::Dragoon, UnitId::None },
+    { TechId::None, UnitId::None, UnitId::None, UnitId::None }
 };
 
 // Imperfect, can detect idle casts as revenge casts
@@ -745,14 +791,14 @@ struct Test_AiSpell : public GameTest {
             case 0:
                 state++;
             break; case 1: {
-                if (spell->tech == -1) {
+                if (spell->tech == TechId::None) {
                     Pass();
                     return;
                 }
                 ClearTechs();
                 spellcaster = CreateUnitForTestAt(spell->caster_unit_id, 1, spawn_pos + Point(100, 100));
                 CreateUnitForTestAt(spell->target_unit_id, 0, spawn_pos);
-                if (spell->attacker_unit_id != Unit::None)
+                if (spell->attacker_unit_id != UnitId::None)
                     CreateUnitForTestAt(spell->attacker_unit_id, 0, spawn_pos);
 
                 GiveTech(spell->tech, 1);
@@ -771,14 +817,14 @@ struct Test_AiSpell : public GameTest {
 };
 
 struct AiCloakVariation {
-    int unit_id;
+    UnitType unit_id;
 };
 
 static AiCloakVariation ai_cloak_variations[] = {
-    { Unit::Zealot },
-    { Unit::Goliath },
-    { Unit::Wraith },
-    { -1 }
+    { UnitId::Zealot },
+    { UnitId::Goliath },
+    { UnitId::Wraith },
+    { UnitId::None }
 };
 
 struct Test_AiCloak : public GameTest {
@@ -798,11 +844,11 @@ struct Test_AiCloak : public GameTest {
             case 0:
                 state++;
             break; case 1: {
-                if (variation->unit_id == -1) {
+                if (variation->unit_id == UnitId::None) {
                     state = 3;
                     return;
                 }
-                cloaker = CreateUnitForTestAt(Unit::InfestedKerrigan, 1, Point(100, 100));
+                cloaker = CreateUnitForTestAt(UnitId::InfestedKerrigan, 1, Point(100, 100));
                 attacker = CreateUnitForTestAt(variation->unit_id, 0, Point(150, 100));
                 state++;
             } break; case 2: {
@@ -813,8 +859,8 @@ struct Test_AiCloak : public GameTest {
                     state = 0;
                 }
             } break; case 3: {
-                cloaker = CreateUnitForTestAt(Unit::InfestedKerrigan, 1, Point(100, 100));
-                attacker = CreateUnitForTestAt(Unit::Scout, 0, Point(150, 100));
+                cloaker = CreateUnitForTestAt(UnitId::InfestedKerrigan, 1, Point(100, 100));
+                attacker = CreateUnitForTestAt(UnitId::Scout, 0, Point(150, 100));
                 cloaker->energy = 0;
                 cloaker->hitpoints = 50 * 256;
                 state++;
@@ -838,52 +884,52 @@ struct Test_Liftoff : public GameTest {
     void NextFrame() override {
         switch (state) {
             case 0:
-                building = CreateUnitForTestAt(Unit::CommandCenter, 0, Point(100, 100));
-                tank = CreateUnitForTestAt(Unit::SiegeTank_Sieged, 0, Point(200, 200));
-                burrower = CreateUnitForTestAt(Unit::Zergling, 0, Point(200, 200));
-                burrower->IssueOrderTargetingNothing(Order::Burrow);
-                building->IssueOrderTargetingNothing(Order::LiftOff);
+                building = CreateUnitForTestAt(UnitId::CommandCenter, 0, Point(100, 100));
+                tank = CreateUnitForTestAt(UnitId::SiegeTank_Sieged, 0, Point(200, 200));
+                burrower = CreateUnitForTestAt(UnitId::Zergling, 0, Point(200, 200));
+                burrower->IssueOrderTargetingNothing(OrderId::Burrow);
+                building->IssueOrderTargetingNothing(OrderId::LiftOff);
                 state++;
             break; case 1: {
-                if (burrower->order == Order::Burrowed) {
-                    building->IssueOrderTargetingGround(Order::Land, Point(100, 100));
+                if (burrower->order == OrderId::Burrowed) {
+                    building->IssueOrderTargetingGround(OrderId::Land, Point(100, 100));
                     state++;
                 }
             } break; case 2: {
-                if (building->order == Order::Land && building->order_state == 3)
+                if (building->order == OrderId::Land && building->order_state == 3)
                 {
                     MoveUnit(tank, 100, 100);
                     MoveUnit(burrower, 100, 100);
                     state++;
                 }
             } break; case 3: {
-                if (UnitCount() == 1 && building->order != Order::Land) {
-                    TestAssert(building->order == units_dat_return_to_idle_order[building->unit_id]);
+                if (UnitCount() == 1 && building->order != OrderId::Land) {
+                    TestAssert(building->order == building->Type().ReturnToIdleOrder());
                     TestAssert((building->sprite->last_overlay->flags & 4) == 0);
                     // Test lifting once more
-                    building->IssueOrderTargetingNothing(Order::LiftOff);
+                    building->IssueOrderTargetingNothing(OrderId::LiftOff);
                     state++;
                 } else {
-                    TestAssert(building->order == Order::Land);
+                    TestAssert(building->order == OrderId::Land);
                 }
             } break; case 4: {
                 if (~building->flags & UnitStatus::Building) {
-                    building->IssueOrderTargetingGround(Order::Land, Point(100, 100));
+                    building->IssueOrderTargetingGround(OrderId::Land, Point(100, 100));
                     state++;
                 }
             } break; case 5: {
-                if (building->order == Order::Land)
+                if (building->order == OrderId::Land)
                     state++;
             } break; case 6: {
-                if (building->order != Order::Land) {
+                if (building->order != OrderId::Land) {
                     TestAssert(!building->IsFlying());
                     TestAssert((building->sprite->last_overlay->flags & 4) == 0);
-                    building->IssueSecondaryOrder(Order::Train);
-                    building->build_queue[building->current_build_slot] = Unit::SCV;
+                    building->IssueSecondaryOrder(OrderId::Train);
+                    building->build_queue[building->current_build_slot] = UnitId::SCV;
                     state++;
                 }
             } break; case 7: {
-                Unit *scv = FindUnit(Unit::SCV);
+                Unit *scv = FindUnit(UnitId::SCV);
                 if (scv != nullptr) {
                     Pass();
                 }
@@ -901,21 +947,21 @@ struct Test_Siege : public GameTest {
     void NextFrame() override {
         switch (state) {
             case 0:
-                building = CreateUnitForTestAt(Unit::CommandCenter, 0, Point(100, 100));
-                tank = CreateUnitForTestAt(Unit::SiegeTankTankMode, 0, Point(100, 100));
-                tank->IssueOrderTargetingNothing(Order::SiegeMode);
+                building = CreateUnitForTestAt(UnitId::CommandCenter, 0, Point(100, 100));
+                tank = CreateUnitForTestAt(UnitId::SiegeTankTankMode, 0, Point(100, 100));
+                tank->IssueOrderTargetingNothing(OrderId::SiegeMode);
                 state++;
             break; case 1: {
                 if (UnitCount() == 1) {
                     building->Kill(nullptr);
-                    tank = CreateUnitForTestAt(Unit::SiegeTankTankMode, 0, Point(100, 100));
-                    target = CreateUnitForTestAt(Unit::Marine, 0, Point(250, 100));
-                    tank->IssueOrderTargetingNothing(Order::SiegeMode);
+                    tank = CreateUnitForTestAt(UnitId::SiegeTankTankMode, 0, Point(100, 100));
+                    target = CreateUnitForTestAt(UnitId::Marine, 0, Point(250, 100));
+                    tank->IssueOrderTargetingNothing(OrderId::SiegeMode);
                     state++;
                 }
             } break; case 2: {
-                if (tank->unit_id == Unit::SiegeTank_Sieged && tank->order != Order::SiegeMode) {
-                    tank->IssueOrderTargetingUnit(Order::WatchTarget, target);
+                if (tank->unit_id == UnitId::SiegeTank_Sieged && tank->order != OrderId::SiegeMode) {
+                    tank->IssueOrderTargetingUnit(OrderId::WatchTarget, target);
                     state++;
                 }
             } break; case 3: {
@@ -939,10 +985,10 @@ struct Test_Bounce : public GameTest {
     void NextFrame() override {
         switch (state) {
             case 0:
-                muta = CreateUnitForTestAt(Unit::Mutalisk, 0, Point(100, 100));
-                target = CreateUnitForTestAt(Unit::Marine, 1, Point(100, 100));
-                other = CreateUnitForTestAt(Unit::Marine, 1, Point(100, 100));
-                muta->IssueOrderTargetingUnit(Order::AttackUnit, target);
+                muta = CreateUnitForTestAt(UnitId::Mutalisk, 0, Point(100, 100));
+                target = CreateUnitForTestAt(UnitId::Marine, 1, Point(100, 100));
+                other = CreateUnitForTestAt(UnitId::Marine, 1, Point(100, 100));
+                muta->IssueOrderTargetingUnit(OrderId::AttackUnit, target);
                 state++;
             break; case 1: {
                 TestAssert(muta->target == target);
@@ -963,10 +1009,10 @@ struct Test_Bounce : public GameTest {
 struct Test_Dweb : public GameTest {
     Unit *corsair;
     Unit *enemy;
-    int next_unit_id;
+    UnitType next_unit_id;
     void Init() override {
         SetEnemy(1, 0);
-        next_unit_id = 0;
+        next_unit_id = UnitType(0);
     }
     void NextFrame() override {
         switch (state) {
@@ -975,21 +1021,21 @@ struct Test_Dweb : public GameTest {
                     return;
 
                 NextUnitId();
-                if (next_unit_id == Unit::None) {
+                if (next_unit_id == UnitId::None) {
                     Pass();
                     return;
                 }
-                corsair = CreateUnitForTestAt(Unit::Corsair, 0, Point(100, 100));
-                corsair->IssueOrderTargetingGround(Order::DisruptionWeb, Point(150, 150));
+                corsair = CreateUnitForTestAt(UnitId::Corsair, 0, Point(100, 100));
+                corsair->IssueOrderTargetingGround(OrderId::DisruptionWeb, Point(150, 150));
                 state++;
             break; case 1: {
-                if (FindUnit(Unit::DisruptionWeb) != nullptr) {
+                if (FindUnit(UnitId::DisruptionWeb) != nullptr) {
                     enemy = CreateUnitForTestAt(next_unit_id, 1, Point(150, 150));
-                    next_unit_id += 1;
+                    next_unit_id = UnitType(next_unit_id.Raw() + 1);
                     state++;
                 }
             } break; case 2: {
-                if (FindUnit(Unit::DisruptionWeb) == nullptr) {
+                if (FindUnit(UnitId::DisruptionWeb) == nullptr) {
                     ClearUnits();
                     state = 0;
                 } else {
@@ -999,18 +1045,18 @@ struct Test_Dweb : public GameTest {
         }
     }
     void NextUnitId() {
-        while (next_unit_id != Unit::None) {
-            if (units_dat_elevation_level[next_unit_id] == 4 &&
-                    ~units_dat_flags[next_unit_id] & UnitFlags::Subunit &&
-                    ~units_dat_flags[next_unit_id] & UnitFlags::Air &&
-                    (units_dat_group_flags[next_unit_id] & 0x7) != 0 && // Require an race
-                    (units_dat_air_weapon[next_unit_id] != Weapon::None ||
-                        (units_dat_subunit[next_unit_id] != Unit::None &&
-                         units_dat_air_weapon[units_dat_subunit[next_unit_id]] != Weapon::None)))
+        while (next_unit_id != UnitId::None) {
+            if (next_unit_id.Elevation() == 4 &&
+                    !next_unit_id.IsSubunit() &&
+                    ~next_unit_id.Flags() & UnitFlags::Air &&
+                    (next_unit_id.GroupFlags() & 0x7) != 0 && // Require an race
+                    (next_unit_id.AirWeapon() != WeaponId::None ||
+                        (next_unit_id.Subunit() != UnitId::None &&
+                         next_unit_id.Subunit().AirWeapon() != WeaponId::None)))
             {
                 return;
             }
-            next_unit_id++;
+            next_unit_id = UnitType(next_unit_id.Raw() + 1);
         }
     }
 };
@@ -1023,7 +1069,7 @@ struct Test_RightClick : public GameTest {
         switch (state) {
             case 0: {
                 int player = *bw::local_unique_player_id;
-                building = CreateUnitForTestAt(Unit::CommandCenter, player, Point(100, 100));
+                building = CreateUnitForTestAt(UnitId::CommandCenter, player, Point(100, 100));
                 state++;
             } break; case 1: {
                 // Screen position is rounded down to eights,
@@ -1059,9 +1105,9 @@ struct Test_HoldPosition : public GameTest {
     void NextFrame() override {
         switch (state) {
             case 0: {
-                attacker = CreateUnitForTestAt(Unit::Marine, 0, Point(100, 100));
-                enemy = CreateUnitForTestAt(Unit::Battlecruiser, 1, Point(150, 100));
-                attacker->IssueOrderTargetingNothing(Order::HoldPosition);
+                attacker = CreateUnitForTestAt(UnitId::Marine, 0, Point(100, 100));
+                enemy = CreateUnitForTestAt(UnitId::Battlecruiser, 1, Point(150, 100));
+                attacker->IssueOrderTargetingNothing(OrderId::HoldPosition);
                 state++;
             } break; case 1: {
                 // There was an crash when unit holding position was targeting unit which suddenly
@@ -1106,14 +1152,14 @@ struct Test_Attack : public GameTest {
                     Pass();
                     return;
                 }
-                attacker = CreateUnitForTestAt(Unit::Hydralisk, 0, Point(100, 100));
-                enemy = CreateUnitForTestAt(Unit::Guardian, 0, Point(300, 100));
-                attacker->IssueOrderTargetingGround(Order::Move, Point(600, 100));
-                enemy->IssueOrderTargetingGround(Order::Move, Point(600, 100));
+                attacker = CreateUnitForTestAt(UnitId::Hydralisk, 0, Point(100, 100));
+                enemy = CreateUnitForTestAt(UnitId::Guardian, 0, Point(300, 100));
+                attacker->IssueOrderTargetingGround(OrderId::Move, Point(600, 100));
+                enemy->IssueOrderTargetingGround(OrderId::Move, Point(600, 100));
                 state++;
             } break; case 1: {
                 if (attacker->sprite->position.x > 200 + variant) {
-                    attacker->IssueOrderTargetingUnit(Order::AttackUnit, enemy);
+                    attacker->IssueOrderTargetingUnit(OrderId::AttackUnit, enemy);
                     state++;
                 }
             } break; case 2: {
@@ -1138,19 +1184,19 @@ struct Test_Splash : public GameTest {
     void NextFrame() override {
         switch (state) {
             case 0: {
-                target = CreateUnitForTestAt(Unit::Nexus, 0, Point(100, 150));
-                attacker = CreateUnitForTestAt(Unit::InfestedTerran, 0, Point(100, 300));
-                attacker->IssueOrderTargetingUnit(Order::SapUnit, target);
+                target = CreateUnitForTestAt(UnitId::Nexus, 0, Point(100, 150));
+                attacker = CreateUnitForTestAt(UnitId::InfestedTerran, 0, Point(100, 300));
+                attacker->IssueOrderTargetingUnit(OrderId::SapUnit, target);
                 state++;
             } break; case 1: {
                 if (target->GetHealth() != target->GetMaxHealth()) {
-                    int dmg = weapons_dat_damage[units_dat_ground_weapon[Unit::InfestedTerran]];
+                    int dmg = UnitId::InfestedTerran.GroundWeapon().Damage();
                     TestAssert(target->GetMaxHealth() - target->GetHealth() > dmg * 3 / 4);
                     ClearUnits();
-                    target = CreateUnitForTestAt(Unit::SupplyDepot, 1, Point(100, 100));
-                    second_target = CreateUnitForTestAt(Unit::SupplyDepot, 1, Point(100, 100));
-                    attacker = CreateUnitForTestAt(Unit::Lurker, 0, Point(100, 150));
-                    attacker->IssueOrderTargetingNothing(Order::Burrow);
+                    target = CreateUnitForTestAt(UnitId::SupplyDepot, 1, Point(100, 100));
+                    second_target = CreateUnitForTestAt(UnitId::SupplyDepot, 1, Point(100, 100));
+                    attacker = CreateUnitForTestAt(UnitId::Lurker, 0, Point(100, 150));
+                    attacker->IssueOrderTargetingNothing(OrderId::Burrow);
                     state++;
                 }
             } break; case 2: {
@@ -1174,13 +1220,13 @@ struct Test_AiAggro : public GameTest {
         switch (state) {
             case 0: {
                 // Should not aggro
-                ai_ling = CreateUnitForTestAt(Unit::Zergling, 1, Point(100, 100));
-                target = CreateUnitForTestAt(Unit::Reaver, 0, Point(400, 100));
+                ai_ling = CreateUnitForTestAt(UnitId::Zergling, 1, Point(100, 100));
+                target = CreateUnitForTestAt(UnitId::Reaver, 0, Point(400, 100));
                 state++;
                 frames_remaining = 300;
             } break; case 1: {
                 TestAssert(ai_ling->ai != nullptr && ai_ling->ai->type == 1);
-                TestAssert(ai_ling->order != Order::AttackUnit);
+                TestAssert(ai_ling->order != OrderId::AttackUnit);
                 if (frames_remaining < 100)
                     Pass();
             }
@@ -1196,28 +1242,28 @@ struct Test_MindControl : public GameTest {
     void NextFrame() override {
         switch (state) {
             case 0: {
-                da = CreateUnitForTestAt(Unit::DarkArchon, 0, Point(100, 100));
-                target = CreateUnitForTestAt(Unit::Marine, 1, Point(100, 100));
-                da->IssueOrderTargetingUnit(Order::MindControl, target);
+                da = CreateUnitForTestAt(UnitId::DarkArchon, 0, Point(100, 100));
+                target = CreateUnitForTestAt(UnitId::Marine, 1, Point(100, 100));
+                da->IssueOrderTargetingUnit(OrderId::MindControl, target);
                 state++;
             } break; case 1: {
-                if (da->order == Order::MindControl)
+                if (da->order == OrderId::MindControl)
                     state++;
             } break; case 2: {
                 if (target->player == da->player) {
                     TestAssert(da->shields == 0);
                     ClearUnits();
-                    da = CreateUnitForTestAt(Unit::DarkArchon, 0, Point(100, 100));
-                    target = CreateUnitForTest(Unit::Carrier, 1);
-                    target->IssueSecondaryOrder(Order::TrainFighter);
-                    target->build_queue[target->current_build_slot] = Unit::Interceptor;
+                    da = CreateUnitForTestAt(UnitId::DarkArchon, 0, Point(100, 100));
+                    target = CreateUnitForTest(UnitId::Carrier, 1);
+                    target->IssueSecondaryOrder(OrderId::TrainFighter);
+                    target->build_queue[target->current_build_slot] = UnitId::Interceptor;
                     state++;
                 } else {
-                    TestAssert(da->order == Order::MindControl);
+                    TestAssert(da->order == OrderId::MindControl);
                 }
             } break; case 3: {
                 if (target->carrier.in_child != nullptr || target->carrier.out_child != nullptr) {
-                    da->IssueOrderTargetingUnit(Order::MindControl, target);
+                    da->IssueOrderTargetingUnit(OrderId::MindControl, target);
                     state++;
                 }
             } break; case 4: {
@@ -1240,7 +1286,7 @@ struct Test_PosSearch : public GameTest {
     void NextFrame() override {
         switch (state) {
             case 0: {
-                unit = CreateUnitForTestAt(Unit::Marine, 0, Point(100, 100));
+                unit = CreateUnitForTestAt(UnitId::Marine, 0, Point(100, 100));
                 state++;
             } break; case 1: {
                 Unit *result = unit_search->FindNearest(Point(100, 150),
@@ -1275,13 +1321,13 @@ struct Test_AiTarget : public GameTest {
     void NextFrame() override {
         switch (state) {
             case 0: {
-                unit = CreateUnitForTestAt(Unit::Devourer, 1, Point(100, 100));
-                enemy = CreateUnitForTestAt(Unit::Scout, 0, Point(120, 120));
+                unit = CreateUnitForTestAt(UnitId::Devourer, 1, Point(100, 100));
+                enemy = CreateUnitForTestAt(UnitId::Scout, 0, Point(120, 120));
                 state++;
             } break; case 1: {
                 TestAssert(!unit->IsDying() && !enemy->IsDying());
                 if (unit->target == enemy) {
-                    CreateUnitForTestAt(Unit::Scout, 0, Point(80, 80));
+                    CreateUnitForTestAt(UnitId::Scout, 0, Point(80, 80));
                     state++;
                 }
             } break; case 2: {
@@ -1307,10 +1353,10 @@ struct Test_AttackMove : public GameTest {
     void NextFrame() override {
         switch (state) {
             case 0: {
-                unit = CreateUnitForTestAt(Unit::Guardian, 0, Point(100, 100));
-                enemy = CreateUnitForTestAt(Unit::HunterKiller, 1, Point(400, 100));
-                enemy2 = CreateUnitForTestAt(Unit::HunterKiller, 1, Point(400, 100));
-                unit->IssueOrderTargetingGround(Order::AttackMove, Point(400, 100));
+                unit = CreateUnitForTestAt(UnitId::Guardian, 0, Point(100, 100));
+                enemy = CreateUnitForTestAt(UnitId::HunterKiller, 1, Point(400, 100));
+                enemy2 = CreateUnitForTestAt(UnitId::HunterKiller, 1, Point(400, 100));
+                unit->IssueOrderTargetingGround(OrderId::AttackMove, Point(400, 100));
                 state++;
             } break; case 1: {
                 SetHp(unit, 100 * 256);
@@ -1318,18 +1364,18 @@ struct Test_AttackMove : public GameTest {
                 SetHp(enemy2, 100 * 256);
                 if (unit->target != nullptr) {
                     target = unit->target;
-                    target->IssueOrderTargetingGround(Order::Move, Point(1000, 100));
+                    target->IssueOrderTargetingGround(OrderId::Move, Point(1000, 100));
                     state++;
                 }
             } break; case 2: {
-                if (target->order == Order::Move) {
+                if (target->order == OrderId::Move) {
                     state++;
                 }
             } break; case 3: {
                 SetHp(unit, 100 * 256);
                 SetHp(enemy, 100 * 256);
                 SetHp(enemy2, 100 * 256);
-                TestAssert(target->order == Order::Move);
+                TestAssert(target->order == OrderId::Move);
                 if (unit->target != target && unit->target != nullptr) {
                     Pass();
                 }
@@ -1352,26 +1398,26 @@ struct Test_Detection : public GameTest {
             return;
         }
 
-        // In Unit::ProgressFrames for invisible units
+        // In UnitId::ProgressFrames for invisible units
         const int cloak_wait = 30;
 
         switch (state) {
             case 0: {
-                cloaked = CreateUnitForTestAt(Unit::Observer, 0, Point(100, 100));
-                detector = CreateUnitForTestAt(Unit::Marine, 1, Point(100, 100));
+                cloaked = CreateUnitForTestAt(UnitId::Observer, 0, Point(100, 100));
+                detector = CreateUnitForTestAt(UnitId::Marine, 1, Point(100, 100));
                 state++;
                 wait = cloak_wait;
             } break; case 1: {
                 TestAssert(cloaked->IsInvisibleTo(detector));
                 detector->Kill(nullptr);
-                detector = CreateUnitForTestAt(Unit::Overlord, 1, Point(100, 100));
+                detector = CreateUnitForTestAt(UnitId::Overlord, 1, Point(100, 100));
                 wait = cloak_wait;
                 state++;
             } break; case 2: {
                 TestAssert(!cloaked->IsInvisibleTo(detector));
                 detector->Kill(nullptr);
-                detector = CreateUnitForTestAt(Unit::Queen, 1, Point(100, 100));
-                detector->IssueOrderTargetingGround(Order::Ensnare, Point(100, 100));
+                detector = CreateUnitForTestAt(UnitId::Queen, 1, Point(100, 100));
+                detector->IssueOrderTargetingGround(OrderId::Ensnare, Point(100, 100));
                 state++;
             } break; case 3: {
                 if (cloaked->ensnare_timer != 0) {
@@ -1389,8 +1435,8 @@ struct Test_Detection : public GameTest {
             } break; case 6: {
                 TestAssert(cloaked->IsInvisibleTo(detector));
                 detector->Kill(nullptr);
-                detector = CreateUnitForTestAt(Unit::Defiler, 1, Point(100, 100));
-                detector->IssueOrderTargetingGround(Order::Plague, Point(100, 100));
+                detector = CreateUnitForTestAt(UnitId::Defiler, 1, Point(100, 100));
+                detector->IssueOrderTargetingGround(OrderId::Plague, Point(100, 100));
                 state++;
             } break; case 7: {
                 if (cloaked->plague_timer != 0) {
@@ -1408,9 +1454,9 @@ struct Test_Detection : public GameTest {
             } break; case 10: {
                 TestAssert(cloaked->IsInvisibleTo(detector));
                 detector->Kill(nullptr);
-                detector = CreateUnitForTestAt(Unit::Devourer, 1, Point(100, 100));
-                Unit *secondary = CreateUnitForTestAt(Unit::Devourer, 1, Point(100, 100));
-                secondary->IssueOrderTargetingUnit(Order::AttackUnit, detector);
+                detector = CreateUnitForTestAt(UnitId::Devourer, 1, Point(100, 100));
+                Unit *secondary = CreateUnitForTestAt(UnitId::Devourer, 1, Point(100, 100));
+                secondary->IssueOrderTargetingUnit(OrderId::AttackUnit, detector);
                 state++;
             } break; case 11: {
                 if (detector->GetHealth() != detector->GetMaxHealth()) {
@@ -1428,21 +1474,21 @@ struct Test_Detection : public GameTest {
 
 struct Test_Death : public GameTest {
     int player;
-    int next_unit_id;
+    UnitType next_unit_id;
     void Init() override {
         // Do some fighting as well
         SetEnemy(0, 1);
         SetEnemy(1, 1);
         AiPlayer(1);
-        next_unit_id = 0;
+        next_unit_id = UnitType(0);
         player = 0;
     }
     void NextFrame() override {
         switch (state) {
             case 0:
                 NextUnitId();
-                if (next_unit_id == Unit::None) {
-                    next_unit_id = 0;
+                if (next_unit_id == UnitId::None) {
+                    next_unit_id = UnitType(0);
                     player += 1;
                     if (player == 2)
                         player = NeutralPlayer;
@@ -1454,7 +1500,7 @@ struct Test_Death : public GameTest {
                     return;
                 }
                 CreateUnitForTestAt(next_unit_id, player, Point(300, 300));
-                next_unit_id += 1;
+                next_unit_id = UnitType(next_unit_id.Raw() + 1);
             break; case 1: {
                 // Kill vespene geysers
                 for (Unit *unit : *bw::first_active_unit)
@@ -1465,14 +1511,14 @@ struct Test_Death : public GameTest {
         }
     }
     void NextUnitId() {
-        while (next_unit_id != Unit::None) {
-            if (~units_dat_flags[next_unit_id] & UnitFlags::Subunit &&
-                    units_dat_hitpoints[next_unit_id] > 1 &&
-                    units_dat_armor_type[next_unit_id] != 0) // Skip independent
+        while (next_unit_id != UnitId::None) {
+            if (!next_unit_id.IsSubunit() &&
+                    next_unit_id.HitPoints() > 1 &&
+                    next_unit_id.ArmorType() != 0) // Skip independent
             {
                 return;
             }
-            next_unit_id++;
+            next_unit_id = UnitType(next_unit_id.Raw() + 1);
         }
     }
 };
@@ -1492,36 +1538,36 @@ struct Test_ParasiteAggro : public GameTest {
         SetEnemy(1, 0);
         SetEnemy(0, 1);
     }
-    void SetupNext(int queen_player, int target_unit, int other_unit)
+    void SetupNext(int queen_player, UnitType target_unit, UnitType other_unit)
     {
         ClearUnits();
         int other_player = queen_player == 0 ? 1 : 0;
-        queen = CreateUnitForTestAt(Unit::Queen, queen_player, Point(180, 100));
+        queen = CreateUnitForTestAt(UnitId::Queen, queen_player, Point(180, 100));
         target = CreateUnitForTestAt(target_unit, other_player, Point(600, 100));
-        if (other_unit != Unit::None)
+        if (other_unit != UnitId::None)
             other = CreateUnitForTestAt(other_unit, other_player, Point(530, 100));
-            queen->IssueOrderTargetingUnit(Order::Parasite, target);
+            queen->IssueOrderTargetingUnit(OrderId::Parasite, target);
         state++;
     }
     void NextFrame() override {
         switch (state) {
             case 0: {
-                SetupNext(1, Unit::Marine, Unit::None);
+                SetupNext(1, UnitId::Marine, UnitId::None);
             } break; case 1: {
                 if (target->parasites == 0)
                     return;
                 // Human owned units don't care
                 TestAssert(target->target == nullptr);
-                SetupNext(0, Unit::Marine, Unit::None);
+                SetupNext(0, UnitId::Marine, UnitId::None);
             } break; case 2: {
                 if (target->parasites == 0)
                     return;
                 // Ai owned units don't care from a single parasite
                 TestAssert(target->target == nullptr);
-                SetupNext(0, Unit::Marine, Unit::Marine);
+                SetupNext(0, UnitId::Marine, UnitId::Marine);
             } break; case 3: {
                 if (queen->target == nullptr) {
-                    queen->IssueOrderTargetingUnit(Order::Parasite, target);
+                    queen->IssueOrderTargetingUnit(OrderId::Parasite, target);
                     // If it was just parasited, try again as the frames aligned just poorly
                     // (Should maybe have random variance?)
                     target->parasites = 0;
@@ -1533,11 +1579,11 @@ struct Test_ParasiteAggro : public GameTest {
                     TestAssert(target->target == queen);
                     // But the queen should be far away enough for the other marine
                     TestAssert(other->target == nullptr);
-                    SetupNext(0, Unit::Goliath, Unit::Goliath);
+                    SetupNext(0, UnitId::Goliath, UnitId::Goliath);
                 }
             } break; case 4: {
                 if (queen->target == nullptr) {
-                    queen->IssueOrderTargetingUnit(Order::Parasite, target);
+                    queen->IssueOrderTargetingUnit(OrderId::Parasite, target);
                     target->parasites = 0;
                     queen->energy = 150 * 256;
                     TestAssert(target->target == nullptr);
@@ -1560,9 +1606,9 @@ struct Test_HitChance : public GameTest {
         switch (state) {
             case 0: {
                 for (int i = 0; i < 32; i++) {
-                    Unit *unit = CreateUnitForTestAt(Unit::Marine, 1, Point(100, 100 + 20 * i));
-                    Unit *enemy = CreateUnitForTestAt(Unit::Overlord, 0, Point(120, 100 + 20 * i));
-                    unit->IssueOrderTargetingUnit(Order::AttackUnit, enemy);
+                    Unit *unit = CreateUnitForTestAt(UnitId::Marine, 1, Point(100, 100 + 20 * i));
+                    Unit *enemy = CreateUnitForTestAt(UnitId::Overlord, 0, Point(120, 100 + 20 * i));
+                    unit->IssueOrderTargetingUnit(OrderId::AttackUnit, enemy);
                 }
                 state++;
             } break; case 1: {
@@ -1580,23 +1626,23 @@ struct Test_HitChance : public GameTest {
 };
 
 struct OverlaySpell {
-    int order;
-    int caster_unit;
-    int target_unit;
+    OrderType order;
+    UnitType caster_unit;
+    UnitType target_unit;
 };
 const OverlaySpell overlay_spells[] = {
-    { Order::Lockdown, Unit::Ghost, Unit::Goliath },
-    { Order::Restoration, Unit::Medic, Unit::SiegeTankTankMode },
-    { Order::OpticalFlare, Unit::Medic, Unit::Goliath },
-    { Order::DefensiveMatrix, Unit::ScienceVessel, Unit::SiegeTankTankMode },
-    { Order::Irradiate, Unit::ScienceVessel, Unit::Goliath, },
-    { Order::Ensnare, Unit::Queen, Unit::SiegeTankTankMode },
-    { Order::Plague, Unit::Defiler, Unit::Goliath },
+    { OrderId::Lockdown, UnitId::Ghost, UnitId::Goliath },
+    { OrderId::Restoration, UnitId::Medic, UnitId::SiegeTankTankMode },
+    { OrderId::OpticalFlare, UnitId::Medic, UnitId::Goliath },
+    { OrderId::DefensiveMatrix, UnitId::ScienceVessel, UnitId::SiegeTankTankMode },
+    { OrderId::Irradiate, UnitId::ScienceVessel, UnitId::Goliath, },
+    { OrderId::Ensnare, UnitId::Queen, UnitId::SiegeTankTankMode },
+    { OrderId::Plague, UnitId::Defiler, UnitId::Goliath },
     // Note: If feedback kills it spawns a sprite instead of a image
-    { Order::Feedback, Unit::DarkArchon, Unit::Battlecruiser },
-    { Order::Maelstrom, Unit::DarkArchon, Unit::Ultralisk },
-    { Order::MindControl, Unit::DarkArchon, Unit::Goliath },
-    { Order::StasisField, Unit::Arbiter, Unit::SiegeTankTankMode },
+    { OrderId::Feedback, UnitId::DarkArchon, UnitId::Battlecruiser },
+    { OrderId::Maelstrom, UnitId::DarkArchon, UnitId::Ultralisk },
+    { OrderId::MindControl, UnitId::DarkArchon, UnitId::Goliath },
+    { OrderId::StasisField, UnitId::Arbiter, UnitId::SiegeTankTankMode },
 };
 
 struct Test_SpellOverlay : public GameTest {
@@ -1648,12 +1694,12 @@ struct Test_Turn1CWise : public GameTest {
     void NextFrame() override {
         switch (state) {
             case 0: {
-                turret = CreateUnitForTestAt(Unit::MissileTurret, 0, Point(100, 100));
-                target = CreateUnitForTestAt(Unit::Scout, 0, Point(100, 150));
+                turret = CreateUnitForTestAt(UnitId::MissileTurret, 0, Point(100, 100));
+                target = CreateUnitForTestAt(UnitId::Scout, 0, Point(100, 150));
                 state++;
             } break; case 1: {
                 if (turret->facing_direction == 0) {
-                    turret->IssueOrderTargetingUnit(Order::AttackUnit, target);
+                    turret->IssueOrderTargetingUnit(OrderId::AttackUnit, target);
                     frames_remaining = 10;
                     state++;
                 }
@@ -1674,19 +1720,19 @@ struct Test_MatrixStorm : public GameTest {
     void NextFrame() override {
         switch (state) {
             case 0: {
-                Unit *vessel = CreateUnitForTestAt(Unit::ScienceVessel, 0, Point(100, 100));
-                target = CreateUnitForTestAt(Unit::Scout, 0, Point(100, 150));
-                vessel->IssueOrderTargetingUnit(Order::DefensiveMatrix, target);
+                Unit *vessel = CreateUnitForTestAt(UnitId::ScienceVessel, 0, Point(100, 100));
+                target = CreateUnitForTestAt(UnitId::Scout, 0, Point(100, 150));
+                vessel->IssueOrderTargetingUnit(OrderId::DefensiveMatrix, target);
                 state++;
             } break; case 1: {
                 if (target->matrix_timer != 0) {
-                    Unit *ht = CreateUnitForTestAt(Unit::HighTemplar, 0, Point(100, 100));
-                    ht->IssueOrderTargetingUnit(Order::PsiStorm, target);
+                    Unit *ht = CreateUnitForTestAt(UnitId::HighTemplar, 0, Point(100, 100));
+                    ht->IssueOrderTargetingUnit(OrderId::PsiStorm, target);
                     frames_remaining = 250;
                     state++;
                 }
             } break; case 2: {
-                int hp_dmg = units_dat_hitpoints[target->unit_id] - target->hitpoints;
+                int hp_dmg = target->Type().HitPoints() - target->hitpoints;
                 int shield_dmg = target->GetMaxShields() - target->GetShields();
                 TestAssert(shield_dmg == 0);
                 TestAssert(hp_dmg == 0 || hp_dmg == 128);
@@ -1698,7 +1744,7 @@ struct Test_MatrixStorm : public GameTest {
                     Pass();
                 // There should not be a shield overlay either
                 for (Image *img : target->sprite->first_overlay) {
-                    TestAssert(img->image_id != Image::ShieldOverlay);
+                    TestAssert(img->image_id != ImageId::ShieldOverlay);
                 }
             }
         }
@@ -1718,13 +1764,13 @@ struct Test_AiTargetPriority : public GameTest {
                 const Point positions[] = { Point(100, 100), Point(200, 100) };
                 Unit *first = nullptr;
                 if (state == 0)
-                    first = CreateUnitForTestAt(Unit::Marine, 0, positions[0]);
-                Unit *second = CreateUnitForTestAt(Unit::Marine, 0, positions[1]);
+                    first = CreateUnitForTestAt(UnitId::Marine, 0, positions[0]);
+                Unit *second = CreateUnitForTestAt(UnitId::Marine, 0, positions[1]);
                 if (state == 1)
-                    first = CreateUnitForTestAt(Unit::Marine, 0, positions[0]);
-                Unit *unit = CreateUnitForTestAt(Unit::Zergling, 1, Point(300, 100));
-                first->IssueOrderTargetingUnit(Order::AttackUnit, unit);
-                second->IssueOrderTargetingUnit(Order::AttackUnit, unit);
+                    first = CreateUnitForTestAt(UnitId::Marine, 0, positions[0]);
+                Unit *unit = CreateUnitForTestAt(UnitId::Zergling, 1, Point(300, 100));
+                first->IssueOrderTargetingUnit(OrderId::AttackUnit, unit);
+                second->IssueOrderTargetingUnit(OrderId::AttackUnit, unit);
                 TestAssert(Ai::GetBestTarget(unit, { first, second }) == second);
                 ClearUnits();
                 state++;
@@ -1757,40 +1803,40 @@ struct Test_AiTargetPriority : public GameTest {
                 // which cannot attack
                 const Point positions[] = { Point(100, 100), Point(270, 100) };
                 Unit *first;
-                first = CreateUnitForTestAt(Unit::Guardian, 0, positions[0]);
-                Unit *second = CreateUnitForTestAt(Unit::Zergling, 0, positions[1]);
-                Unit *unit = CreateUnitForTestAt(Unit::Marine, 1, Point(350, 100));
-                first->IssueOrderTargetingUnit(Order::AttackUnit, unit);
-                second->IssueOrderTargetingUnit(Order::AttackUnit, unit);
+                first = CreateUnitForTestAt(UnitId::Guardian, 0, positions[0]);
+                Unit *second = CreateUnitForTestAt(UnitId::Zergling, 0, positions[1]);
+                Unit *unit = CreateUnitForTestAt(UnitId::Marine, 1, Point(350, 100));
+                first->IssueOrderTargetingUnit(OrderId::AttackUnit, unit);
+                second->IssueOrderTargetingUnit(OrderId::AttackUnit, unit);
                 TestAssert(Ai::GetBestTarget(unit, { first, second }) == second);
                 TestAssert(Ai::GetBestTarget(unit, { second, first }) == first);
                 ClearUnits();
                 state++;
             } break; case 3: {
                 /// Test some of the internal logic
-                Unit *ai = CreateUnitForTestAt(Unit::Zergling, 1, Point(100, 100));
+                Unit *ai = CreateUnitForTestAt(UnitId::Zergling, 1, Point(100, 100));
                 Ai::UpdateAttackTargetContext uat(ai, false, false);
                 Ai::UpdateAttackTargetContext allowing_critters(ai, true, false);
                 // The unit is not targeting ai's units
                 // So other fails and other succeeds
-                Unit *other = CreateUnitForTestAt(Unit::Marine, 0, Point(100, 100));
+                Unit *other = CreateUnitForTestAt(UnitId::Marine, 0, Point(100, 100));
                 TestAssert(other->target == nullptr);
                 TestAssert(uat.CheckPreviousAttackerValid(other) == nullptr);
                 TestAssert(uat.CheckValid(other) == other);
                 // The unit is targeting ai's units
-                other = CreateUnitForTestAt(Unit::Marine, 0, Point(100, 100));
-                other->IssueOrderTargetingUnit(Order::AttackUnit, ai);
+                other = CreateUnitForTestAt(UnitId::Marine, 0, Point(100, 100));
+                other->IssueOrderTargetingUnit(OrderId::AttackUnit, ai);
                 TestAssert(other->target == ai);
                 TestAssert(uat.CheckPreviousAttackerValid(other) == other);
                 TestAssert(uat.CheckValid(other) == other);
                 // Can't attack that unit
-                other = CreateUnitForTestAt(Unit::Wraith, 0, Point(100, 100));
-                other->IssueOrderTargetingUnit(Order::AttackUnit, ai);
+                other = CreateUnitForTestAt(UnitId::Wraith, 0, Point(100, 100));
+                other->IssueOrderTargetingUnit(OrderId::AttackUnit, ai);
                 TestAssert(other->target == ai);
                 TestAssert(uat.CheckPreviousAttackerValid(other) == nullptr);
                 TestAssert(uat.CheckValid(other) == nullptr);
                 // Test critter bool
-                other = CreateUnitForTestAt(Unit::Bengalaas, 0, Point(100, 100));
+                other = CreateUnitForTestAt(UnitId::Bengalaas, 0, Point(100, 100));
                 TestAssert(uat.CheckValid(other) == nullptr);
                 TestAssert(allowing_critters.CheckValid(other) == other);
                 TestAssert(allowing_critters.CheckPreviousAttackerValid(other) == nullptr);
@@ -1801,15 +1847,15 @@ struct Test_AiTargetPriority : public GameTest {
 };
 
 struct TransmissionTest {
-    int unit_id;
+    UnitType unit_id;
     Point pos;
     bool ok;
 };
 // Well, these variants mostly test finding specific unit at a location but that's nice too
 const TransmissionTest transmission_tests[] = {
-    { Unit::Marine, Point(100, 100), false },
-    { Unit::Zergling, Point(100, 100), true },
-    { Unit::Zergling, Point(400, 100), false },
+    { UnitId::Marine, Point(100, 100), false },
+    { UnitId::Zergling, Point(100, 100), true },
+    { UnitId::Zergling, Point(400, 100), false },
 };
 
 struct Test_Transmission : public GameTest {
@@ -1826,7 +1872,7 @@ struct Test_Transmission : public GameTest {
         trigger.actions[0].location = 1;
         trigger.actions[0].amount = 7;
         trigger.actions[0].misc = 500;
-        trigger.actions[0].unit_id = Unit::Zergling;
+        trigger.actions[0].unit_id = UnitId::Zergling;
         trigger.actions[0].sound_id = 0;
         trigger.actions[0].action_id = 0x7;
         switch (state) {
@@ -1870,9 +1916,9 @@ struct Test_NearbyHelpers : public GameTest {
         SetEnemy(1, 0);
     }
     void CreateAiTown(const Point &pos, int player) {
-        CreateUnitForTestAt(Unit::Nexus, player, pos);
-        helper = CreateUnitForTestAt(Unit::Probe, player, pos + Point(0, 100));
-        Unit *mineral = CreateUnitForTestAt(Unit::MineralPatch1, NeutralPlayer, pos + Point(0, 200));
+        CreateUnitForTestAt(UnitId::Nexus, player, pos);
+        helper = CreateUnitForTestAt(UnitId::Probe, player, pos + Point(0, 100));
+        Unit *mineral = CreateUnitForTestAt(UnitId::MineralPatch1, NeutralPlayer, pos + Point(0, 200));
         mineral->resource.resource_amount = 1500;
         AiScript_StartTown(pos.x, pos.y, 1, player);
     }
@@ -1880,29 +1926,29 @@ struct Test_NearbyHelpers : public GameTest {
         switch (state) {
             case 0: {
                 CreateAiTown(Point(100, 100), 1);
-                target = CreateUnitForTestAt(Unit::Carrier, 1, Point(100, 100));
-                enemy = CreateUnitForTestAt(Unit::Hydralisk, 0, Point(100, 600));
-                target->IssueSecondaryOrder(Order::TrainFighter);
-                target->build_queue[target->current_build_slot] = Unit::Interceptor;
+                target = CreateUnitForTestAt(UnitId::Carrier, 1, Point(100, 100));
+                enemy = CreateUnitForTestAt(UnitId::Hydralisk, 0, Point(100, 600));
+                target->IssueSecondaryOrder(OrderId::TrainFighter);
+                target->build_queue[target->current_build_slot] = UnitId::Interceptor;
                 state++;
             } break; case 1: {
                 if (target->carrier.in_child != nullptr) {
-                    enemy->IssueOrderTargetingGround(Order::Move, Point(100, 100));
+                    enemy->IssueOrderTargetingGround(OrderId::Move, Point(100, 100));
                     state++;
                 }
             } break; case 2: {
                 SetHp(target, target->GetMaxHitPoints() * 256);
                 SetHp(enemy, enemy->GetMaxHitPoints() * 256);
                 if (target->carrier.out_child != nullptr) {
-                    enemy->IssueOrderTargetingUnit(Order::AttackUnit, target->carrier.out_child);
+                    enemy->IssueOrderTargetingUnit(OrderId::AttackUnit, target->carrier.out_child);
                     state++;
                 }
             } break; case 3: {
                 SetHp(target, target->GetMaxHitPoints() * 256);
                 SetHp(enemy, enemy->GetMaxHitPoints() * 256);
                 TestAssert(helper->target != enemy);
-                if (enemy->target == nullptr || enemy->target->unit_id != Unit::Interceptor) {
-                    enemy->IssueOrderTargetingGround(Order::Move, Point(100, 100));
+                if (enemy->target == nullptr || enemy->target->unit_id != UnitId::Interceptor) {
+                    enemy->IssueOrderTargetingGround(OrderId::Move, Point(100, 100));
                     state--;
                 } else if (enemy->target->GetHealth() != enemy->target->GetMaxHealth()) {
                     // This test makes only sense if interceptors have no ai
@@ -1917,9 +1963,9 @@ struct Test_NearbyHelpers : public GameTest {
                 if (frames_remaining == 1) {
                     enemy->Kill(nullptr);
                     frames_remaining = 5000;
-                    enemy = CreateUnitForTestAt(Unit::SCV, 0, Point(100, 500));
-                    target = FindUnit(Unit::Nexus);
-                    enemy->IssueOrderTargetingUnit(Order::AttackUnit, target);
+                    enemy = CreateUnitForTestAt(UnitId::SCV, 0, Point(100, 500));
+                    target = FindUnit(UnitId::Nexus);
+                    enemy->IssueOrderTargetingUnit(OrderId::AttackUnit, target);
                     state++;
                 }
             } break; case 5: {
@@ -1965,11 +2011,11 @@ struct Test_PathingFlingyGap : public GameTest {
         // gateways -- for some reason it likes to path above more than below,
         // but that is not something this test is going to check/fix).
         for (auto i = 0; i < 5; i++) {
-            CreateUnitForTestAt(Unit::Gateway, 0, Point(0x100, 0x30 + i * 0x60));
+            CreateUnitForTestAt(UnitId::Gateway, 0, Point(0x100, 0x30 + i * 0x60));
         }
-        CreateUnitForTestAt(Unit::Probe, 0, Point(0x100, 0x64));
-        CreateUnitForTestAt(Unit::Probe, 0, Point(0x100, 0xc4));
-        CreateUnitForTestAt(Unit::Probe, 0, Point(0x100, 0x184));
+        CreateUnitForTestAt(UnitId::Probe, 0, Point(0x100, 0x64));
+        CreateUnitForTestAt(UnitId::Probe, 0, Point(0x100, 0xc4));
+        CreateUnitForTestAt(UnitId::Probe, 0, Point(0x100, 0x184));
     }
 
     void NextFrame() override {
@@ -1981,8 +2027,8 @@ struct Test_PathingFlingyGap : public GameTest {
                 int y;
                 int target_x;
                 int target_y;
-                const auto &probe_dbox = units_dat_dimensionbox[Unit::Probe];
-                const auto &gateway_dbox = units_dat_dimensionbox[Unit::Gateway];
+                const auto probe_dbox = UnitId::Probe.DimensionBox();
+                const auto gateway_dbox = UnitId::Gateway.DimensionBox();
                 if (top) {
                     y = 0x120 - gateway_dbox.top - gateway_dbox.bottom;
                     y_min = y - 16;
@@ -2000,8 +2046,8 @@ struct Test_PathingFlingyGap : public GameTest {
                     x = 0x100 + gateway_dbox.right + probe_dbox.left + 1;
                     target_x = 0x100 - gateway_dbox.left - probe_dbox.right - 2;
                 }
-                probe = CreateUnitForTestAt(Unit::Probe, 0, Point(x, y));
-                probe->IssueOrderTargetingGround(Order::Move, Point(target_x, target_y));
+                probe = CreateUnitForTestAt(UnitId::Probe, 0, Point(x, y));
+                probe->IssueOrderTargetingGround(OrderId::Move, Point(target_x, target_y));
                 state++;
             } break; case 1: {
                 const auto &pos = probe->sprite->position;
@@ -2033,19 +2079,19 @@ struct Test_RallyPoint : public GameTest {
     void Rally() {
         old_rally = unit->rally.position;
         SelectUnit(unit);
-        Test_SendTargetedOrderCommand(Order::RallyPointTile, 50, 50, nullptr, Unit::None, false);
+        Test_SendTargetedOrderCommand(OrderId::RallyPointTile, 50, 50, nullptr, UnitId::None, false);
         frames_remaining = 50;
     }
     void NextFrame() override {
         switch (state) {
             case 0: {
-                unit = CreateUnitForTestAt(Unit::Nexus, 0, Point(100, 100));
+                unit = CreateUnitForTestAt(UnitId::Nexus, 0, Point(100, 100));
                 Rally();
                 state++;
             } break; case 1: {
                 if (unit->rally.position != old_rally) {
                     // Shouldn't be able to change pylon rally.
-                    unit = CreateUnitForTestAt(Unit::Pylon, 0, Point(200, 100));
+                    unit = CreateUnitForTestAt(UnitId::Pylon, 0, Point(200, 100));
                     Rally();
                     state++;
                 }
@@ -2053,13 +2099,49 @@ struct Test_RallyPoint : public GameTest {
                 Assert(unit->rally.position == old_rally);
                 if (frames_remaining == 1) {
                     // Shouldn't be able to change marine rally.
-                    unit = CreateUnitForTestAt(Unit::Marine, 0, Point(300, 100));
+                    unit = CreateUnitForTestAt(UnitId::Marine, 0, Point(300, 100));
                     Rally();
                     state++;
                 }
             } break; case 3: {
                 Assert(unit->rally.position == old_rally);
                 if (frames_remaining == 1) {
+                    Pass();
+                }
+            }
+        }
+    }
+};
+
+struct Test_Extractor : public GameTest {
+    void Init() override {
+        bw::minerals[0] = 50;
+        bw::gas[0] = 0;
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                auto gas_pos = Point(0x100, 0x100);
+                Unit *drone = CreateUnitForTestAt(UnitId::Drone, 0, Point(100, 100));
+                CreateUnitForTestAt(UnitId::VespeneGeyser, NeutralPlayer, gas_pos);
+                CommandToBuild(drone, UnitId::Extractor, gas_pos, OrderId::DroneStartBuild);
+                state++;
+            } break; case 1: {
+                if (FindUnit(UnitId::Drone) == nullptr) {
+                    TestAssert(FindUnit(UnitId::VespeneGeyser) == nullptr);
+                    TestAssert(FindUnit(UnitId::Extractor) != nullptr);
+                    TestAssert(bw::minerals[0] == 0);
+                    SelectUnit(FindUnit(UnitId::Extractor));
+                    uint8_t cmd[] = {commands::CancelMorph};
+                    SendCommand(cmd, sizeof cmd);
+                    state++;
+                }
+            } break; case 2: {
+                if (FindUnit(UnitId::Drone) != nullptr) {
+                    TestAssert(FindUnit(UnitId::VespeneGeyser) == nullptr);
+                    TestAssert(FindUnit(UnitId::Extractor) != nullptr);
+                    TestAssert(bw::minerals[0] == 37);
+                    SelectUnit(FindUnit(UnitId::Extractor));
                     Pass();
                 }
             }
@@ -2110,6 +2192,7 @@ GameTests::GameTests()
     AddTest("Nearby helpers", new Test_NearbyHelpers);
     AddTest("Pathing small gap w/ flingy movement", new Test_PathingFlingyGap);
     AddTest("Rally point", new Test_RallyPoint);
+    AddTest("Morph extractor", new Test_Extractor);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)

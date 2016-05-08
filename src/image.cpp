@@ -1,19 +1,20 @@
 #include "image.h"
 
-#include "offsets.h"
-#include "bullet.h"
-#include "sprite.h"
-#include "log.h"
-#include "lofile.h"
-#include "warn.h"
-#include "rng.h"
-#include "unit.h"
-#include "yms.h"
-#include "draw.h"
-#include "perfclock.h"
-#include "strings.h"
-
 #include <atomic>
+
+#include "constants/image.h"
+#include "bullet.h"
+#include "draw.h"
+#include "lofile.h"
+#include "log.h"
+#include "offsets.h"
+#include "perfclock.h"
+#include "rng.h"
+#include "sprite.h"
+#include "strings.h"
+#include "unit.h"
+#include "warn.h"
+#include "yms.h"
 
 bool GrpFrameHeader::IsDecoded() const
 {
@@ -82,7 +83,8 @@ Image::Image()
     list.next = nullptr;
 }
 
-Image::Image(Sprite *parent, int image_id, int x, int y) : image_id(image_id), x_off(x), y_off(y), parent(parent)
+Image::Image(Sprite *parent, ImageType image_id, int x, int y) :
+    image_id(image_id.Raw()), x_off(x), y_off(y), parent(parent)
 {
     list.prev = nullptr;
     list.next = nullptr;
@@ -98,23 +100,23 @@ Image::Image(Sprite *parent, int image_id, int x, int y) : image_id(image_id), x
     iscript.animation = 0;
     iscript.wait = 0;
 
-    if (images_dat_turning_graphic[image_id] & 0x1)
+    if (Type().IsTurningGraphic())
         flags |= ImageFlags::CanTurn;
-    if (images_dat_clickable[image_id] & 0x1)
+    if (Type().Clickable())
         flags |= ImageFlags::Clickable;
-    if (images_dat_use_full_iscript[image_id] & 0x1)
+    if (Type().UseFullIscript())
         flags |= ImageFlags::FullIscript;
 
-    SetDrawFunc(images_dat_drawfunc[image_id], nullptr);
+    SetDrawFunc(Type().DrawFunc(), nullptr);
     if (drawfunc == OverrideColor)
         drawfunc_param = (void *)(uintptr_t)parent->player;
     else if (drawfunc == Remap)
-        drawfunc_param = bw::blend_palettes[images_dat_remapping[image_id]].data;
+        drawfunc_param = bw::blend_palettes[Type().Remapping()].data;
 }
 
 bool Image::InitIscript(Iscript::Context *ctx)
 {
-    int iscript_header = images_dat_iscript_header[image_id];
+    int iscript_header = Type().IscriptHeader();
     bool success = iscript.Initialize(ctx->iscript, iscript_header);
     if (!success)
     {
@@ -170,7 +172,7 @@ void Image::SingleDelete()
 void Image::UpdateSpecialOverlayPos()
 {
     if (parent->main_image)
-        LoFile::GetOverlay(parent->main_image->image_id, 2).SetImageOffset(this);
+        LoFile::GetOverlay(parent->main_image->Type(), 2).SetImageOffset(this);
 }
 
 void Image::SetFlipping(bool set)
@@ -265,7 +267,7 @@ void Image::FollowMainImage()
     UpdateFrameToDirection();
 }
 
-Image *Image::Iscript_AddOverlay(Iscript::Context *ctx, int overlay_id, int x, int y, bool above)
+Image *Image::Iscript_AddOverlay(Iscript::Context *ctx, ImageType overlay_id, int x, int y, bool above)
 {
     Image *img = new Image(parent, overlay_id, x, y);
     if (above)
@@ -330,15 +332,15 @@ Iscript::CmdResult Image::HandleIscriptCommand(Iscript::Context *ctx, Iscript::S
             SetOffset(cmd.point.x, cmd.point.y);
         break;
         case ImgOl:
-            Iscript_AddOverlay(ctx, cmd.val, x_off + cmd.point.x, y_off + cmd.point.y, true);
+            Iscript_AddOverlay(ctx, ImageType(cmd.val), x_off + cmd.point.x, y_off + cmd.point.y, true);
         break;
         case ImgUl:
-            Iscript_AddOverlay(ctx, cmd.val, x_off + cmd.point.x, y_off + cmd.point.y, false);
+            Iscript_AddOverlay(ctx, ImageType(cmd.val), x_off + cmd.point.x, y_off + cmd.point.y, false);
         break;
         case ImgOlOrig:
         case SwitchUl:
         {
-            Image *other = Iscript_AddOverlay(ctx, cmd.val, 0, 0, cmd.opcode == ImgOlOrig);
+            Image *other = Iscript_AddOverlay(ctx, ImageType(cmd.val), 0, 0, cmd.opcode == ImgOlOrig);
             if (other != nullptr && ~other->flags & ImageFlags::UseParentLo)
             {
                 other->flags |= ImageFlags::UseParentLo;
@@ -350,22 +352,23 @@ Iscript::CmdResult Image::HandleIscriptCommand(Iscript::Context *ctx, Iscript::S
         case ImgUlUseLo:
         {
             // Yeah, it's not actually point
-            Point32 point = LoFile::GetOverlay(image_id, cmd.point.x).GetValues(this, cmd.point.y);
-            Iscript_AddOverlay(ctx, cmd.val, point.x + x_off, point.y + y_off, cmd.opcode == ImgOlUseLo);
+            Point32 point = LoFile::GetOverlay(Type(), cmd.point.x).GetValues(this, cmd.point.y);
+            bool above = cmd.opcode == ImgOlUseLo;
+            Iscript_AddOverlay(ctx, ImageType(cmd.val), point.x + x_off, point.y + y_off, above);
         }
         break;
         case ImgUlNextId:
-            Iscript_AddOverlay(ctx, image_id + 1, cmd.point.x + x_off, cmd.point.y + y_off, false);
+            Iscript_AddOverlay(ctx, ImageType(image_id + 1), cmd.point.x + x_off, cmd.point.y + y_off, false);
         break;
         case SprOl:
             // Bullet's iscript handler has an override for goliath range upgrade
-            Sprite::Spawn(this, cmd.val, cmd.point, parent->elevation + 1);
+            Sprite::Spawn(this, SpriteType(cmd.val), cmd.point, parent->elevation + 1);
         break;
         case HighSprOl:
-            Sprite::Spawn(this, cmd.val, cmd.point, parent->elevation - 1);
+            Sprite::Spawn(this, SpriteType(cmd.val), cmd.point, parent->elevation - 1);
         break;
         case LowSprUl:
-            Sprite::Spawn(this, cmd.val, cmd.point, 1);
+            Sprite::Spawn(this, SpriteType(cmd.val), cmd.point, 1);
         break;
         case UflUnstable:
         {
@@ -384,7 +387,7 @@ Iscript::CmdResult Image::HandleIscriptCommand(Iscript::Context *ctx, Iscript::S
             int elevation = parent->elevation;
             if (cmd.opcode == SprUl)
                 elevation -= 1;
-            Sprite *sprite = Sprite::Spawn(this, cmd.val, cmd.point, elevation);
+            Sprite *sprite = Sprite::Spawn(this, SpriteType(cmd.val), cmd.point, elevation);
             if (sprite != nullptr)
             {
                 if (IsFlipped())
@@ -397,8 +400,8 @@ Iscript::CmdResult Image::HandleIscriptCommand(Iscript::Context *ctx, Iscript::S
         case SprOlUseLo:
         {
             // Again using the "point" for additional storage
-            Point32 point = LoFile::GetOverlay(image_id, cmd.point.x).GetValues(this, 0);
-            Sprite *sprite = Sprite::Spawn(this, cmd.val, point.ToPoint16(), parent->elevation + 1);
+            Point32 point = LoFile::GetOverlay(Type(), cmd.point.x).GetValues(this, 0);
+            Sprite *sprite = Sprite::Spawn(this, SpriteType(cmd.val), point.ToPoint16(), parent->elevation + 1);
             if (sprite)
             {
                 if (IsFlipped())
@@ -471,8 +474,8 @@ Iscript::CmdResult Image::HandleIscriptCommand(Iscript::Context *ctx, Iscript::S
             int x = parent->position.x + x_off + cmd.point.x;
             int y = parent->position.y + y_off + cmd.point.y;
             // Yes, it checks if unit id 0 can fit there
-            if (DoesFitHere(Unit::Marine, x, y))
-                Sprite::Spawn(this, cmd.val, cmd.point, parent->elevation + 1);
+            if (DoesFitHere(UnitId::Marine, x, y))
+                Sprite::Spawn(this, SpriteType(cmd.val), cmd.point, parent->elevation + 1);
         }
         break;
         default:
@@ -645,7 +648,7 @@ static Tbl *GetImagesTbl()
 std::string Image::DebugStr() const
 {
     Tbl *tbl = GetImagesTbl();
-    int grp_id = images_dat_grp[image_id];
+    int grp_id = Type().Grp();
     char buf[128];
     snprintf(buf, sizeof buf / sizeof(buf[0]), "%x [unit\\%s]", image_id, tbl->GetTblString(grp_id));
     return buf;
@@ -833,7 +836,7 @@ void __fastcall DrawWarpTexture_NonFlipped(int x, int y, GrpFrameHeader *frame_h
 {
     Assert(frame_header->IsDecoded());
     int texture_frame = (int)param;
-    GrpFrameHeader *warp_texture_header = GetGrpFrameHeader(Image::WarpTexture, texture_frame);
+    GrpFrameHeader *warp_texture_header = GetGrpFrameHeader(ImageId::WarpTexture, texture_frame);
     int warp_texture_width = warp_texture_header->GetWidth();
     int frame_width = frame_header->GetWidth();
     Render_NonFlipped(x, y, warp_texture_header, rect, [&](uint8_t *in, uint8_t *out) {
@@ -847,7 +850,7 @@ void __fastcall DrawWarpTexture_Flipped(int x, int y, GrpFrameHeader *frame_head
 {
     Assert(frame_header->IsDecoded());
     int texture_frame = (int)param;
-    GrpFrameHeader *warp_texture_header = GetGrpFrameHeader(Image::WarpTexture, texture_frame);
+    GrpFrameHeader *warp_texture_header = GetGrpFrameHeader(ImageId::WarpTexture, texture_frame);
     int warp_texture_width = warp_texture_header->GetWidth();
     int frame_width = frame_header->GetWidth();
     Render_Flipped(x, y, warp_texture_header, rect, [&](uint8_t *in, uint8_t *out) {

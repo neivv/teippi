@@ -1,11 +1,12 @@
 #include "player.h"
 
-#include "offsets.h"
-#include "limits.h"
-#include "yms.h"
-#include "unit.h"
-#include "order.h"
+#include "constants/order.h"
 #include "ai.h"
+#include "limits.h"
+#include "offsets.h"
+#include "order.h"
+#include "unit.h"
+#include "yms.h"
 
 bool IsHumanPlayer(int player)
 {
@@ -119,11 +120,11 @@ void Neutralize(int player)
         {
             Unit *unit = next;
             next = unit->player_units.next;
-            if (units_dat_flags[unit->unit_id] & UnitFlags::Subunit || unit->sprite == nullptr)
+            if (unit->Type().IsSubunit() || unit->sprite == nullptr)
                 continue;
-            if (unit->order == Order::Die)
+            if (unit->OrderType() == OrderId::Die)
                 continue;
-            if (units_dat_flags[unit->unit_id] & UnitFlags::SingleEntity && unit->powerup.carrying_unit != nullptr)
+            if (unit->Type().Flags() & UnitFlags::SingleEntity && unit->powerup.carrying_unit != nullptr)
             {
                 Unit *worker = unit->powerup.carrying_unit;
                 if (worker->carried_powerup_flags != 0)

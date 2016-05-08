@@ -491,10 +491,10 @@ void SaveBase<P>::ConvertUnit(Unit *unit)
         if (unit->flags & UnitStatus::Building)
         {
             ConvertUnitPtr<saving>(&unit->building.addon);
-            if (unit->unit_id == Unit::NuclearSilo)
+            if (unit->Type() == UnitId::NuclearSilo)
                 ConvertUnitPtr<saving>(&unit->silo.nuke);
         }
-        if (unit->IsWorker())
+        if (unit->Type().IsWorker())
         {
             ConvertUnitPtr<saving>(&unit->worker.powerup);
             ConvertUnitPtr<saving>(&unit->worker.current_harvest_target);
@@ -502,26 +502,26 @@ void SaveBase<P>::ConvertUnit(Unit *unit)
             ConvertUnitPtr<saving>(&unit->harvester.harvesters.prev);
             ConvertUnitPtr<saving>(&unit->harvester.harvesters.next);
         }
-        else if (units_dat_flags[unit->unit_id] & (UnitFlags::SingleEntity | UnitFlags::ResourceContainer))
+        else if (unit->Type().Flags() & (UnitFlags::SingleEntity | UnitFlags::ResourceContainer))
         {
             ConvertUnitPtr<saving>(&unit->powerup.carrying_unit);
         }
-        else if (unit->IsCarrier() || unit->IsReaver())
+        else if (unit->Type().HasHangar())
         {
             ConvertUnitPtr<saving>(&unit->carrier.in_child.AsRawPointer());
             ConvertUnitPtr<saving>(&unit->carrier.out_child.AsRawPointer());
         }
-        else if (unit->unit_id == Unit::Scarab || unit->unit_id == Unit::Interceptor)
+        else if (unit->Type() == UnitId::Scarab || unit->Type() == UnitId::Interceptor)
         {
             ConvertUnitPtr<saving>(&unit->interceptor.parent);
             ConvertUnitPtr<saving>(&unit->interceptor.list.next);
             ConvertUnitPtr<saving>(&unit->interceptor.list.prev);
         }
-        else if (unit->unit_id == Unit::Ghost)
+        else if (unit->Type() == UnitId::Ghost)
         {
             ConvertSpritePtr<saving>(&unit->ghost.nukedot, lone_sprites);
         }
-        if (unit->unit_id == Unit::Pylon)
+        if (unit->Type() == UnitId::Pylon)
         {
             if (saving)
             {
@@ -530,7 +530,7 @@ void SaveBase<P>::ConvertUnit(Unit *unit)
                 unit->pylon.aura.release();
             }
         }
-        else if (unit->HasRally())
+        else if (unit->Type().HasRally())
         {
             ConvertUnitPtr<saving>(&unit->rally.unit);
         }

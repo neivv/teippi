@@ -1,21 +1,23 @@
 #include "sprite.h"
 
-#include "resolution.h"
 #include <algorithm>
 #include <array>
-#include "offsets.h"
-#include "unit.h"
-#include "image.h"
-#include "lofile.h"
-#include "limits.h"
-#include "game.h"
-#include "yms.h"
-#include "selection.h"
-#include "warn.h"
-#include "rng.h"
-#include "perfclock.h"
 
+#include "constants/image.h"
+#include "constants/sprite.h"
+#include "game.h"
+#include "image.h"
+#include "limits.h"
+#include "lofile.h"
 #include "log.h"
+#include "offsets.h"
+#include "perfclock.h"
+#include "resolution.h"
+#include "rng.h"
+#include "selection.h"
+#include "unit.h"
+#include "yms.h"
+#include "warn.h"
 
 using std::min;
 
@@ -144,7 +146,7 @@ void Sprite::Hide()
     SetVisibility(this, 0);
 }
 
-void Sprite::AddOverlayAboveMain(Iscript::Context *ctx, int image_id, int x, int y, int direction)
+void Sprite::AddOverlayAboveMain(Iscript::Context *ctx, ImageType image_id, int x, int y, int direction)
 {
     Image *image = new Image(this, image_id, x, y);
     if (first_overlay != nullptr)
@@ -172,7 +174,7 @@ void Sprite::AddOverlayAboveMain(Iscript::Context *ctx, int image_id, int x, int
     SetImageDirection32(image, direction);
 }
 
-bool Sprite::Initialize(Iscript::Context *ctx, int sprite_id_, const Point &pos, int player_)
+bool Sprite::Initialize(Iscript::Context *ctx, SpriteType sprite_id_, const Point &pos, int player_)
 {
     if (pos.x >= *bw::map_width || pos.y >= *bw::map_height)
     {
@@ -184,16 +186,16 @@ bool Sprite::Initialize(Iscript::Context *ctx, int sprite_id_, const Point &pos,
     last_overlay = nullptr;
 
     player = player_;
-    sprite_id = sprite_id_;
+    sprite_id = sprite_id_.Raw();
     flags = 0;
     position = pos;
     visibility_mask = 0xff;
     elevation = 4;
     selection_flash_timer = 0;
-    if (sprites_dat_start_as_visible[sprite_id] == 0)
+    if (!Type().StartAsVisible())
         Hide();
 
-    AddOverlayAboveMain(ctx, sprites_dat_image[sprite_id], 0, 0, 0);
+    AddOverlayAboveMain(ctx, Type().Image(), 0, 0, 0);
 
     width = min(255, (int)main_image->grp->width);
     height = min(255, (int)main_image->grp->height);
@@ -202,7 +204,7 @@ bool Sprite::Initialize(Iscript::Context *ctx, int sprite_id_, const Point &pos,
     return true;
 }
 
-ptr<Sprite> Sprite::Allocate(Iscript::Context *ctx, int sprite_id, const Point &pos, int player)
+ptr<Sprite> Sprite::Allocate(Iscript::Context *ctx, SpriteType sprite_id, const Point &pos, int player)
 {
     ptr<Sprite> sprite(new Sprite);
     if (!sprite->Initialize(ctx, sprite_id, pos, player))
@@ -210,7 +212,7 @@ ptr<Sprite> Sprite::Allocate(Iscript::Context *ctx, int sprite_id, const Point &
     return sprite;
 }
 
-Sprite *Sprite::AllocateWithBasicIscript(int sprite_id, const Point &pos, int player)
+Sprite *Sprite::AllocateWithBasicIscript(SpriteType sprite_id, const Point &pos, int player)
 {
     ptr<Sprite> sprite(new Sprite);
     SpriteIscriptContext ctx(sprite.get(), MainRng(), "Sprite::AllocateWithBasicIscript", false);
@@ -219,7 +221,7 @@ Sprite *Sprite::AllocateWithBasicIscript(int sprite_id, const Point &pos, int pl
     return sprite.release();
 }
 
-Sprite *LoneSpriteSystem::AllocateLone(int sprite_id, const Point &pos, int player)
+Sprite *LoneSpriteSystem::AllocateLone(SpriteType sprite_id, const Point &pos, int player)
 {
     ptr<Sprite> sprite(new Sprite);
     SpriteIscriptContext ctx(sprite.get(), MainRng(), "LoneSpriteSystem::AllocateLone", false);
@@ -230,16 +232,16 @@ Sprite *LoneSpriteSystem::AllocateLone(int sprite_id, const Point &pos, int play
     return lone_sprites.back().get();
 }
 
-Sprite *LoneSpriteSystem::AllocateFow(Sprite *base, int unit_id)
+Sprite *LoneSpriteSystem::AllocateFow(Sprite *base, UnitType unit_id)
 {
     ptr<Sprite> sprite_ptr(new Sprite);
     SpriteIscriptContext ctx(sprite_ptr.get(), MainRng(), "LoneSpriteSystem::AllocateFow", false);
-    if (!sprite_ptr->Initialize(&ctx, base->sprite_id, base->position, base->player))
+    if (!sprite_ptr->Initialize(&ctx, base->Type(), base->position, base->player))
         return nullptr;
 
     fow_sprites.emplace(move(sprite_ptr));
     Sprite *sprite = fow_sprites.back().get();
-    sprite->index = unit_id;
+    sprite->index = unit_id.Raw();
 
     for (Image *img = sprite->first_overlay, *next; img; img = next)
     {
@@ -262,7 +264,7 @@ Sprite *LoneSpriteSystem::AllocateFow(Sprite *base, int unit_id)
     return sprite;
 }
 
-Sprite *Sprite::SpawnLoneSpriteAbove(int sprite_id)
+Sprite *Sprite::SpawnLoneSpriteAbove(SpriteType sprite_id)
 {
     Sprite *sprite = lone_sprites->AllocateLone(sprite_id, position, player);
     if (sprite)
@@ -503,8 +505,8 @@ void UpdateDoodadVisibility(Sprite *sprite)
 static bool ProgressLoneSpriteFrame(Sprite *sprite)
 {
     // Skip doodads
-    if ((sprite->sprite_id > Sprite::LastScDoodad && sprite->sprite_id < Sprite::FirstBwDoodad) ||
-            sprite->sprite_id > Sprite::LastBwDoodad)
+    if ((sprite->sprite_id > SpriteId::LastScDoodad.Raw() && sprite->sprite_id < SpriteId::FirstBwDoodad.Raw()) ||
+            sprite->sprite_id > SpriteId::LastBwDoodad.Raw())
     {
         sprite->UpdateVisibilityArea();
     }
@@ -521,8 +523,8 @@ static bool ProgressFowSpriteFrame(Sprite *sprite)
 {
     if (sprite->player < Limits::Players)
         DrawTransmissionSelectionCircle(sprite, bw::self_alliance_colors[sprite->player]);
-    int place_width = units_dat_placement_box[sprite->index][0];
-    int place_height = units_dat_placement_box[sprite->index][1];
+    int place_width = UnitType(sprite->index).PlacementBox().width;
+    int place_height = UnitType(sprite->index).PlacementBox().height;
     int width = (place_width + 31) / 32;
     int height = (place_height + 31) / 32;
     int x = (sprite->position.x - place_width / 2) / 32;
@@ -584,8 +586,8 @@ void DrawMinimapUnits()
     {
         if (sprite->index < 0xcb || sprite->index > 0xd5)
         {
-            int place_width = units_dat_placement_box[sprite->index][0];
-            int place_height = units_dat_placement_box[sprite->index][1];
+            int place_width = UnitType(sprite->index).PlacementBox().width;
+            int place_height = UnitType(sprite->index).PlacementBox().height;
             if (replay)
             {
                 int width = (place_width + 31) / 32;
@@ -621,11 +623,12 @@ Sprite *Sprite::FindFowTarget(int x, int y)
 {
     for (ptr<Sprite> &sprite : lone_sprites->fow_sprites)
     {
-        if (Unit::IsClickable(sprite->index))
+        if (UnitType(sprite->index).IsClickable())
         {
-            if ((unsigned int)((sprite->position.x + units_dat_placement_box[sprite->index][0] / 2) - x) < sprite->width)
+            const auto place_box = UnitType(sprite->index).PlacementBox();
+            if ((unsigned int)((sprite->position.x + place_box.width / 2) - x) < sprite->width)
             {
-                if ((unsigned int)((sprite->position.y + units_dat_placement_box[sprite->index][1] / 2) - y) < sprite->height)
+                if ((unsigned int)((sprite->position.y + place_box.height / 2) - y) < sprite->height)
                     return sprite.get();
             }
         }
@@ -655,15 +658,15 @@ void Sprite::SetFlipping(bool set)
     }
 }
 
-void Sprite::AddMultipleOverlaySprites(int overlay_type, int count, int sprite_id, int base, bool flip)
+void Sprite::AddMultipleOverlaySprites(int overlay_type, int count, SpriteType sprite_id, int base, bool flip)
 {
-    LoFile lo = LoFile::GetOverlay(main_image->image_id, overlay_type);
+    LoFile lo = LoFile::GetOverlay(main_image->Type(), overlay_type);
     for (int i = 0; i < count; i++)
     {
         Point pos = lo.GetPosition(main_image, i + base);
         if (pos.IsValid())
         {
-            Sprite *sprite = lone_sprites->AllocateLone(sprite_id + i, pos, player);
+            Sprite *sprite = lone_sprites->AllocateLone(SpriteType(sprite_id.Raw() + i), pos, player);
             if (sprite)
             {
                 sprite->elevation = elevation + 1;
@@ -733,7 +736,7 @@ Sprite *ShowCommandResponse(int x, int y, Sprite *alternate)
     }
 }
 
-Sprite *Sprite::Spawn(Image *spawner, uint16_t sprite_id, const Point &pos, int elevation_level)
+Sprite *Sprite::Spawn(Image *spawner, SpriteType sprite_id, const Point &pos, int elevation_level)
 {
     int x = pos.x + spawner->x_off + spawner->parent->position.x;
     int y = pos.y + spawner->y_off + spawner->parent->position.y;
@@ -766,11 +769,12 @@ Sprite *FindBlockingFowResource(int x_tile, int y_tile, int radius)
 {
     for (ptr<Sprite> &fow : lone_sprites->fow_sprites)
     {
-        if (fow->index == Unit::MineralPatch1 || fow->index == Unit::MineralPatch2
-             || fow->index == Unit::MineralPatch3 || fow->index == Unit::VespeneGeyser)
+        UnitType unit_id(fow->index);
+        if (unit_id == UnitId::MineralPatch1 || unit_id == UnitId::MineralPatch2 ||
+            unit_id == UnitId::MineralPatch3 || unit_id == UnitId::VespeneGeyser)
         {
-            int w = units_dat_placement_box[fow->index][0] / 32;
-            int h = units_dat_placement_box[fow->index][1] / 32;
+            int w = UnitType(fow->index).PlacementBox().width / 32;
+            int h = UnitType(fow->index).PlacementBox().height / 32;
             int x = fow->position.x / 32 - w / 2;
             int y = fow->position.y / 32 - h / 2;
             if (x - radius <= x_tile && x + w + radius > x_tile)
@@ -801,7 +805,8 @@ void Sprite::RemoveSelectionOverlays()
     {
         for (Image *img : first_overlay)
         {
-            if (img->image_id >= Image::FirstDashedSelectionCircle && img->image_id <= Image::LastDashedSelectionCircle)
+            if (img->Type() >= ImageId::FirstDashedSelectionCircle &&
+                    img->Type() <= ImageId::LastDashedSelectionCircle)
             {
                 DeleteSelectionCircleImage(img);
                 break;
@@ -813,7 +818,8 @@ void Sprite::RemoveSelectionOverlays()
     {
         for (Image *img : first_overlay)
         {
-            if (img->image_id >= Image::FirstSelectionCircle && img->image_id <= Image::LastSelectionCircle)
+            if (img->Type() >= ImageId::FirstSelectionCircle &&
+                    img->Type() <= ImageId::LastSelectionCircle)
             {
                 DeleteSelectionCircleImage(img);
                 break;
@@ -845,19 +851,20 @@ void Sprite::AddDamageOverlay()
     if (main_image == nullptr)
         return;
 
-    LoFile overlay = LoFile::GetOverlay(main_image->image_id, Overlay::Damage);
+    LoFile overlay = LoFile::GetOverlay(main_image->Type(), Overlay::Damage);
     if (!overlay.IsValid())
         return;
 
     // "Upgrade" minor overlay to major if possible
     for (Image *img : first_overlay)
     {
-        if (img->image_id >= Image::FirstMinorDamageOverlay && img->image_id <= Image::LastMinorDamageOverlay)
+        if (img->Type() >= ImageId::FirstMinorDamageOverlay &&
+                img->Type() <= ImageId::LastMinorDamageOverlay)
         {
-            int variation = img->image_id - Image::FirstMinorDamageOverlay;
+            int variation = img->image_id - ImageId::FirstMinorDamageOverlay.Raw();
             img->SingleDelete();
             Point32 pos = overlay.GetValues(main_image, variation);
-            AddOverlayHighest(this, Image::FirstMajorDamageOverlay + variation, pos.x, pos.y, 0);
+            AddOverlayHighest(this, ImageId::FirstMajorDamageOverlay.Raw() + variation, pos.x, pos.y, 0);
             return;
         }
     }
@@ -871,11 +878,11 @@ void Sprite::AddDamageOverlay()
         if (pos == invalid_pos)
             continue;
 
-        int overlay_id = Image::FirstMajorDamageOverlay + i;
+        ImageType overlay_id = ImageType(ImageId::FirstMajorDamageOverlay.Raw() + i);
         bool found = false;
         for (Image *img : first_overlay)
         {
-            if (img->image_id == overlay_id)
+            if (img->Type() == overlay_id)
             {
                 found = true;
                 break;
@@ -889,7 +896,7 @@ void Sprite::AddDamageOverlay()
     {
         int variation = results[MainRng()->Rand(result_pos - results.begin())];
         Point32 pos = overlay.GetValues(main_image, variation);
-        AddOverlayHighest(this, Image::FirstMinorDamageOverlay + variation, pos.x, pos.y, 0);
+        AddOverlayHighest(this, ImageId::FirstMinorDamageOverlay.Raw() + variation, pos.x, pos.y, 0);
     }
 }
 
@@ -908,13 +915,13 @@ void Sprite::IscriptToIdle(Iscript::Context *ctx)
             anim = AirAttkToIdle;
         break;
         case AlmostBuilt:
-            if (sprite_id == SCV || sprite_id == Drone || sprite_id == Probe)
+            if (Type() == SpriteId::SCV || Type() == SpriteId::Drone || Type() == SpriteId::Probe)
                 anim = GndAttkToIdle;
             else
                 return;
         break;
         case Special1:
-            if (sprite_id == Medic)
+            if (Type() == SpriteId::Medic)
                 anim = Idle;
             else
                 return;
@@ -931,7 +938,7 @@ void Sprite::IscriptToIdle(Iscript::Context *ctx)
 void Sprite::InitSpriteSystem()
 {
     lone_sprites->DeleteAll();
-    LoadDat(&bw::sprites_dat[0][0], "arr\\sprites.dat");
+    LoadDat(&bw::sprites_dat[0], "arr\\sprites.dat");
     std::fill(bw::horizontal_sprite_lines.begin(), bw::horizontal_sprite_lines.end(), nullptr);
     std::fill(bw::horizontal_sprite_lines_rev.begin(), bw::horizontal_sprite_lines_rev.end(), nullptr);
 }

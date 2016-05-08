@@ -47,7 +47,7 @@ void DamageUnit_Hook(int damage, Unit *target, Unit *attacker, int attacking_pla
 
 void AddMultipleOverlaySprites(Sprite *sprite, uint16_t base, int overlay_type, int count, int sprite_id, int flip)
 {
-    sprite->AddMultipleOverlaySprites(overlay_type, count - base + 1, sprite_id, base, flip);
+    sprite->AddMultipleOverlaySprites(overlay_type, count - base + 1, SpriteType(sprite_id), base, flip);
 }
 
 void SendUnloadCommand(const Unit *unit)
@@ -144,7 +144,7 @@ int IsTileBlockedBy(Unit **units, Unit *builder, int x_tile, int y_tile, int don
             continue;
         if (unit->flags & (UnitStatus::Building | UnitStatus::Air))
             continue;
-        if (unit->unit_id == Unit::DarkSwarm || unit->unit_id == Unit::DisruptionWeb)
+        if (unit->Type() == UnitId::DarkSwarm || unit->Type() == UnitId::DisruptionWeb)
             continue;
         if (!dont_ignore_reacting && unit->flags & UnitStatus::Reacts)
             continue;
@@ -176,7 +176,7 @@ int IsTileBlockedBy(Unit **units, Unit *builder, int x_tile, int y_tile, int don
 // Horribly misnamed
 int DoesBuildingBlock(Unit *builder, int x_tile, int y_tile)
 {
-    if (!builder || ~builder->flags & UnitStatus::Building || builder->unit_id == Unit::NydusCanal)
+    if (!builder || ~builder->flags & UnitStatus::Building || builder->Type() == UnitId::NydusCanal)
         return true;
     if (builder->sprite->IsHidden())
         return true;
@@ -397,10 +397,12 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->Hook(bw::GameFunc, ProgressFrames);
 
     patch->Hook(bw::CreateOrder, [](uint8_t order, uint32_t pos, Unit *target, uint16_t fow) {
-        return Order::Allocate(order, Point(pos & 0xffff, pos >> 16), target, fow);
+        return Order::Allocate(OrderType(order), Point(pos & 0xffff, pos >> 16), target, UnitType(fow));
     });
     patch->Hook(bw::DeleteOrder, DeleteOrder_Hook);
-    patch->Hook(bw::DeleteSpecificOrder, &Unit::DeleteSpecificOrder);
+    patch->Hook(bw::DeleteSpecificOrder, [](Unit *unit, uint8_t order) {
+        return unit->DeleteSpecificOrder(OrderType(order));
+    });
 
     patch->Hook(bw::GetEmptyImage, []{ return new Image; });
     patch->Hook(bw::DeleteImage, &Image::SingleDelete);
@@ -417,10 +419,10 @@ void RemoveLimits(Common::PatchContext *patch)
     });
 
     patch->Hook(bw::CreateLoneSprite, [](uint16_t sprite_id, uint16_t x, uint16_t y, uint8_t player) {
-        return lone_sprites->AllocateLone(sprite_id, Point(x, y), player);
+        return lone_sprites->AllocateLone(SpriteType(sprite_id), Point(x, y), player);
     });
     patch->Hook(bw::CreateFowSprite, [](uint16_t unit_id, Sprite *base) {
-        return lone_sprites->AllocateFow(base, unit_id);
+        return lone_sprites->AllocateFow(base, UnitType(unit_id));
     });
 
     patch->Hook(bw::InitLoneSprites, InitCursorMarker);
@@ -439,7 +441,7 @@ void RemoveLimits(Common::PatchContext *patch)
 
     patch->Hook(bw::CreateBullet,
             [](Unit *parent, int x, int y, uint8_t player, uint8_t direction, uint8_t weapon_id) {
-        return bullet_system->AllocateBullet(parent, player, direction, weapon_id, Point(x, y));
+        return bullet_system->AllocateBullet(parent, player, direction, WeaponType(weapon_id), Point(x, y));
     });
     patch->Hook(bw::GameEnd, GameEnd);
 
@@ -511,8 +513,12 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->Hook(bw::SetIscriptAnimation, SetIscriptAnimation);
     patch->Hook(bw::ProgressIscriptFrame, ProgressIscriptFrame_Hook);
 
-    patch->Hook(bw::Order_AttackMove_ReactToAttack, &Unit::Order_AttackMove_ReactToAttack);
-    patch->Hook(bw::Order_AttackMove_TryPickTarget, &Unit::Order_AttackMove_TryPickTarget);
+    patch->Hook(bw::Order_AttackMove_ReactToAttack, [](Unit *unit, int order) {
+        return unit->Order_AttackMove_ReactToAttack(OrderType(order));
+    });
+    patch->Hook(bw::Order_AttackMove_TryPickTarget, [](Unit *unit, int order) {
+        unit->Order_AttackMove_TryPickTarget(OrderType(order));
+    });
 
     // Won't be called when loading save though.
     patch->CallHook(bw::PathingInited, [] { unit_search->Init(); });
@@ -567,7 +573,10 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->Hook(bw::SetMovementDirectionToTarget, &Flingy::SetMovementDirectionToTarget);
     patch->Hook(bw::ProgressMove, ProgressMove_Hook);
 
-    patch->Hook(bw::LoadGrp, LoadGrp);
+    patch->Hook(bw::LoadGrp,
+        [](int image_id, uint32_t *grps, Tbl *tbl, GrpSprite **loaded_grps, void **overlapped, void **out_file) {
+        return LoadGrp(ImageType(image_id), grps, tbl, loaded_grps, overlapped, out_file);
+    });
     patch->Hook(bw::IsDrawnPixel, IsDrawnPixel);
     patch->Hook(bw::LoadBlendPalettes, LoadBlendPalettes);
     patch->Hook(bw::DrawImage_Detected,
@@ -618,7 +627,7 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->Hook(bw::GameScreenRClickEvent, GameScreenRClickEvent);
     patch->Hook(bw::GameScreenLClickEvent_Targeting, GameScreenLClickEvent_Targeting);
     patch->Hook(bw::DoTargetedCommand, [](uint16_t x, uint16_t y, Unit *target, uint16_t fow_unit) {
-        DoTargetedCommand(x, y, target, fow_unit);
+        DoTargetedCommand(x, y, target, UnitType(fow_unit));
     });
 
     patch->Hook(bw::SendChangeSelectionCommand, SendChangeSelectionCommand);
@@ -635,6 +644,6 @@ void RemoveLimits(Common::PatchContext *patch)
 
     patch->Hook(bw::UpdateBuildingPlacementState,
         [](Unit *a, int b, int c, int d, uint16_t e, int f, int g, int h, int i) {
-        return UpdateBuildingPlacementState(a, b, c, d, e, f, g, h, i);
+        return UpdateBuildingPlacementState(a, b, c, d, UnitType(e), f, g, h, i);
     });
 }

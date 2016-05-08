@@ -3,6 +3,8 @@
 
 #include "types.h"
 
+#include "dat.h"
+
 int ProgressFrames();
 void ProgressObjects();
 void GameEnd();
@@ -16,7 +18,7 @@ struct DoWeaponDamageData
     int player;
     Unit *target;
     int damage;
-    uint16_t weapon;
+    WeaponType weapon;
     uint16_t direction;
 };
 

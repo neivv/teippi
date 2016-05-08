@@ -1,15 +1,18 @@
 #include "init.h"
 
-#include "image.h"
-#include "strings.h"
-#include "sprite.h"
 #include "console/windows_wrap.h"
-#include "yms.h"
-#include "unit.h"
+#include "constants/sprite.h"
+#include "constants/unit.h"
+#include "constants/weapon.h"
 #include "bullet.h"
-#include "replay.h"
-#include "player.h"
+#include "image.h"
 #include "limits.h"
+#include "player.h"
+#include "replay.h"
+#include "sprite.h"
+#include "strings.h"
+#include "unit.h"
+#include "yms.h"
 #include "warn.h"
 
 static int GetDecodedImageSize(const void *data_, int padding)
@@ -118,15 +121,16 @@ static bool IsDecodedDrawFunc(int drawfunc)
     }
 }
 
-void *LoadGrp(int image_id, uint32_t *images_dat_grp, Tbl *images_tbl, GrpSprite **loaded_grps, void **overlapped, void **out_file)
+void *LoadGrp(ImageType image_id, uint32_t *images_dat_grp, Tbl *images_tbl, GrpSprite **loaded_grps, void **overlapped, void **out_file)
 {
-    uint32_t grp = images_dat_grp[image_id];
-    int drawfunc = images_dat_drawfunc[image_id];
+    uint32_t grp = image_id.Grp();
+    int drawfunc = image_id.DrawFunc();
     bool is_decoded = IsDecodedDrawFunc(drawfunc);
     for (int i = 0; i < image_id; i++)
     {
-        bool other_decoded = IsDecodedDrawFunc(images_dat_drawfunc[i]);
-        if (images_dat_grp[i] == grp && is_decoded == other_decoded)
+        ImageType other(i);
+        bool other_decoded = IsDecodedDrawFunc(other.DrawFunc());
+        if (other.Grp() == grp && is_decoded == other_decoded)
         {
             return loaded_grps[i];
         }
@@ -192,35 +196,37 @@ void LoadBlendPalettes(const char *tileset)
 
 void InitCursorMarker()
 {
-    Sprite *cursor_marker = lone_sprites->AllocateLone(Sprite::CursorMarker, Point(0, 0), 0);
+    Sprite *cursor_marker = lone_sprites->AllocateLone(SpriteId::CursorMarker, Point(0, 0), 0);
     *bw::cursor_marker = cursor_marker;
     cursor_marker->flags |= 0x20;
     SetVisibility(cursor_marker, 0);
 }
 
-// No reason to require specific array_offset<type, size>
-// This is static function anyways
-template <class Indexable>
-static int GenerateStrength(int unit_id, Indexable weapon_arr)
+static int GenerateStrength(UnitType unit_id, bool air)
 {
-    switch (unit_id)
+    using namespace UnitId;
+    switch (unit_id.Raw())
     {
-        case Unit::Larva:
-        case Unit::Egg:
-        case Unit::Cocoon:
-        case Unit::LurkerEgg:
+        case Larva:
+        case Egg:
+        case Cocoon:
+        case LurkerEgg:
             return 0;
-        case Unit::Carrier:
-        case Unit::Gantrithor:
-            return GenerateStrength(Unit::Interceptor, weapon_arr);
-        case Unit::Reaver:
-        case Unit::Warbringer:
-            return GenerateStrength(Unit::Scarab, weapon_arr);
+        case Carrier:
+        case Gantrithor:
+            return GenerateStrength(Interceptor, air);
+        case Reaver:
+        case Warbringer:
+            return GenerateStrength(Scarab, air);
         default:
-            if (units_dat_subunit[unit_id] != Unit::None)
-                unit_id = units_dat_subunit[unit_id];
-            int weapon = weapon_arr[unit_id];
-            if (weapon == Weapon::None)
+            if (unit_id.Subunit() != UnitId::None)
+                unit_id = unit_id.Subunit();
+            WeaponType weapon;
+            if (air)
+                weapon = unit_id.AirWeapon();
+            else
+                weapon = unit_id.GroundWeapon();
+            if (weapon == WeaponId::None)
                 return 1;
             // Fixes ai hangs when using zero damage weapons as main weapon
             return std::max(2, (int)FinetuneBaseStrength(unit_id, CalculateBaseStrength(weapon, unit_id)));
@@ -230,10 +236,10 @@ static int GenerateStrength(int unit_id, Indexable weapon_arr)
 // Fixes ai hangs with some mods (See GenerateStrength comment)
 static void GenerateStrengthTable()
 {
-    for (int i = 0; i < Unit::None; i++)
+    for (int i = 0; i < UnitId::None.Raw(); i++)
     {
-        int ground_str = GenerateStrength(i, units_dat_ground_weapon);
-        int air_str = GenerateStrength(i, units_dat_air_weapon);
+        int ground_str = GenerateStrength(UnitType(i), false);
+        int air_str = GenerateStrength(UnitType(i), true);
         // Dunno
         if (air_str == 1 && ground_str > air_str)
             air_str = 0;

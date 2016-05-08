@@ -2,11 +2,10 @@
 #define TECH_H
 
 #include "types.h"
-#include "constants/tech.h"
 
-int GetTechLevel(int tech, int player);
-void SetTechLevel(int tech, int player, int amount);
-const char *GetTechName(int tech);
+int GetTechLevel(TechType tech, int player);
+void SetTechLevel(TechType tech, int player, int amount);
+const char *GetTechName(TechType tech);
 
 void Maelstrom(Unit *attacker, const Point &position);
 void EmpShockwave(Unit *attacker, const Point &position);

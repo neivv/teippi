@@ -6,7 +6,6 @@
 #include "resolution.h"
 #include "dialog.h"
 #include "targeting.h"
-#include "order.h"
 #include "commands.h"
 #include "yms.h"
 #include "warn.h"
@@ -344,7 +343,7 @@ void SelectHotkeyGroup(uint8_t group_id)
         if (IsMultiSelectable(unit) || count == 1)
             valid_units[valid_units_count++] = unit;
     }
-    if (valid_units_count == 1 && valid_units[0]->HasRally())
+    if (valid_units_count == 1 && valid_units[0]->Type().HasRally())
         ShowRallyTarget(valid_units[0]);
 
     ClearOrderTargeting();

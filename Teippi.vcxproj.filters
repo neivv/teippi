@@ -60,6 +60,9 @@
     <ClCompile Include="src\console\genericconsole.cpp">
       <Filter>Sources\console</Filter>
     </ClCompile>
+    <ClCompile Include="src\dat.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
     <ClCompile Include="src\datastream.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
@@ -163,6 +166,9 @@
       <Filter>Sources</Filter>
     </ClCompile>
     <ClCompile Include="src\unit_movement.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\unit_type.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
     <ClCompile Include="src\unitsearch.cpp">
@@ -276,7 +282,13 @@
     <ClInclude Include="src\constants\upgrade.h">
       <Filter>Headers\constants</Filter>
     </ClInclude>
+    <ClInclude Include="src\constants\weapon.h">
+      <Filter>Headers\constants</Filter>
+    </ClInclude>
     <ClInclude Include="src\damage_calculation.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dat.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="src\datastream.h">
@@ -415,6 +427,9 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="src\unit_cache.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\unit_type.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="src\unitlist.h">

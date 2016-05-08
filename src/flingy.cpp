@@ -1,11 +1,12 @@
 #include "flingy.h"
 
-#include "sprite.h"
-#include "offsets.h"
+#include "dat.h"
 #include "image.h"
+#include "offsets.h"
 #include "perfclock.h"
-#include "warn.h"
 #include "rng.h"
+#include "sprite.h"
+#include "warn.h"
 #include "yms.h"
 
 Flingy::Flingy()
@@ -14,9 +15,13 @@ Flingy::Flingy()
     current_speed = 0;
 }
 
-bool Flingy::Initialize(Iscript::Context *ctx, int flingy_id_, int player, int direction, const Point &pos)
+bool Flingy::Initialize(Iscript::Context *ctx,
+                        FlingyType flingy_id_,
+                        int player,
+                        int direction,
+                        const Point &pos)
 {
-    flingy_id = flingy_id_;
+    flingy_id = flingy_id_.Raw();
     position = pos;
     exact_position = Point32(pos.x * 256 + 128, pos.y * 256 + 128);
 
@@ -37,12 +42,12 @@ bool Flingy::Initialize(Iscript::Context *ctx, int flingy_id_, int player, int d
     next_move_waypoint = pos;
     unk_move_waypoint = pos;
 
-    turn_speed = flingy_dat_turn_speed[flingy_id];
-    flingy_movement_type = flingy_dat_movement_type[flingy_id];
-    acceleration = flingy_dat_acceleration[flingy_id];
-    top_speed = flingy_dat_top_speed[flingy_id];
+    turn_speed = Type().TurnSpeed();
+    flingy_movement_type = Type().MovementType();
+    acceleration = Type().Acceleration();
+    top_speed = Type().TopSpeed();
 
-    sprite = Sprite::Allocate(ctx, flingy_dat_sprite[flingy_id], pos, player);
+    sprite = Sprite::Allocate(ctx, Type().Sprite(), pos, player);
     if (sprite == nullptr)
         return false;
 
@@ -74,6 +79,11 @@ void Flingy::DeleteAll()
         it = it->list.next;
         delete flingy;
     }
+}
+
+FlingyType Flingy::Type() const
+{
+    return FlingyType(flingy_id);
 }
 
 FlingyMoveResults Flingy::ProgressFlingy()

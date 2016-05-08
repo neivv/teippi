@@ -2,12 +2,15 @@
 #define UNIT_CACHE_H
 
 #include "types.h"
+
+#include "common/assert.h"
+#include "constants/unit.h"
+#include "constants/weapon.h"
+#include "bullet.h"
+#include "perfclock.h"
 #include "unit.h"
 #include "unitsearch.h"
 #include "unitsearch_cache.h"
-#include "bullet.h"
-#include "common/assert.h"
-#include "perfclock.h"
 
 #include "unitsearch.hpp"
 #include "unitsearch_cache.hpp"
@@ -54,24 +57,26 @@ class EnemyUnitCache
         /// As the parent function is a template, compilers don't realize that most of the code can be shared.
         tuple<bool, bool> ForAttackableEnemiesInArea_Init(MainUnitSearch *search, const Unit *own, const Rect16 &area)
         {
+            using namespace UnitId;
+
             bool ground;
             bool air;
             // From CanAttackUnit
             // TODO remove this duplication
             switch (own->unit_id)
             {
-                case Unit::Carrier:
-                case Unit::Gantrithor:
-                case Unit::Reaver:
-                case Unit::Warbringer:
-                case Unit::Queen:
-                case Unit::Matriarch:
+                case Carrier:
+                case Gantrithor:
+                case Reaver:
+                case Warbringer:
+                case Queen:
+                case Matriarch:
                     // Can't filter these with simple ground/air split this cache does
                     air = true;
                     ground = true;
                 break;
                 default:
-                    if (own->unit_id == Unit::Arbiter && own->ai != nullptr)
+                    if (own->unit_id == Arbiter && own->ai != nullptr)
                     {
                         air = false;
                         ground = false;
@@ -81,8 +86,8 @@ class EnemyUnitCache
                         const Unit *turret = own;
                         if (own->HasSubunit())
                             turret = own->subunit;
-                        air = turret->GetAirWeapon() != Weapon::None;
-                        ground = turret->GetGroundWeapon() != Weapon::None;
+                        air = turret->GetAirWeapon() != WeaponId::None;
+                        ground = turret->GetGroundWeapon() != WeaponId::None;
                     }
             }
             if (!ground && !air)

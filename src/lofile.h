@@ -16,7 +16,7 @@ namespace Overlay
 class LoFile
 {
     public:
-        static LoFile GetOverlay(int image_id, int type);
+        static LoFile GetOverlay(ImageType image_id, int type);
         Point32 GetValues(Image *img, int index);
         Point GetPosition(Image *img, int index);
 

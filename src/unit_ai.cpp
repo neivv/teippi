@@ -3,7 +3,9 @@
 #include "order.h"
 #include "sprite.h"
 #include "perfclock.h"
+#include "constants/order.h"
 #include "constants/tech.h"
+#include "constants/unit.h"
 #include "bullet.h"
 #include "pathing.h"
 
@@ -19,21 +21,21 @@ void Unit::Order_AiGuard()
         return;
     if (UpdateAttackTarget(this, false, true, false) == true)
         return;
-    if (unit_id == Observer)
+    if (Type() == UnitId::Observer)
         return;
     if (ai && ai->type == 1)
     {
         GuardAi *guard = (GuardAi *)ai;
         if (guard->home != sprite->position)
         {
-            if (unit_id == SiegeTank_Sieged)
-                AppendOrderTargetingNothing(Order::TankMode);
-            AppendOrderTargetingGround(Order::ComputerReturn, guard->home);
+            if (Type() == UnitId::SiegeTank_Sieged)
+                AppendOrderTargetingNothing(OrderId::TankMode);
+            AppendOrderTargetingGround(OrderId::ComputerReturn, guard->home);
             OrderDone();
             return;
         }
     }
-    IssueOrderTargetingNothing(Order::ComputerAi);
+    IssueOrderTargetingNothing(OrderId::ComputerAi);
 }
 
 void Unit::Order_ComputerReturn()
@@ -42,10 +44,10 @@ void Unit::Order_ComputerReturn()
     if (UpdateAttackTarget(this, false, true, false) == true)
         return;
 
-    if (unit_id == Medic)
+    if (Type() == UnitId::Medic)
     {
         Order_MedicIdle(this);
-        if (order != Order::ComputerReturn)
+        if (order != OrderId::ComputerReturn)
             return;
     }
     if (order_state == 0)
@@ -64,33 +66,34 @@ void Unit::Order_ComputerReturn()
             {
                 GuardAi *guard = (GuardAi *)ai;
                 guard->home = sprite->position;
-                IssueOrderTargetingNothing(Order::Guard);
+                IssueOrderTargetingNothing(OrderId::Guard);
             }
         }
         else
         {
-            IssueOrderTargetingNothing(Order::ComputerAi);
+            IssueOrderTargetingNothing(OrderId::ComputerAi);
         }
     }
 }
 
 void Unit::Ai_Cloak()
 {
+    using namespace UnitId;
     switch (unit_id)
     {
-        case Unit::Ghost:
-        case Unit::SarahKerrigan:
-        case Unit::SamirDuran:
-        case Unit::AlexeiStukov:
-        case Unit::InfestedDuran:
-        case Unit::InfestedKerrigan:
-            if (CanUseTech(Tech::PersonnelCloaking, this, player) == 1)
-                Cloak(Tech::PersonnelCloaking);
+        case Ghost:
+        case SarahKerrigan:
+        case SamirDuran:
+        case AlexeiStukov:
+        case InfestedDuran:
+        case InfestedKerrigan:
+            if (CanUseTech(TechId::PersonnelCloaking, this, player) == 1)
+                Cloak(TechId::PersonnelCloaking);
         break;
-        case Unit::Wraith:
-        case Unit::TomKazansky:
-            if (CanUseTech(Tech::CloakingField, this, player) == 1)
-                Cloak(Tech::CloakingField);
+        case Wraith:
+        case TomKazansky:
+            if (CanUseTech(TechId::CloakingField, this, player) == 1)
+                Cloak(TechId::CloakingField);
         break;
     }
 }
@@ -102,8 +105,12 @@ bool Unit::Ai_TryReturnHome(bool dont_issue)
         return false;
 
     GuardAi *guard = (GuardAi *)ai;
-    if (GetRace() == Race::Terran && units_dat_flags[unit_id] & UnitFlags::Mechanical && hitpoints != units_dat_hitpoints[unit_id])
+    if (Type().Race() == Race::Terran &&
+            Type().Flags() & UnitFlags::Mechanical &&
+            hitpoints != Type().HitPoints())
+    {
         return false;
+    }
     if (previous_attacker)
         return false;
     if (GetRegion() == ::GetRegion(guard->home))
@@ -112,9 +119,9 @@ bool Unit::Ai_TryReturnHome(bool dont_issue)
         return false;
     if (target && IsInAttackRange(target))
         return false;
-    if (order_queue_begin && order_queue_begin->order_id == Order::Patrol)
+    if (order_queue_begin && order_queue_begin->order_id == OrderId::Patrol)
         return false;
     if (!dont_issue)
-        IssueOrderTargetingGround(Order::ComputerReturn, guard->home);
+        IssueOrderTargetingGround(OrderId::ComputerReturn, guard->home);
     return true;
 }

@@ -2,9 +2,11 @@
 #define AI_H
 
 #include "types.h"
+
+#include "constants/unit.h"
+#include "limits.h"
 #include "list.h"
 #include "pathing.h"
-#include "limits.h"
 #include "player.h"
 #include "unit.h"
 
@@ -323,7 +325,7 @@ namespace Ai
                     return nullptr;
                 if (!unit->CanAttackUnit(check, true))
                     return nullptr;
-                if (!accept_critters && check->IsCritter())
+                if (!accept_critters && check->Type().IsCritter())
                     return nullptr;
                 return check;
             }
@@ -336,14 +338,14 @@ namespace Ai
                     return nullptr;
                 if (check->IsDisabled()) // Why???
                     return check;
-                if (check->unit_id != Unit::Bunker)
+                if (check->Type() != UnitId::Bunker)
                 {
                     if (check->target == nullptr || check->target->player != unit->player)
                         return nullptr;
                 }
                 if (!unit->CanAttackUnit(check, true))
                     return nullptr;
-                if (!accept_critters && check->IsCritter())
+                if (!accept_critters && check->Type().IsCritter())
                     return nullptr;
                 return check;
             }

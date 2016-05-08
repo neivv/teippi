@@ -2,13 +2,16 @@
 #define SPRITE_H
 
 #include "types.h"
-#include "offsets.h"
-#include "list.h"
-#include "image.h"
-#include "unsorted_list.h"
-#include "common/iter.h"
-#include "rng.h"
+
 #include <tuple>
+
+#include "common/iter.h"
+#include "dat.h"
+#include "image.h"
+#include "list.h"
+#include "rng.h"
+#include "offsets.h"
+#include "unsorted_list.h"
 
 void ShowRallyTarget(Unit *unit);
 void RefreshCursorMarker();
@@ -66,23 +69,25 @@ class Sprite
         /// Allocates a new sprite. May fail and return nullptr.
         /// As this causes the first frame of iscript animation to be executed,
         /// it requires an Iscript::Context.
-        static ptr<Sprite> Allocate(Iscript::Context *ctx, int sprite_id, const Point &pos, int player);
+        static ptr<Sprite> Allocate(Iscript::Context *ctx, SpriteType sprite_id, const Point &pos, int player);
         /// Allocates a new sprite, using the generic sprite Iscript::Context for
         /// runnig the first frame of an animation.
         /// Compatibility hack for a bw hook. Use Allocate() or LoneSpriteSystem::AllocateLone()
         /// instead.
-        static Sprite *AllocateWithBasicIscript(int sprite_id, const Point &pos, int player);
+        static Sprite *AllocateWithBasicIscript(SpriteType sprite_id, const Point &pos, int player);
         static Sprite *AllocateWithBasicIscript_Hook(uint16_t sprite_id, uint16_t x, uint16_t y, uint8_t player) {
-            return AllocateWithBasicIscript(sprite_id, Point(x, y), player);
+            return AllocateWithBasicIscript(SpriteType(sprite_id), Point(x, y), player);
         }
 
-        Sprite *SpawnLoneSpriteAbove(int sprite_id);
-        static Sprite *Spawn(Image *spawner, uint16_t sprite_id, const Point &pos, int elevation_level);
+        Sprite *SpawnLoneSpriteAbove(SpriteType sprite_id);
+        static Sprite *Spawn(Image *spawner, SpriteType sprite_id, const Point &pos, int elevation_level);
 
         static void InitSpriteSystem();
 
         void Remove();
         static void DeleteAll();
+
+        SpriteType Type() const { return SpriteType(sprite_id); }
 
         void SetDirection32(int direction);
         void SetDirection256(int direction);
@@ -103,9 +108,9 @@ class Sprite
 
         void MarkHealthBarDirty();
 
-        void AddMultipleOverlaySprites(int overlay_type, int count, int sprite_id, int base, bool flip);
+        void AddMultipleOverlaySprites(int overlay_type, int count, SpriteType sprite_id, int base, bool flip);
         void AddDamageOverlay();
-        void AddOverlayAboveMain(Iscript::Context *ctx, int image_id, int x, int y, int direction);
+        void AddOverlayAboveMain(Iscript::Context *ctx, ImageType image_id, int x, int y, int direction);
 
         static void RemoveAllSelectionOverlays();
         void RemoveSelectionOverlays();
@@ -118,7 +123,7 @@ class Sprite
         Sprite();
 
         /// Initializes the sprite, returns false if unable and nothing was changed.
-        bool Initialize(Iscript::Context *ctx, int sprite_id, const Point &pos, int player);
+        bool Initialize(Iscript::Context *ctx, SpriteType sprite_id, const Point &pos, int player);
 
         void AddToHlines();
 
@@ -170,8 +175,6 @@ class Sprite
         void SetIscriptAnimation_Lone(int anim, bool force, Rng *rng, const char *caller);
 
         void IscriptToIdle(Iscript::Context *ctx);
-
-        #include "constants/sprite.h"
 };
 
 class LoneSpriteSystem
@@ -179,8 +182,8 @@ class LoneSpriteSystem
     public:
         void DeleteAll();
         void ProgressFrames();
-        Sprite *AllocateLone(int sprite_id, const Point &pos, int player);
-        Sprite *AllocateFow(Sprite *base, int unit_id);
+        Sprite *AllocateLone(SpriteType sprite_id, const Point &pos, int player);
+        Sprite *AllocateFow(Sprite *base, UnitType unit_id);
 
         void Serialize(Save *save);
         void Deserialize(Load *load);

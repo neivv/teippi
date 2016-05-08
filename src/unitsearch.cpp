@@ -1,24 +1,26 @@
 #include "unitsearch.h"
 #include "possearch.hpp"
 
+#include <algorithm>
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
-#include <algorithm>
 #include <utility>
 
-#include "unit.h"
-#include "order.h"
-#include "sprite.h"
-#include "offsets.h"
-#include "pathing.h"
-#include "yms.h"
-#include "memory.h"
-#include "perfclock.h"
 #include "console/assert.h"
+#include "constants/order.h"
+#include "constants/unit.h"
 #include "limits.h"
 #include "log.h"
+#include "memory.h"
+#include "offsets.h"
+#include "order.h"
+#include "pathing.h"
+#include "perfclock.h"
+#include "sprite.h"
+#include "unit.h"
 #include "unit_cache.h"
+#include "yms.h"
 #include "warn.h"
 
 using std::rotate;
@@ -91,7 +93,7 @@ void MainUnitSearch::Add(Unit *unit)
     // not update unit search when subunits are moved around. This causes
     // issues with Teippi's unit search implementation and most likely
     // has no practical uses.
-    if (units_dat_flags[unit->unit_id] & UnitFlags::Subunit)
+    if (unit->Type().IsSubunit())
     {
         auto str = unit->DebugStr();
         Warning("Unit %s is added to unit search, but is also marked as subunit (Building flag set?)",
@@ -759,10 +761,10 @@ int MainUnitSearch::GetDodgingDirection(const Unit *self, const Unit *other)
     Rect16 other_cbox = other->GetCollisionRect();
     Rect32 dodge_area;
     // Right and bottom might need one higher values??
-    dodge_area.left = other_cbox.left - units_dat_dimensionbox[self->unit_id].right - 1;
-    dodge_area.right = other_cbox.right + units_dat_dimensionbox[self->unit_id].left;
-    dodge_area.top = other_cbox.top - units_dat_dimensionbox[self->unit_id].bottom - 1;
-    dodge_area.bottom = other_cbox.bottom + units_dat_dimensionbox[self->unit_id].top;
+    dodge_area.left = other_cbox.left - self->Type().DimensionBox().right - 1;
+    dodge_area.right = other_cbox.right + self->Type().DimensionBox().left;
+    dodge_area.top = other_cbox.top - self->Type().DimensionBox().bottom - 1;
+    dodge_area.bottom = other_cbox.bottom + self->Type().DimensionBox().top;
 
     uint32_t actual_position;
     uint16_t *position = (uint16_t *)&actual_position;
@@ -1046,7 +1048,7 @@ UnitSearchRegionCache::Entry MainUnitSearch::FindUnits_ChooseTarget(int region_i
             if (rect.top < left_to_bottom[it] && rect.bottom > left_to_top[it])
             {
                 Unit *unit = left_to_value[it];
-                if (unit->order != Order::Die && !unit->IsInvincible())
+                if (unit->OrderType() != OrderId::Die && !unit->IsInvincible())
                 {
                     // FindUnitBordersRect does this to be truly "borders only",
                     // just in case some weird bw function depends on it,
@@ -1089,11 +1091,11 @@ Unit **MainUnitSearch::FindHelpingUnits(Unit *own, const Rect16 &rect, TempMemor
                 if (unit->player != own->player)
                     continue;
                 // Non-ai danimoths are skipped as well, but ai ones aren't
-                if (unit->unit_id == Unit::Arbiter)
+                if (unit->Type() == UnitId::Arbiter)
                     continue;
                 // Workers are searched later if needed, as they are likely a rare case.
                 // (And that is only for ai units)
-                if (unit->IsWorker())
+                if (unit->Type().IsWorker())
                     continue;
                 if (unit == own)
                     continue;

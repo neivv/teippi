@@ -1,6 +1,8 @@
 #include "order.h"
-#include "unit.h"
+
+#include "dat.h"
 #include "offsets.h"
+#include "unit.h"
 
 DummyListHead<Order, Order::offset_of_allocated> first_allocated_order;
 
@@ -9,16 +11,16 @@ Order::Order()
     allocated.Add(first_allocated_order);
 }
 
-Order *Order::Allocate(int order_id, const Point &position, Unit *target, uint16_t fow_unit_id)
+Order *Order::Allocate(OrderType order_id, const Point &position, Unit *target, UnitType fow_unit_id)
 {
     Order *order;
     order = new Order;
     order->list.prev = nullptr;
     order->list.next = nullptr;
-    order->order_id = order_id;
+    order->order_id = order_id.Raw();
     order->position = position;
     order->target = target;
-    order->fow_unit = fow_unit_id;
+    order->fow_unit = fow_unit_id.Raw();
 
     return order;
 }
@@ -41,17 +43,7 @@ void Order::DeleteAll()
     first_allocated_order.Reset();
 }
 
-bool IsTargetableOrder(int order)
+OrderType Order::Type() const
 {
-    switch (order)
-    {
-        case Order::Die: case Order::BeingInfested: case Order::SpiderMine: case Order::DroneStartBuild: case Order::InfestMine4: case Order::BuildTerran:
-        case Order::BuildProtoss1: case Order::BuildProtoss2: case Order::ConstructingBuilding: case Order::PlaceAddon: case Order::BuildNydusExit:
-        case Order::Land: case Order::LiftOff: case Order::DroneLiftOff: case Order::HarvestObscured: case Order::MoveToGas:
-        case Order::WaitForGas: case Order::HarvestGas: case Order::MoveToMinerals: case Order::WaitForMinerals: case Order::MiningMinerals:
-        case Order::Harvest3: case Order::StopHarvest: case Order::CtfCop2:
-            return false;
-        default:
-            return true;
-    }
+    return OrderType(order_id);
 }

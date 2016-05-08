@@ -21,19 +21,18 @@ class Order
         static Order *RawAlloc() { return new Order(true); }
         ~Order() {}
 
-        static Order *Allocate(int order, const Point &position, Unit *target, uint16_t fow_unit_id);
+        static Order *Allocate(OrderType order, const Point &position, Unit *target, UnitType fow_unit_id);
         void SingleDelete();
 
         static void DeleteAll();
         static void FreeMemory(int count);
 
+        OrderType Type() const;
+
         DummyListEntry<Order, offset_of_allocated> allocated; // 0x14
 
     private:
         Order(bool) { } // raw alloc
-
-    public:
-#include "constants/order.h"
 };
 
 extern DummyListHead<Order, Order::offset_of_allocated> first_allocated_order;

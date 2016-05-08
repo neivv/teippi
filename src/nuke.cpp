@@ -1,16 +1,17 @@
 #include "nuke.h"
 
+#include "constants/iscript.h"
+#include "constants/order.h"
+#include "constants/sprite.h"
+#include "constants/sound.h"
 #include "ai.h"
-#include "unit.h"
-#include "sprite.h"
-#include "order.h"
 #include "offsets.h"
+#include "order.h"
+#include "strings.h"
+#include "sprite.h"
+#include "unit.h"
 #include "yms.h"
 #include "warn.h"
-#include "strings.h"
-
-#include "constants/sound.h"
-#include "constants/iscript.h"
 
 #include <algorithm>
 
@@ -33,7 +34,7 @@ void Unit::Order_NukeTrack()
     if (order_state == 0)
     {
         SetIscriptAnimation(Iscript::Animation::Special1, true, "Order_NukeTrack state 0", nullptr);
-        ghost.nukedot = lone_sprites->AllocateLone(Sprite::NukeDot, related->order_target_pos, player);
+        ghost.nukedot = lone_sprites->AllocateLone(SpriteId::NukeDot, related->order_target_pos, player);
         ghost.nukedot->elevation = sprite->elevation + 1;
         ghost.nukedot->UpdateVisibilityPoint();
         order_state = 6;
@@ -43,7 +44,7 @@ void Unit::Order_NukeTrack()
         if (related && related->order_state != 5)
             return;
         if (order_queue_begin == nullptr)
-            AppendOrderTargetingNothing(units_dat_return_to_idle_order[unit_id]);
+            AppendOrderTargetingNothing(Type().ReturnToIdleOrder());
         DoNextQueuedOrderIfAble(this);
         SetButtons(unit_id);
         SetIscriptAnimation(Iscript::Animation::Idle, true, "Order_NukeTrack state 6", nullptr);
@@ -77,7 +78,7 @@ void Unit::Order_NukeGround()
         Unit *silo = nullptr;
         for (Unit *unit : bw::first_player_unit[player])
         {
-            if (unit->unit_id == NuclearSilo && unit->silo.has_nuke)
+            if (unit->Type() == UnitId::NuclearSilo && unit->silo.has_nuke)
             {
                 silo = unit;
                 break;
@@ -92,13 +93,13 @@ void Unit::Order_NukeGround()
         silo->silo.nuke = nullptr;
         silo->silo.has_nuke = 0;
         PlaySound(Sound::NukeLaser, this, 1, 0);
-        nuke->IssueOrderTargetingGround(Order::NukeLaunch, order_target_pos);
+        nuke->IssueOrderTargetingGround(OrderId::NukeLaunch, order_target_pos);
         related = nuke;
         nuke->related = this;
         nuke->sprite->SetDirection32(0);
         ShowUnit(nuke);
-        IssueOrderTargetingGround(Order::NukeTrack, sprite->position);
-        if (!IsDisabled() || units_dat_flags[unit_id] & UnitFlags::Building) // Huh?
+        IssueOrderTargetingGround(OrderId::NukeTrack, sprite->position);
+        if (!IsDisabled() || Type().IsBuilding()) // Huh?
             buttons = 0xed;
         RefreshUi();
     }
@@ -116,8 +117,8 @@ void Unit::Order_NukeLaunch(ProgressUnitResults *results)
         case 0:
             PlaySound(Sound::NukeLaunch, this, 1, 0);
             // Wtf
-            ChangeMovementTarget(Point(sprite->position.x, units_dat_dimensionbox[NuclearMissile].top));
-            unk_move_waypoint = Point(sprite->position.x, units_dat_dimensionbox[NuclearMissile].top);
+            ChangeMovementTarget(Point(sprite->position.x, UnitId::NuclearMissile.DimensionBox().top));
+            unk_move_waypoint = Point(sprite->position.x, UnitId::NuclearMissile.DimensionBox().top);
             order_timer = 90;
             order_state = 1;
         break;
@@ -148,8 +149,8 @@ void Unit::Order_NukeLaunch(ProgressUnitResults *results)
                 return;
             order_signal &= ~0x2;
             Point new_pos = order_target_pos;
-            new_pos.x = std::max(units_dat_dimensionbox[NuclearMissile].left, new_pos.x);
-            new_pos.y = std::max((int)units_dat_dimensionbox[NuclearMissile].top, new_pos.y - 0x140);
+            new_pos.x = std::max(UnitId::NuclearMissile.DimensionBox().left, new_pos.x);
+            new_pos.y = std::max((int)UnitId::NuclearMissile.DimensionBox().top, new_pos.y - 0x140);
             MoveUnit(this, new_pos.x, new_pos.y);
             SetDirection((Flingy *)this, 0x80);
             ChangeMovementTarget(order_target_pos);

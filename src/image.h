@@ -2,9 +2,11 @@
 #define IMAGE_H
 
 #include "types.h"
-#include "offsets.h"
-#include "list.h"
+
+#include "dat.h"
 #include "iscript.h"
+#include "list.h"
+#include "offsets.h"
 
 // While this constant is referred at several places, it has to same everywhere
 // It affects the optimization of drawing functions, padding grp width to 16
@@ -130,13 +132,15 @@ class Image
         /// Does not run the initial iscript animation either, as it can behave
         /// differently based on where in parent's overlay list the image is.
         /// The iscript animation should be ran afterwards with InitIscript().
-        Image(Sprite *parent, int image_id, int x, int y);
+        Image(Sprite *parent, ImageType image_id, int x, int y);
         ~Image() {}
 
         /// Resets the image's iscript.
         /// Returns false if image has invalid iscript.
         bool InitIscript(Iscript::Context *ctx);
         void SingleDelete();
+
+        ImageType Type() const { return ImageType(image_id); }
 
         void SetFlipping(bool set);
         bool IsFlipped() const { return flags & ImageFlags::Flipped; }
@@ -171,7 +175,6 @@ class Image
         /// Changes the iscript animation and runs the script for a frame.
         void SetIscriptAnimation(Iscript::Context *ctx, int anim);
 
-#include "constants/image.h"
         enum DrawFunc
         {
             Normal = 0x0,
@@ -185,7 +188,6 @@ class Image
             Remap = 0x9,
             Shadow = 0xa,
             HpBar = 0xb,
-            // Bad: constants/image.h defines WarpTexture
             UseWarpTexture = 0xc,
             SelectionCircle = 0xd,
             OverrideColor = 0xe, // Flag
@@ -207,7 +209,7 @@ class Image
         void UpdateSpecialOverlayPos();
         /// Common function used in iscript code to add overlays.
         /// May return nullptr if something fails during initialization.
-        Image *Iscript_AddOverlay(Iscript::Context *ctx, int image_id, int x, int y, bool above);
+        Image *Iscript_AddOverlay(Iscript::Context *ctx, ImageType image_id, int x, int y, bool above);
 
         /// Sets direction (and flipping) to the one of parent->main_image
         void FollowMainImage();

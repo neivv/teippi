@@ -4,24 +4,25 @@
 #include "offsets.h"
 #include "draw.h"
 
-#include "unit.h"
-#include "sprite.h"
-#include "yms.h"
-#include "triggers.h"
+#include "constants/weapon.h"
 #include "ai.h"
+#include "ai_hit_reactions.h"
+#include "bullet.h"
 #include "game.h"
-#include "pathing.h"
 #include "limits.h"
-#include "selection.h"
-#include "unitsearch.h"
-#include "resolution.h"
+#include "pathing.h"
 #include "player.h"
+#include "resolution.h"
+#include "selection.h"
+#include "sprite.h"
 #include "strings.h"
 #include "tech.h"
-#include "upgrade.h"
-#include "bullet.h"
 #include "test_game.h"
-#include "ai_hit_reactions.h"
+#include "triggers.h"
+#include "unit.h"
+#include "unitsearch.h"
+#include "upgrade.h"
+#include "yms.h"
 
 #include <string>
 #include <algorithm>
@@ -174,7 +175,7 @@ static vector<int> FindUnitFromName(std::string name)
 {
     std::transform(name.begin(), name.end(), name.begin(), tolower);
     vector<int> results;
-    for (int i = 0; i < Unit::None; i++)
+    for (int i = 0; i < UnitId::None.Raw(); i++)
     {
         std::string unit_name = (*bw::stat_txt_tbl)->GetTblString(i + 1);
         std::transform(unit_name.begin(), unit_name.end(), unit_name.begin(), tolower);
@@ -690,7 +691,7 @@ void ScConsole::ConstructInfoLines()
     {
         char str[32];
         int unit_count = 0;
-        for (int i = 0; i < Unit::None; i++)
+        for (int i = 0; i < UnitId::None.Raw(); i++)
         {
             for (int j = 0; j < Limits::Players; j++)
                 unit_count += bw::all_units_count[i][j];
@@ -888,9 +889,9 @@ void ScConsole::DrawAiInfo(uint8_t *textbuf, uint8_t *framebuf, xuint w, yuint h
                     uint32_t request = requests[i];
                     int unit_id = request >> 16;
                     if (draw_ai_named && request & 0x2)
-                        snprintf(name_buf, sizeof name_buf, "%s", GetUpgradeName(unit_id));
+                        snprintf(name_buf, sizeof name_buf, "%s", UpgradeType(unit_id).Name());
                     else if (draw_ai_named && request & 0x4)
-                        snprintf(name_buf, sizeof name_buf, "%s", GetTechName(unit_id));
+                        snprintf(name_buf, sizeof name_buf, "%s", TechType(unit_id).Name());
                     else if (draw_ai_named)
                         snprintf(name_buf, sizeof name_buf, "%s", (*bw::stat_txt_tbl)->GetTblString(unit_id + 1));
                     else
@@ -931,9 +932,9 @@ void ScConsole::DrawAiInfo(uint8_t *textbuf, uint8_t *framebuf, xuint w, yuint h
                     auto unit_id = ai_data.requests[i].unit_id;
                     const char *desc = RequestStr(ai_data.requests[i].type);
                     if (draw_ai_named && ai_data.requests[i].type == 5)
-                        snprintf(buf, sizeof buf, "%s %s", desc, GetUpgradeName(unit_id));
+                        snprintf(buf, sizeof buf, "%s %s", desc, UpgradeType(unit_id).Name());
                     else if (draw_ai_named && ai_data.requests[i].type == 6)
-                        snprintf(buf, sizeof buf, "%s %s", desc, GetTechName(unit_id));
+                        snprintf(buf, sizeof buf, "%s %s", desc, TechType(unit_id).Name());
                     else if (draw_ai_named)
                         snprintf(buf, sizeof buf, "%s %s", desc, (*bw::stat_txt_tbl)->GetTblString(unit_id + 1));
                     else
@@ -1063,14 +1064,14 @@ void ScConsole::DrawRange(uint8_t *framebuf, xuint w, yuint h)
     for (Unit *unit : *bw::first_active_unit)
     {
         Point32 pos = Point32(unit->sprite->position) - screen_pos;
-        int ground_weapon = unit->GetGroundWeapon();
-        int air_weapon = unit->GetAirWeapon();
-        auto &dbox = units_dat_dimensionbox[unit->unit_id];
+        WeaponType ground_weapon = unit->GetGroundWeapon();
+        WeaponType air_weapon = unit->GetAirWeapon();
+        const auto dbox = unit->Type().DimensionBox();
         int unit_radius_approx = (dbox.top + dbox.bottom + dbox.left + dbox.right) / 4 + 1;
-        if (ground_weapon != Weapon::None)
+        if (ground_weapon != WeaponId::None)
             surface.DrawCircle(pos, unit->GetWeaponRange(true) + unit_radius_approx, 0x75,
                     [](int x, int y){ return !IsOutsideGameScreen(x, y); });
-        if (air_weapon != Weapon::None && ground_weapon != air_weapon)
+        if (air_weapon != WeaponId::None && ground_weapon != air_weapon)
             surface.DrawCircle(pos, unit->GetWeaponRange(false) + unit_radius_approx, 0x7a,
                     [](int x, int y){ return !IsOutsideGameScreen(x, y); });
     }

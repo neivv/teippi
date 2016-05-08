@@ -572,115 +572,22 @@ namespace bw
     const array_offset<char, 13, 218> chat_messages = 0x00640B60;
     const array_offset<uint8_t, 12> starting_player_types = 0x0057F1B4;
 
-    const array_offset<uint8_t, 0xc, 0x6> sprites_dat = 0x00513FB8;
+    const array_offset<DatTable, 0x35> units_dat = 0x00513C30;
+    const array_offset<DatTable, 0x17> weapons_dat = 0x00513868;
+    const array_offset<DatTable, 0x7> flingy_dat = 0x00515A38;
+    const array_offset<DatTable, 0x4> sprites_dat = 0x00513FB8;
+    const array_offset<DatTable, 0xb> images_dat = 0x00514010;
+    const array_offset<DatTable, 0xb> upgrades_dat = 0x005136E0;
+    const array_offset<DatTable, 0x8> techdata_dat = 0x005137D8;
+    const array_offset<DatTable, 0x13> orders_dat = 0x00513EC8;
+
+    const array_offset<int8_t *, 0x3e7> images_dat_shield_overlay = 0x0052E5C8;
+    const array_offset<int8_t *, 6, 0x3e7> images_dat_overlays = 0x0051F2A8;
 
     // Some kind of league thing? Most likely those 0xc00 bytes contain
     // other related data
     const array_offset<char, 0xc00> validation_replay_path = 0x00628668;
 
-    namespace dat
-    {
-        template <typename T> using units_dat = array_offset<T, 0xe4>;
-        template <typename T> using weapons_dat = array_offset<T, 0x82>;
-        template <typename T> using flingy_dat = array_offset<T, 0xd1>;
-        template <typename T> using sprites_dat = array_offset<T, 0x205>;
-        template <typename T> using images_dat = array_offset<T, 0x3e7>;
-        template <typename T> using upgrades_dat = array_offset<T, 0x3d>;
-        template <typename T> using techdata_dat = array_offset<T, 0x2c>;
-        template <typename T> using orders_dat = array_offset<T, 0xbd>;
-
-        const units_dat<uint32_t> units_dat_flags = 0x00664080;
-        const units_dat<uint8_t> units_dat_group_flags = 0x006637A0;
-        const units_dat<uint8_t> units_dat_rclick_action = 0x00662098;
-        const units_dat<Rect16> units_dat_dimensionbox = 0x006617C8;
-        const array_offset<uint16_t, 0xe4, 2> units_dat_placement_box = 0x00662860;
-        const units_dat<uint8_t> units_dat_attack_unit_order = 0x00663320;
-        const units_dat<uint8_t> units_dat_attack_move_order = 0x00663A50;
-        const units_dat<uint8_t> units_dat_return_to_idle_order = 0x00664898;
-        const units_dat<uint8_t> units_dat_ai_idle_order = 0x00662EA0;
-        const units_dat<uint8_t> units_dat_human_idle_order = 0x00662268;
-        const units_dat<uint8_t> units_dat_space_required = 0x00664410;
-        const units_dat<uint8_t> units_dat_space_provided = 0x00660988;
-        const units_dat<uint8_t> units_dat_air_weapon = 0x006616E0;
-        const units_dat<uint8_t> units_dat_ground_weapon = 0x006636B8;
-        const units_dat<int32_t> units_dat_hitpoints = 0x00662350;
-        const units_dat<uint16_t> units_dat_shields = 0x00660E00;
-        const units_dat<uint8_t> units_dat_has_shields = 0x006647B0;
-        const units_dat<uint8_t> units_dat_armor_upgrade = 0x006635D0;
-        const units_dat<uint8_t> units_dat_armor = 0x0065FEC8;
-        const units_dat<uint8_t> units_dat_armor_type = 0x00662180;
-        const units_dat<uint16_t> units_dat_kill_score = 0x00663EB8;
-        const units_dat<uint16_t> units_dat_build_score = 0x00663408;
-        const units_dat<uint16_t> units_dat_build_time = 0x00660428;
-        const units_dat<uint8_t> units_dat_ai_flags = 0x00660178;
-        const units_dat<uint8_t> units_dat_sight_range = 0x00663238;
-        const units_dat<uint8_t> units_dat_target_acquisition_range = 0x00662DB8;
-        const units_dat<uint16_t> units_dat_subunit = 0x006607C0;
-        const units_dat<uint16_t> units_dat_mine_cost = 0x00663888;
-        const units_dat<uint16_t> units_dat_gas_cost = 0x0065FD00;
-        const units_dat<uint8_t> units_dat_elevation_level = 0x00663150;
-        const units_dat<uint8_t> units_dat_flingy = 0x006644F8;
-        const units_dat<uint8_t> units_dat_direction = 0x006605F0;
-
-        const weapons_dat<uint16_t> weapons_dat_outer_splash = 0x00657780;
-        const weapons_dat<uint16_t> weapons_dat_middle_splash = 0x006570C8;
-        const weapons_dat<uint16_t> weapons_dat_inner_splash = 0x00656888;
-        const weapons_dat<uint8_t> weapons_dat_effect = 0x006566F8;
-        const weapons_dat<uint8_t> weapons_dat_upgrade = 0x006571D0;
-        const weapons_dat<uint16_t> weapons_dat_damage = 0x00656EB0;
-        const weapons_dat<uint16_t> weapons_dat_upgrade_bonus = 0x00657678;
-        const weapons_dat<uint8_t> weapons_dat_damage_type = 0x00657258;
-        const weapons_dat<uint8_t> weapons_dat_cooldown = 0x00656FB8;
-        const weapons_dat<uint32_t> weapons_dat_min_range = 0x00656A18;
-        const weapons_dat<uint32_t> weapons_dat_max_range = 0x00657470;
-        const weapons_dat<uint8_t> weapons_dat_behaviour = 0x00656670;
-        const weapons_dat<uint16_t> weapons_dat_error_msg = 0x00656568;
-        const weapons_dat<uint8_t> weapons_dat_x_offset = 0x00657910;
-        const weapons_dat<uint32_t> weapons_dat_flingy = 0x00656CA8;
-        const weapons_dat<uint8_t> weapons_dat_death_time = 0x00657040;
-        const weapons_dat<uint8_t> weapons_dat_launch_spin = 0x00657888;
-        const weapons_dat<uint8_t> weapons_dat_attack_angle = 0x00656990;
-        const weapons_dat<uint16_t> weapons_dat_label = 0x006572E0;
-
-        const flingy_dat<int32_t> flingy_dat_top_speed = 0x006C9EF8;
-        const flingy_dat<uint32_t> flingy_dat_halt_distance = 0x006C9930;
-        const flingy_dat<uint16_t> flingy_dat_acceleration = 0x006C9C78;
-        const flingy_dat<uint16_t> flingy_dat_sprite = 0x006CA318;
-        const flingy_dat<uint8_t> flingy_dat_movement_type = 0x006C9858;
-        const flingy_dat<uint8_t> flingy_dat_turn_speed = 0x006C9E20;
-
-        const sprites_dat<uint16_t> sprites_dat_image = 0x00666160;
-        const sprites_dat<uint8_t> sprites_dat_start_as_visible = 0x00665C48;
-
-        const images_dat<uint8_t> images_dat_drawfunc = 0x00669E28;
-        const images_dat<int8_t *> images_dat_shield_overlay = 0x0052E5C8;
-        const images_dat<uint32_t> images_dat_damage_overlay = 0x0066A210;
-        const images_dat<uint8_t> images_dat_draw_if_cloaked = 0x00667718;
-        const images_dat<uint8_t> images_dat_turning_graphic = 0x0066E860;
-        const images_dat<uint8_t> images_dat_clickable = 0x0066C150;
-        const images_dat<uint8_t> images_dat_remapping = 0x00669A40;
-        const images_dat<uint8_t> images_dat_use_full_iscript = 0x0066D4D8;
-        const images_dat<uint32_t> images_dat_iscript_header = 0x0066EC48;
-        const images_dat<uint32_t> images_dat_grp = 0x00668AA0;
-        const array_offset<void *, 6, 0x3e7> images_dat_overlays = 0x0051F2A8;
-
-        const techdata_dat<uint16_t> techdata_dat_energy_cost = 0x00656380;
-        const techdata_dat<uint16_t> techdata_dat_label = 0x006562A0;
-
-        const upgrades_dat<uint16_t> upgrades_dat_label = 0x00655A40;
-
-        const orders_dat<uint8_t> orders_dat_targeting_weapon = 0x00665880;
-        const orders_dat<uint8_t> orders_dat_use_weapon_targeting = 0x00664B00;
-        const orders_dat<uint8_t> orders_dat_energy_tech = 0x00664E00;
-        const orders_dat<uint8_t> orders_dat_obscured = 0x00665400;
-        const orders_dat<uint8_t> orders_dat_interruptable = 0x00665040;
-        const orders_dat<uint16_t> orders_dat_highlight = 0x00664EC0;
-        const orders_dat<uint8_t> orders_dat_terrain_clip = 0x006654C0;
-        const orders_dat<uint8_t> orders_dat_fleeable = 0x00664C80;
-        const orders_dat<uint8_t> orders_dat_unknown7 = 0x00665100;
-        const orders_dat<uint8_t> orders_dat_subunit_inheritance = 0x00664A40;
-        const orders_dat<uint8_t> orders_dat_can_be_queued = 0x00665700;
-    }
     namespace storm
     {
         extern intptr_t base_diff;
@@ -702,7 +609,6 @@ namespace bw
     }
 }
 
-using namespace bw::dat;
 using namespace bw::funcs;
 
 void SetStormOffsets(int diff);

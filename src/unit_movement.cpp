@@ -34,7 +34,7 @@ void Unit::MovementState_Flyer()
 
     bool repulsed = ProgressRepulse(this);
 
-    Rect16 &dbox = units_dat_dimensionbox[unit_id];
+    const auto dbox = Type().DimensionBox();
     if (*bw::new_flingy_x - dbox.left < 0 || DidUnderflow(*bw::new_flingy_x, position.x))
         *bw::new_flingy_x = dbox.left;
     else if (*bw::new_flingy_x + dbox.right >= *bw::map_width)
@@ -279,7 +279,7 @@ int Unit::ProgressUnstackMovement()
     if (path->next_pos == sprite->position)
         return 1;
     AsFlingy()->ProgressFlingy();
-    auto &dbox = units_dat_dimensionbox[unit_id];
+    const auto dbox = Type().DimensionBox();
     if (*bw::new_flingy_x - dbox.left < 0 || *bw::new_flingy_x + dbox.right >= *bw::map_width ||
         *bw::new_flingy_y - dbox.top < 0 || *bw::new_flingy_y + dbox.bottom >= *bw::map_height)
     {

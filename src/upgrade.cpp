@@ -3,60 +3,71 @@
 #include "strings.h"
 #include "unit.h"
 
-const char *GetUpgradeName(int upgrade)
-{
-    Assert(upgrade >= 0 && upgrade < Upgrade::None);
-    return (*bw::stat_txt_tbl)->GetTblString(upgrades_dat_label[upgrade]);
-}
+#include "constants/upgrade.h"
 
-int GetUpgradeLevel(int upgrade, int player)
+int GetUpgradeLevel(UpgradeType upgrade_, int player)
 {
-    Assert(upgrade >= 0 && upgrade < Upgrade::None);
+    int upgrade = upgrade_.Raw();
+    Assert(upgrade >= 0 && upgrade < UpgradeId::None.Raw());
     if (upgrade < 0x2e)
         return bw::upgrade_level_sc[player][upgrade];
     else
         return bw::upgrade_level_bw[player][upgrade - 0x2e];
 }
 
-void SetUpgradeLevel(int upgrade, int player, int amount)
+void SetUpgradeLevel(UpgradeType upgrade_, int player, int amount)
 {
-    Assert(upgrade >= 0 && upgrade < Upgrade::None);
+    int upgrade = upgrade_.Raw();
+    Assert(upgrade >= 0 && upgrade < UpgradeId::None.Raw());
     if (upgrade < 0x2e)
         bw::upgrade_level_sc[player][upgrade] = amount;
     else
         bw::upgrade_level_bw[player][upgrade - 0x2e] = amount;
 }
 
-int MovementSpeedUpgradeUnit(int upgrade)
+const DatTable &UpgradeType::GetDat(int index) const
 {
-    switch (upgrade)
+    return bw::upgrades_dat[index];
+}
+
+const char *UpgradeType::Name() const
+{
+    return (*bw::stat_txt_tbl)->GetTblString(Label());
+}
+
+UnitType UpgradeType::MovementSpeedUpgradeUnit()
+{
+    using namespace UpgradeId;
+    using namespace UnitId;
+
+    switch (upgrade_id)
     {
-        case Upgrade::IonThrusters:
-            return Unit::Vulture;
-        case Upgrade::LegEnhancements:
-            return Unit::Zealot;
-        case Upgrade::GraviticThrusters:
-            return Unit::Scout;
-        case Upgrade::GraviticBoosters:
-            return Unit::Observer;
-        case Upgrade::GraviticDrive:
-            return Unit::Shuttle;
-        case Upgrade::MetabolicBoost:
-            return Unit::Zergling;
-        case Upgrade::PneumatizedCarapace:
-            return Unit::Overlord;
-        case Upgrade::MuscularAugments:
-            return Unit::Hydralisk;
-        case Upgrade::AnabolicSynthesis:
-            return Unit::Ultralisk;
+        case IonThrusters:
+            return Vulture;
+        case LegEnhancements:
+            return Zealot;
+        case GraviticThrusters:
+            return Scout;
+        case GraviticBoosters:
+            return Observer;
+        case GraviticDrive:
+            return Shuttle;
+        case MetabolicBoost:
+            return Zergling;
+        case PneumatizedCarapace:
+            return Overlord;
+        case MuscularAugments:
+            return Hydralisk;
+        case AnabolicSynthesis:
+            return Ultralisk;
         default:
-            return Unit::None;
+            return UnitId::None;
     }
 }
 
-int AttackSpeedUpgradeUnit(int upgrade)
+UnitType UpgradeType::AttackSpeedUpgradeUnit()
 {
-    if (upgrade == Upgrade::AdrenalGlands)
-        return Unit::Zergling;
-    return Unit::None;
+    if (upgrade_id == UpgradeId::AdrenalGlands)
+        return UnitId::Zergling;
+    return UnitId::None;
 }

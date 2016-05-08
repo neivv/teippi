@@ -1,10 +1,11 @@
 #include "triggers.h"
 
+#include "constants/order.h"
 #include "offsets.h"
-#include "unit.h"
-#include "player.h"
 #include "order.h"
+#include "player.h"
 #include "resolution.h"
+#include "unit.h"
 
 #include <string.h>
 #include <algorithm>
@@ -67,7 +68,7 @@ void ProgressTriggers()
 
 static int FindUnitInLocation_Check_Main(Unit *unit, FindUnitLocationParam *param)
 {
-    if (unit->IsWorker() && unit->worker.powerup)
+    if (unit->Type().IsWorker() && unit->worker.powerup != nullptr)
     {
         if (FindUnitInLocation_Check_Main(unit->worker.powerup, param))
             return 1;
@@ -80,7 +81,7 @@ static int FindUnitInLocation_Check_Main(Unit *unit, FindUnitLocationParam *para
             return 1;
     }
 
-    return unit->IsTriggerUnitId(param->unit_id);
+    return unit->Type().MatchesTriggerUnitId(UnitType(param->unit_id));
 }
 
 int FindUnitInLocation_Check(Unit *unit, FindUnitLocationParam *param)
@@ -103,7 +104,7 @@ static void ChangeInvincibility_Main(Unit *unit, ChangeInvincibilityParam *param
         ChangeInvincibility_Main(loaded, param);
     }
 
-    if (unit->IsTriggerUnitId(param->unit_id))
+    if (unit->Type().MatchesTriggerUnitId(UnitType(param->unit_id)))
     {
         switch (param->state)
         {
@@ -111,11 +112,11 @@ static void ChangeInvincibility_Main(Unit *unit, ChangeInvincibilityParam *param
                 unit->flags |= UnitStatus::Invincible;
             break;
             case 5:
-                if (~units_dat_flags[unit->unit_id] & UnitFlags::Invincible)
+                if (~unit->Type().Flags() & UnitFlags::Invincible)
                     unit->flags &= ~UnitStatus::Invincible;
             break;
             case 6:
-                if (~units_dat_flags[unit->unit_id] & UnitFlags::Invincible)
+                if (~unit->Type().Flags() & UnitFlags::Invincible)
                     unit->flags ^= UnitStatus::Invincible;
             break;
         }
@@ -131,7 +132,6 @@ int ChangeInvincibility(Unit *unit, ChangeInvincibilityParam *param)
     return 0;
 }
 
-
 int Trig_KillUnitGeneric(Unit *unit, KillUnitArgs *args, bool check_height, bool killing_additional_unit)
 {
     if (check_height && MatchesHeight(unit, args->flags))
@@ -141,12 +141,12 @@ int Trig_KillUnitGeneric(Unit *unit, KillUnitArgs *args, bool check_height, bool
     {
         Trig_KillUnitGeneric(loaded, args, false, true);
     }
-    if (unit->IsWorker() && unit->worker.powerup)
+    if (unit->Type().IsWorker() && unit->worker.powerup != nullptr)
         Trig_KillUnitGeneric(unit->worker.powerup, args, false, true);
 
-    if (!unit->sprite || unit->order == Order::Die || !((*args->IsValid)(args->player, args->unit_id, unit)))
+    if (!unit->sprite || unit->OrderType() == OrderId::Die || !((*args->IsValid)(args->player, args->unit_id, unit)))
         return 0;
-    if (units_dat_flags[unit->unit_id] & UnitFlags::SingleEntity && unit->powerup.carrying_unit)
+    if (unit->Type().Flags() & UnitFlags::SingleEntity && unit->powerup.carrying_unit != nullptr)
     {
         Unit *worker = unit->powerup.carrying_unit;
         if (worker->carried_powerup_flags)

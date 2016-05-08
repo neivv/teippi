@@ -1,5 +1,10 @@
 #include "targeting.h"
 
+#include "constants/order.h"
+#include "constants/tech.h"
+#include "constants/weapon.h"
+
+#include "dat.h"
 #include "unit.h"
 #include "offsets.h"
 #include "selection.h"
@@ -23,9 +28,9 @@ Unit *FindUnitAtPoint(int x, int y)
     int area = INT_MAX;
     for (Unit *unit = *units++; unit != nullptr; unit = *units++)
     {
-        if (units_dat_flags[unit->unit_id] & UnitFlags::Subunit)
+        if (unit->Type().Flags() & UnitFlags::Subunit)
             unit = unit->subunit;
-        if (!unit->CanLocalPlayerSelect() || !Unit::IsClickable(unit->unit_id))
+        if (!unit->CanLocalPlayerSelect() || !unit->Type().IsClickable())
             continue;
         if (picked)
         {
@@ -42,14 +47,14 @@ Unit *FindUnitAtPoint(int x, int y)
                     picked_z = new_z;
                     picked = unit;
                     // Bw uses sprite w/h here <.<
-                    area = units_dat_placement_box[unit->unit_id][0] * units_dat_placement_box[unit->unit_id][1];
+                    area = unit->Type().PlacementBox().Area();
                 }
             }
             else
             {
                 if (!IsClickablePixel(picked, x, y) && (!picked->subunit || !IsClickablePixel(picked->subunit, x, y)))
                 {
-                    int new_area = units_dat_placement_box[unit->unit_id][0] * units_dat_placement_box[unit->unit_id][1];
+                    int new_area = unit->Type().PlacementBox().Area();
                     if (new_area < area)
                     {
                         picked_z = new_z;
@@ -63,7 +68,7 @@ Unit *FindUnitAtPoint(int x, int y)
         {
             picked_z = unit->sprite->GetZCoord();
             picked = unit;
-            area = units_dat_placement_box[unit->unit_id][0] * units_dat_placement_box[unit->unit_id][1];
+            area = unit->Type().PlacementBox().Area();
         }
     }
     unit_search->PopResult();
@@ -91,26 +96,26 @@ void ClearOrderTargetingIfNeeded()
     }
 }
 
-void SendRightClickCommand(Unit *target, uint16_t x, uint16_t y, uint16_t fow_unit, uint8_t queued)
+void SendRightClickCommand(Unit *target, uint16_t x, uint16_t y, UnitType fow_unit, bool queued)
 {
     uint8_t cmd[10];
     cmd[0] = commands::RightClick;
     *(int16_t *)(cmd + 1) = x;
     *(int16_t *)(cmd + 3) = y;
+    cmd[9] = queued ? 1 : 0;
     if (target)
     {
         *(uint32_t *)(cmd + 5) = target->lookup_id;
     }
-    else if (fow_unit != Unit::None)
+    else if (fow_unit != UnitId::None)
     {
-        *(uint16_t *)(cmd + 5) = fow_unit;
-        queued |= 0x40;
+        *(uint16_t *)(cmd + 5) = fow_unit.Raw();
+        cmd[9] |= 0x40;
     }
     else
     {
-        queued |= 0x80;
+        cmd[9] |= 0x80;
     }
-    cmd[9] = queued;
     SendCommand(cmd, 10);
 }
 
@@ -127,7 +132,7 @@ void Command_RightClick(const uint8_t *buf)
         PrepareFormationMovement(&formation, true);
 
         Unit *target;
-        int fow_unit = Unit::None;
+        UnitType fow_unit = UnitId::None;
         if (queued & 0x80) // target ground
         {
             target = nullptr;
@@ -142,7 +147,7 @@ void Command_RightClick(const uint8_t *buf)
             {
                 formation.current_target[0] = formation.target[0];
                 formation.current_target[1] = formation.target[1];
-                fow_unit = *(uint16_t *)(buf + 5);
+                fow_unit = UnitType(*(uint16_t *)(buf + 5));
                 target = nullptr;
             }
         }
@@ -162,13 +167,13 @@ void Command_RightClick(const uint8_t *buf)
             if (unit->flags & UnitStatus::Hallucination && (action == RightClickAction::Harvest || action == RightClickAction::HarvestAndRepair))
                 action = RightClickAction::MoveAndAttack;
 
-            int order = bw::GetRightClickOrder[action](unit, x, y, &target, fow_unit);
+            OrderType order = OrderType(bw::GetRightClickOrder[action](unit, x, y, &target, fow_unit));
 
-            if (order == Order::RallyPointUnit || order == Order::RallyPointTile)
+            if (order == OrderId::RallyPointUnit || order == OrderId::RallyPointTile)
             {
-                if (unit->HasRally() && *bw::command_user == unit->player)
+                if (unit->Type().HasRally() && *bw::command_user == unit->player)
                 {
-                    if (order == Order::RallyPointUnit)
+                    if (order == OrderId::RallyPointUnit)
                     {
                         unit->rally.unit = target;
                         unit->rally.position = target->sprite->position;
@@ -180,27 +185,27 @@ void Command_RightClick(const uint8_t *buf)
                     }
                 }
             }
-            else if (order != Order::Nothing && target != unit)
+            else if (order != OrderId::Nothing && target != unit)
             {
-                if (order == Order::Attack)
+                if (order == OrderId::Attack)
                 {
                     Unit *subunit = unit->subunit;
                     if (subunit != nullptr)
                     {
-                        int subunit_order = units_dat_attack_unit_order[subunit->unit_id];
-                        subunit->TargetedOrder(subunit_order, target, Point(0, 0), Unit::None, queued);
+                        OrderType subunit_order(subunit->Type().AttackUnitOrder());
+                        subunit->TargetedOrder(subunit_order, target, Point(0, 0), UnitId::None, queued);
                     }
-                    order = units_dat_attack_unit_order[unit->unit_id];
+                    order = unit->Type().AttackUnitOrder();
                 }
                 if (CanIssueOrder(unit, order, *bw::command_user) == 1)
                 {
-                    if (target)
+                    if (target != nullptr)
                     {
-                        unit->TargetedOrder(order, target, Point(0, 0), Unit::None, queued);
+                        unit->TargetedOrder(order, target, Point(0, 0), UnitId::None, queued);
                     }
                     else
                     {
-                        if (fow_unit == Unit::None)
+                        if (fow_unit == UnitId::None)
                         {
                             GetFormationMovementTarget(unit, &formation);
                         }
@@ -219,17 +224,17 @@ void Command_Targeted(const uint8_t *buf)
     uint16_t x = *(uint16_t *)(buf + 1);
     uint16_t y = *(uint16_t *)(buf + 3);
     uint8_t queued = *(uint8_t *)(buf + 9);
-    uint8_t order = *(uint8_t *)(buf + 10);
-    if (x >= *bw::map_width || y >= *bw::map_height || !IsTargetableOrder(order))
+    OrderType order = OrderType(*(uint8_t *)(buf + 10));
+    if (x >= *bw::map_width || y >= *bw::map_height || !order.IsTargetable())
         return;
 
     MovementGroup formation;
     formation.target[0] = x;
     formation.target[1] = y;
-    PrepareFormationMovement(&formation, orders_dat_terrain_clip[order]);
+    PrepareFormationMovement(&formation, order.TerrainClip());
 
     Unit *target;
-    int fow_unit = Unit::None;
+    UnitType fow_unit = UnitId::None;
     if (queued & 0x80) // target ground
     {
         target = nullptr;
@@ -240,7 +245,7 @@ void Command_Targeted(const uint8_t *buf)
         queued ^= 0x40; // Won't do vis update like rclick
         formation.current_target[0] = formation.target[0];
         formation.current_target[1] = formation.target[1];
-        fow_unit = *(uint16_t *)(buf + 5);
+        fow_unit = UnitType(*(uint16_t *)(buf + 5));
         target = nullptr;
     }
     else // target unit
@@ -250,19 +255,19 @@ void Command_Targeted(const uint8_t *buf)
             target = nullptr;
     }
 
-    int spell_tech = orders_dat_energy_tech[order];
+    TechType spell_tech = order.EnergyTech();
 
     ResetSelectionIter();
     for (Unit *unit = NextCommandedUnit(); unit; unit = NextCommandedUnit())
     {
-        if (spell_tech != Tech::None)
+        if (spell_tech != TechId::None)
         {
-            if (CanUseTech(spell_tech, unit, *bw::command_user) != 1)
+            if (CanUseTech(spell_tech.Raw(), unit, *bw::command_user) != 1)
                 continue;
         }
         else
         {
-            if (CanIssueOrder(unit, order, *bw::command_user) != 1)
+            if (CanIssueOrder(unit, order.Raw(), *bw::command_user) != 1)
                 continue;
         }
 
@@ -270,34 +275,34 @@ void Command_Targeted(const uint8_t *buf)
             continue;
         if (!unit->CanUseTargetedOrder(order))
             continue;
-        if (unit->order == Order::NukeLaunch && order != Order::Die)
+        if (unit->OrderType() == OrderId::NukeLaunch && order != OrderId::Die)
             continue;
 
-        int current_order = order;
-        int subunit_order = Order::Nothing;
+        OrderType current_order = order;
+        OrderType subunit_order = OrderId::Nothing;
 
-        if (unit->unit_id == Unit::Medic && (order == Order::Attack || order == Order::AttackMove))
-            current_order = Order::HealMove;
-        if (current_order == Order::Attack)
+        if (unit->unit_id == UnitId::Medic && (order == OrderId::Attack || order == OrderId::AttackMove))
+            current_order = OrderId::HealMove;
+        if (current_order == OrderId::Attack)
         {
             if (target)
-                current_order = units_dat_attack_unit_order[unit->unit_id];
+                current_order = unit->Type().AttackUnitOrder();
             else
-                current_order = units_dat_attack_move_order[unit->unit_id];
-            if (current_order == Order::Nothing)
+                current_order = unit->Type().AttackMoveOrder();
+            if (current_order == OrderId::Nothing)
                 continue;
 
             if (unit->HasSubunit())
             {
                 if (target)
-                    subunit_order = units_dat_attack_unit_order[unit->subunit->unit_id];
+                    subunit_order = unit->subunit->Type().AttackUnitOrder();
                 else
-                    subunit_order = units_dat_attack_move_order[unit->subunit->unit_id];
+                    subunit_order = unit->subunit->Type().AttackMoveOrder();
             }
         }
-        if (unit->HasRally() && *bw::command_user == unit->player)
+        if (unit->Type().HasRally() && *bw::command_user == unit->player)
         {
-            if (current_order == Order::RallyPointUnit)
+            if (current_order == OrderId::RallyPointUnit)
             {
                 Unit *rally_target = target;
                 if (!rally_target)
@@ -306,9 +311,9 @@ void Command_Targeted(const uint8_t *buf)
                 unit->rally.position = rally_target->sprite->position;
                 continue;
             }
-            else if (current_order == Order::RallyPointTile)
+            else if (current_order == OrderId::RallyPointTile)
             {
-                unit->rally.unit = 0;
+                unit->rally.unit = nullptr;
                 unit->rally.position = Point(x, y);
                 continue;
             }
@@ -316,19 +321,19 @@ void Command_Targeted(const uint8_t *buf)
 
         if (target != nullptr)
         {
-            unit->TargetedOrder(current_order, target, Point(0, 0), Unit::None, queued);
-            if (subunit_order != Order::Nothing)
-                unit->subunit->TargetedOrder(subunit_order, target, Point(0, 0), Unit::None, queued);
+            unit->TargetedOrder(current_order, target, Point(0, 0), UnitId::None, queued);
+            if (subunit_order != OrderId::Nothing)
+                unit->subunit->TargetedOrder(subunit_order, target, Point(0, 0), UnitId::None, queued);
         }
         else
         {
-            if (fow_unit == Unit::None)
+            if (fow_unit == UnitId::None)
             {
                 GetFormationMovementTarget(unit, &formation);
             }
             Point pos(formation.current_target[0], formation.current_target[1]);
             unit->TargetedOrder(current_order, nullptr, pos, fow_unit, queued);
-            if (subunit_order != Order::Nothing) // Is this even possible?
+            if (subunit_order != OrderId::Nothing) // Is this even possible?
             {
                 unit->subunit->TargetedOrder(subunit_order, nullptr, pos, fow_unit, queued);
             }
@@ -336,7 +341,7 @@ void Command_Targeted(const uint8_t *buf)
     }
 }
 
-void SendTargetedOrderCommand(uint8_t order, int x, int y, Unit *target, int fow_unit, uint8_t queued)
+void SendTargetedOrderCommand(uint8_t order, int x, int y, Unit *target, UnitType fow_unit, uint8_t queued)
 {
     uint8_t cmd[11];
     cmd[0] = commands::TargetedOrder;
@@ -346,7 +351,7 @@ void SendTargetedOrderCommand(uint8_t order, int x, int y, Unit *target, int fow
     {
         *(uint32_t *)(cmd + 5) = target->lookup_id;
     }
-    else if (fow_unit != Unit::None)
+    else if (fow_unit != UnitId::None)
     {
         *(uint16_t *)(cmd + 5) = fow_unit;
         queued |= 0x40;
@@ -360,14 +365,14 @@ void SendTargetedOrderCommand(uint8_t order, int x, int y, Unit *target, int fow
     SendCommand(cmd, 11);
 }
 
-void Test_SendTargetedOrderCommand(uint8_t order, int x, int y, Unit *target, int fow_unit, uint8_t queued)
+void Test_SendTargetedOrderCommand(uint8_t order, int x, int y, Unit *target, UnitType fow_unit, uint8_t queued)
 {
     if (game_tests != nullptr) {
         SendTargetedOrderCommand(order, x, y, target, fow_unit, queued);
     }
 }
 
-void GetAttackErrorMessage(Unit *target, int targeting_weapon, int16_t *error)
+void GetAttackErrorMessage(Unit *target, WeaponType targeting_weapon, int16_t *error)
 {
     if (target && target->IsInvincible())
     {
@@ -382,35 +387,37 @@ void GetAttackErrorMessage(Unit *target, int targeting_weapon, int16_t *error)
     {
         if (*error == -1)
             *error = String::Error_UnableToAttackTarget;
-        if (targeting_weapon != Weapon::None)
-            *error = weapons_dat_error_msg[targeting_weapon];
+        if (targeting_weapon != WeaponId::None)
+            *error = targeting_weapon.ErrorMessage();
     }
 }
 
-void DoTargetedCommand(int x, int y, Unit *target, int fow_unit)
+void DoTargetedCommand(int x, int y, Unit *target, UnitType fow_unit)
 {
     if (!*bw::is_targeting)
         return;
     EndTargeting();
 
-    int16_t order, error = -1;
+    int16_t error = -1;
+    OrderType order;
     bool can_attack = false, can_cast_spell = false, has_energy = false;
 
     if (target)
-        order = *bw::unit_order_id;
-    else if (fow_unit != Unit::None)
-        order = *bw::obscured_unit_order_id;
+        order = OrderType(*bw::unit_order_id);
+    else if (fow_unit != UnitId::None)
+        order = OrderType(*bw::obscured_unit_order_id);
     else
-        order = *bw::ground_order_id;
+        order = OrderType(*bw::ground_order_id);
 
-    int targeting_weapon = orders_dat_targeting_weapon[order];
-    int weapon_targeting = orders_dat_use_weapon_targeting[order];
-    int energy = 0, tech = orders_dat_energy_tech[order];
-    if (tech != Tech::None)
-        energy = techdata_dat_energy_cost[tech] * 256;
+    WeaponType targeting_weapon = order.Weapon();
+    bool weapon_targeting = order.UseWeaponTargeting();
+    int energy = 0;
+    TechType tech = order.EnergyTech();
+    if (tech != TechId::None)
+        energy = tech.EnergyCost() * 256;
 
-    if (orders_dat_obscured[order] == Order::None)
-        fow_unit = Unit::None;
+    if (order.Obscured() == OrderId::None)
+        fow_unit = UnitId::None;
 
     for (unsigned i = 0; i < Limits::Selection; i++)
     {
@@ -421,16 +428,16 @@ void DoTargetedCommand(int x, int y, Unit *target, int fow_unit)
             continue;
         if (weapon_targeting)
         {
-            if (targeting_weapon == Weapon::None)
+            if (targeting_weapon == WeaponId::None)
             {
                 if (!target)
                 {
-                    if (unit->unit_id == Unit::InfestedTerran || unit->CanAttackFowUnit(fow_unit))
+                    if (unit->Type() == UnitId::InfestedTerran || unit->CanAttackFowUnit(fow_unit))
                         can_attack = true;
                 }
                 else
                 {
-                    if (unit->GetRClickAction() == RightClickAction::Attack) // sieged tank, towerit, etc
+                    if (unit->GetRClickAction() == RightClickAction::Attack) // sieged tank, towers, etc.
                     {
                         if (IsOutOfRange(unit, target))
                         {
@@ -448,7 +455,8 @@ void DoTargetedCommand(int x, int y, Unit *target, int fow_unit)
             }
             else
             {
-                if (!CanHitUnit(target, unit, targeting_weapon) && (fow_unit >= Unit::None || units_dat_flags[fow_unit] & UnitFlags::Invincible))
+                if (!CanHitUnit(target, unit, targeting_weapon.Raw()) &&
+                        (fow_unit.Raw() >= UnitId::None || fow_unit.Flags() & UnitFlags::Invincible))
                 {
                     continue;
                 }
@@ -458,22 +466,22 @@ void DoTargetedCommand(int x, int y, Unit *target, int fow_unit)
             }
 
         }
-        else if (tech != Tech::None)
+        else if (tech != TechId::None)
         {
-            if (CanTargetSpell(unit, x, y, &error, tech, target, fow_unit))
+            if (CanTargetSpell(unit, x, y, &error, tech.Raw(), target, fow_unit.Raw()))
             {
                 if (!NeedsMoreEnergy(unit, energy))
                     has_energy = true;
                 can_cast_spell = true;
             }
         }
-        else if (fow_unit == Unit::None)
+        else if (fow_unit == UnitId::None)
         {
-            CanTargetOrder(unit, target, order, &error); // Not checking anything, just to get error
+            CanTargetOrder(unit, target, order.Raw(), &error); // Not checking anything, just to get error
         }
         else
         {
-            CanTargetOrderOnFowUnit(unit, fow_unit, order, &error); // Same
+            CanTargetOrderOnFowUnit(unit, fow_unit, order.Raw(), &error); // Same
         }
     }
 
@@ -484,14 +492,14 @@ void DoTargetedCommand(int x, int y, Unit *target, int fow_unit)
         if (!can_attack || error != -1)
         {
             GetAttackErrorMessage(target, targeting_weapon, &error);
-            ShowInfoMessage(error, Sound::Error_Zerg + unit->GetRace(), unit->player);
-            if (targeting_weapon == Weapon::None)
+            ShowInfoMessage(error, Sound::Error_Zerg + unit->Type().Race(), unit->player);
+            if (targeting_weapon == WeaponId::None)
                 SendTargetedOrderCommand(order, x, y, target, fow_unit, *bw::is_queuing_command); // So it'll move there anyways
             return;
         }
         else if (energy && !has_energy)
         {
-            int race = unit->GetRace();
+            int race = unit->Type().Race();
             ShowInfoMessage(String::NotEnoughEnergy + race, Sound::NotEnoughEnergy + race, unit->player);
             return;
         }
@@ -507,7 +515,7 @@ void DoTargetedCommand(int x, int y, Unit *target, int fow_unit)
         }
         else if (/*energy && */!has_energy)
         {
-            int race = unit->GetRace();
+            int race = unit->Type().Race();
             ShowInfoMessage(String::NotEnoughEnergy + race, Sound::NotEnoughEnergy + race, unit->player);
             return;
         }
@@ -538,9 +546,9 @@ void GameScreenLClickEvent_Targeting(Event *event)
         fow = ShowCommandResponse(x, y, target->sprite.get());
 
     if (fow)
-        DoTargetedCommand(x, y, target, fow->index);
+        DoTargetedCommand(x, y, target, UnitType(fow->index));
     else
-        DoTargetedCommand(x, y, target, Unit::None);
+        DoTargetedCommand(x, y, target, UnitId::None);
 
     SetCursorSprite(0);
 }
@@ -572,7 +580,7 @@ void GameScreenRClickEvent(Event *event)
     {
         if (~highest_ranked->flags & UnitStatus::Building)
             return;
-        if (!highest_ranked->HasRally())
+        if (!highest_ranked->Type().HasRally())
             return;
     }
     else if (target == nullptr)
@@ -592,14 +600,14 @@ void GameScreenRClickEvent(Event *event)
     {
         Sprite *fow = ShowCommandResponse(x, y, 0);
         if (fow)
-            SendRightClickCommand(0, x, y, fow->index, *bw::is_queuing_command);
+            SendRightClickCommand(0, x, y, UnitType(fow->index), *bw::is_queuing_command);
         else
-            SendRightClickCommand(0, x, y, Unit::None, *bw::is_queuing_command);
+            SendRightClickCommand(0, x, y, UnitId::None, *bw::is_queuing_command);
     }
     else
     {
         ShowCommandResponse(x, y, target->sprite.get());
-        SendRightClickCommand(target, x, y, Unit::None, *bw::is_queuing_command);
+        SendRightClickCommand(target, x, y, UnitId::None, *bw::is_queuing_command);
     }
 
     if (ShowRClickErrorIfNeeded(target) == 1)

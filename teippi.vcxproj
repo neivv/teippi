@@ -23,6 +23,7 @@
     <ClCompile Include="src\console\console.cpp" />
     <ClCompile Include="src\console\font.cpp" />
     <ClCompile Include="src\console\genericconsole.cpp" />
+    <ClCompile Include="src\dat.cpp" />
     <ClCompile Include="src\datastream.cpp" />
     <ClCompile Include="src\dialog.cpp" />
     <ClCompile Include="src\draw.cpp" />
@@ -58,6 +59,7 @@
     <ClCompile Include="src\unit.cpp" />
     <ClCompile Include="src\unit_ai.cpp" />
     <ClCompile Include="src\unit_movement.cpp" />
+    <ClCompile Include="src\unit_type.cpp" />
     <ClCompile Include="src\unitsearch.cpp" />
     <ClCompile Include="src\unitsearch_cache.cpp" />
     <ClCompile Include="src\upgrade.cpp" />
@@ -95,7 +97,9 @@
     <ClInclude Include="src\constants\tech.h" />
     <ClInclude Include="src\constants\unit.h" />
     <ClInclude Include="src\constants\upgrade.h" />
+    <ClInclude Include="src\constants\weapon.h" />
     <ClInclude Include="src\damage_calculation.h" />
+    <ClInclude Include="src\dat.h" />
     <ClInclude Include="src\datastream.h" />
     <ClInclude Include="src\dialog.h" />
     <ClInclude Include="src\draw.h" />
@@ -142,6 +146,7 @@
     <ClInclude Include="src\types.h" />
     <ClInclude Include="src\unit.h" />
     <ClInclude Include="src\unit_cache.h" />
+    <ClInclude Include="src\unit_type.h" />
     <ClInclude Include="src\unitlist.h" />
     <ClInclude Include="src\unitsearch.h" />
     <ClInclude Include="src\unitsearch_cache.h" />

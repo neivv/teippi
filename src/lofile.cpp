@@ -4,9 +4,9 @@
 #include "image.h"
 #include "sprite.h"
 
-LoFile LoFile::GetOverlay(int image_id, int type)
+LoFile LoFile::GetOverlay(ImageType image_id, int type)
 {
-    return LoFile(images_dat_overlays[type][image_id]);
+    return LoFile(image_id.Overlay(type));
 }
 
 Point32 LoFile::GetValues(Image *img, int index)

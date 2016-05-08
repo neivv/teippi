@@ -26,40 +26,11 @@ void HallucinationHit(Unit *target, Unit *attacker, int direction);
 // Passing -1 as attacking_player is allowed to indicate no attacker
 void IncrementKillScores(Unit *target, int attacking_player);
 
-int GetWeaponDamage(const Unit *target, int weapon_id, int player);
+int GetWeaponDamage(const Unit *target, WeaponType weapon_id, int player);
 
 extern TempMemoryPool pbf_memory;
 extern bool bulletframes_in_progress;
 const int CallFriends_Radius = 0x60;
-
-namespace Weapon
-{
-    const int SpiderMine = 0x06;
-    const int Lockdown = 0x20;
-    const int EmpShockwave = 0x21;
-    const int Irradiate = 0x22;
-    const int Venom = 0x32;
-    const int HeroVenom = 0x33;
-    const int Suicide = 0x36;
-    const int Parasite = 0x38;
-    const int SpawnBroodlings = 0x39;
-    const int Ensnare = 0x3a;
-    const int DarkSwarm = 0x3b;
-    const int Plague = 0x3c;
-    const int Consume = 0x3d;
-    const int PsiAssault = 0x44;
-    const int HeroPsiAssault = 0x45;
-    const int Scarab = 0x52;
-    const int StasisField = 0x53;
-    const int PsiStorm = 0x54;
-    const int Restoration = 0x66;
-    const int MindControl = 0x69;
-    const int Feedback = 0x6a;
-    const int OpticalFlare = 0x6b;
-    const int Maelstrom = 0x6c;
-    const int SubterraneanSpines = 0x6d;
-    const int None = 0x82;
-}
 
 enum class BulletState
 {
@@ -76,7 +47,7 @@ struct SpellCast
 {
     SpellCast(int pl, const Point &p, int t, Unit *pa) : player(pl), tech(t), pos(p), parent(pa) {}
     uint16_t player;
-    uint16_t tech;
+    TechType tech;
     Point pos;
     Unit *parent;
 };
@@ -120,7 +91,7 @@ class DamagedUnit
         Unit *base;
 
         bool IsDead() const;
-        void AddHit(uint32_t dmg, int weapon_id, int player, int direction, Unit *attacker, ProgressBulletBufs *bufs);
+        void AddHit(uint32_t dmg, WeaponType weapon_id, int player, int direction, Unit *attacker, ProgressBulletBufs *bufs);
         int32_t GetDamage();
 
     private:
@@ -231,6 +202,8 @@ class Bullet
 
         void SingleDelete();
 
+        WeaponType Type() const;
+
         void SetTarget(Unit *new_target);
 
         void ProgressFrame();
@@ -268,7 +241,7 @@ class Bullet
         Unit *ChooseBounceTarget();
 
         // Delete bullet if returns false
-        bool Initialize(Unit *parent_, int player_, int direction, int weapon, const Point &pos);
+        bool Initialize(Unit *parent_, int player_, int direction, WeaponType weapon, const Point &pos);
 
         static vector<std::pair<Unit *, Point>> broodling_spawns;
 
@@ -294,7 +267,7 @@ class BulletSystem
         /// May only be called once per frame, see ProgressBulletBufs::GetDamagedUnit
         void ProgressFrames(BulletFramesInput in);
         void DeleteAll();
-        Bullet *AllocateBullet(Unit *parent, int player, int direction, int weapon, const Point &pos);
+        Bullet *AllocateBullet(Unit *parent, int player, int direction, WeaponType weapon, const Point &pos);
         uintptr_t BulletCount() const
         {
             uintptr_t count = 0;

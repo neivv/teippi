@@ -4,6 +4,11 @@
 #include <tuple>
 #include <algorithm>
 
+#include "constants/order.h"
+#include "constants/sprite.h"
+#include "constants/tech.h"
+#include "constants/upgrade.h"
+#include "constants/unit.h"
 #include "unit.h"
 #include "unitsearch.h"
 #include "sprite.h"
@@ -49,14 +54,14 @@ static void UnitKilled(Unit *target, Unit *attacker, int attacking_player, vecto
     // Kinda stupid that TransportDeath() does about the same...
     // Guess it is necessary if trigger kills the unit,
     // this when we care about kill scores :/
-    if (~units_dat_flags[target->unit_id] & UnitFlags::Building) // Let's not kill units inside bunker
+    if (!target->Type().IsBuilding()) // Let's not kill units inside bunker
     {
         Unit *loaded, *next = target->first_loaded;
         while (next)
         {
             loaded = next;
             next = loaded->next_loaded;
-            if (loaded->order != Order::Die) // Necessary?
+            if (loaded->OrderType() != OrderId::Die) // Necessary?
             {
                 killed_units->emplace_back(loaded);
                 IncrementKillScores(loaded, attacking_player);
@@ -102,10 +107,10 @@ DamagedUnit ProgressBulletBufs::GetDamagedUnit(Unit *unit)
 
 /// Convenience function for DamageCalculation class which can be annoying
 /// (and error-prone) to initialize with all the variables units can have.
-static DamageCalculation MakeDamageCalculation(Unit *unit, uint32_t base_damage, int weapon_id)
+static DamageCalculation MakeDamageCalculation(Unit *unit, uint32_t base_damage, WeaponType weapon_id)
 {
     int32_t shields = 0;
-    if (unit->HasShields() && unit->shields >= 256)
+    if (unit->Type().HasShields() && unit->shields >= 256)
         shields = unit->shields;
 
     return default_damage_calculation
@@ -114,15 +119,15 @@ static DamageCalculation MakeDamageCalculation(Unit *unit, uint32_t base_damage,
         .Shields(shields)
         .MatrixHp(unit->matrix_hp)
         .ArmorReduction(unit->GetArmor() * 256)
-        .ShieldReduction(GetUpgradeLevel(Upgrade::ProtossPlasmaShields, unit->player) * 256)
-        .ArmorType(units_dat_armor_type[unit->unit_id])
-        .DamageType(weapons_dat_damage_type[weapon_id])
+        .ShieldReduction(GetUpgradeLevel(UpgradeId::ProtossPlasmaShields, unit->player) * 256)
+        .ArmorType(unit->Type().ArmorType())
+        .DamageType(weapon_id.DamageType())
         .Hallucination(unit->flags & UnitStatus::Hallucination)
         .AcidSpores(unit->acid_spore_count)
-        .IgnoreArmor(weapons_dat_damage_type[weapon_id] == 4);
+        .IgnoreArmor(weapon_id.DamageType() == 4);
 }
 
-void DamagedUnit::AddHit(uint32_t dmg, int weapon_id, int player, int direction, Unit *attacker, ProgressBulletBufs *bufs)
+void DamagedUnit::AddHit(uint32_t dmg, WeaponType weapon_id, int player, int direction, Unit *attacker, ProgressBulletBufs *bufs)
 {
     if (IsDead())
         return;
@@ -139,11 +144,11 @@ void DamagedUnit::AddHit(uint32_t dmg, int weapon_id, int player, int direction,
     {
         UnitKilled(base, attacker, player, bufs->killed_units);
     }
-    else if (attacker)
+    else if (attacker != nullptr)
     {
-        if (base->player != attacker->player && weapon_id != Weapon::Irradiate)
+        if (base->player != attacker->player && weapon_id != WeaponId::Irradiate)
             Notify_UnitWasHit(base);
-        if (UnitWasHit(base, attacker, weapon_id != Weapon::Irradiate))
+        if (UnitWasHit(base, attacker, weapon_id != WeaponId::Irradiate))
             bufs->unit_was_hit->emplace_back(base, attacker);
     }
     if (IsComputerPlayer(base->player) && attacker)
@@ -182,6 +187,11 @@ BulletSystem::BulletContainer *BulletSystem::GetStateContainer(BulletState state
     }
 }
 
+WeaponType Bullet::Type() const
+{
+    return WeaponType(weapon_id);
+}
+
 void Bullet::UpdateMoveTarget(const Point &target)
 {
     if (move_target != target)
@@ -202,7 +212,7 @@ void Bullet::Move(const Point &where)
 }
 
 // Spawner is not necessarily parent, in case of subunits/fighters
-bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, const Point &pos)
+bool Bullet::Initialize(Unit *spawner, int player_, int direction, WeaponType weapon, const Point &pos)
 {
     Assert(!bulletframes_in_progress);
     list.prev = nullptr;
@@ -211,26 +221,24 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
     move_target = Point(0xffff, 0xffff);
     current_speed = 0;
 
-    auto flingy_id = weapons_dat_flingy[weapon];
-
     // Yes, bw mixes bullet's images with spawner's unit code.
     // At least wraith's lasers actually depend on this behaviour.
     const char *desc = "Bullet::Initialize (First frame of bullet's animation modifies the unit who spawned it)";
     UnitIscriptContext ctx(spawner, nullptr, desc, MainRng(), false);
-    bool success = ((Flingy *)this)->Initialize(&ctx, flingy_id, player_, direction, pos);
+    bool success = ((Flingy *)this)->Initialize(&ctx, weapon.Flingy(), player_, direction, pos);
     if (!success)
         return false;
 
     player = player_;
-    weapon_id = weapon;
-    time_remaining = weapons_dat_death_time[weapon_id];
+    weapon_id = weapon.Raw();
+    time_remaining = weapon.DeathTime();
     flingy_flags |= 0x8;
     flags = 0;
     bounces_remaining = 0;
     // Bw calls State_Init here, it should just return instantly though as no iscript has been run
     order_signal = 0;
-    auto spin = weapons_dat_launch_spin[weapon_id];
-    if (spin)
+    auto spin = weapon.LaunchSpin();
+    if (spin != 0)
     {
         bool spin_positive = MainRng()->Rand(2) == 1;
         // Goliath dual missiles etc, ugh
@@ -245,9 +253,9 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
         *bw::last_bullet_spawner = spawner;
     }
 
-    if (units_dat_flags[spawner->unit_id] & UnitFlags::Subunit)
+    if (spawner->Type().IsSubunit())
         parent = spawner->subunit;
-    else if (spawner->unit_id == Unit::Scarab)
+    else if (spawner->Type() == UnitId::Scarab)
         parent = spawner->interceptor.parent;
     else
         parent = spawner;
@@ -270,7 +278,7 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
         sprite->elevation = spawner->sprite->elevation + 1;
     }
 
-    switch (weapons_dat_behaviour[weapon_id])
+    switch (weapon.Behaviour())
     {
         case 0x8: // Move near
         {
@@ -313,7 +321,7 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
         break;
         case 0x9: // Go to max range
         {
-            auto max_range = (weapons_dat_max_range[weapon_id] + 20) * 256;
+            auto max_range = (Type().MaxRange() + 20) * 256;
             auto x = bw::circle[facing_direction][0] * max_range / 65536;
             auto y = bw::circle[facing_direction][1] * max_range / 65536;
             order_target_pos = spawner->sprite->position + Point(x, y);
@@ -339,14 +347,14 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, int weapon, c
         case 0x5: // Appear on attacker
         break;
         default:
-            Warning("Unknown weapons.dat behaviour %x for weapon %x", weapons_dat_behaviour[weapon_id], weapon_id);
+            Warning("Unknown weapons.dat behaviour %x for weapon %x", Type().Behaviour(), weapon_id);
             return false;
         break;
     }
     return true;
 }
 
-Bullet *BulletSystem::AllocateBullet(Unit *parent, int player, int direction, int weapon, const Point &pos_)
+Bullet *BulletSystem::AllocateBullet(Unit *parent, int player, int direction, WeaponType weapon, const Point &pos_)
 {
     Point pos = pos_;
     if (pos.x > 0xc000)
@@ -355,20 +363,9 @@ Bullet *BulletSystem::AllocateBullet(Unit *parent, int player, int direction, in
         pos.y = 0;
     pos.x = min(pos.x, (x16u)(*bw::map_width - 1));
     pos.y = min(pos.y, (y16u)(*bw::map_height - 1));
-    if (parent->flags & UnitStatus::UnderDweb)
+    if (parent->flags & UnitStatus::UnderDweb && !weapon.WorksUnderDisruptionWeb())
     {
-        using namespace Weapon;
-        switch (weapon)
-        {
-            case SpiderMine: case Lockdown: case Weapon::EmpShockwave: case Irradiate: case Venom: case HeroVenom:
-            case Suicide: case Parasite: case SpawnBroodlings: case Weapon::Ensnare: case Weapon::DarkSwarm:
-            case Weapon::Plague: case Consume: case PsiAssault: case HeroPsiAssault: case Scarab: case StasisField:
-            case PsiStorm: case Restoration: case MindControl: case Feedback: case OpticalFlare:
-            case Weapon::Maelstrom:
-                break;
-            default:
-                return nullptr;
-        }
+        return nullptr;
     }
     ptr<Bullet> bullet_ptr = ptr<Bullet>(new Bullet);
     if (bullet_ptr->Initialize(parent, player, direction, weapon, pos) == true)
@@ -392,7 +389,7 @@ Bullet *BulletSystem::AllocateBullet(Unit *parent, int player, int direction, in
     }
     else
     {
-        debug_log->Log("Bullet creation failed %x %x.%x\n", weapon, pos.x, pos.y);
+        debug_log->Log("Bullet creation failed %x %x.%x\n", weapon.Raw(), pos.x, pos.y);
         if (bullet_ptr->sprite != nullptr)
             bullet_ptr->sprite->Remove();
         return nullptr;
@@ -445,10 +442,10 @@ void Bullet::SetTarget(Unit *new_target)
 
 int GetSplashDistance(Bullet *bullet, Unit *target)
 {
-    int left = target->sprite->position.x - units_dat_dimensionbox[target->unit_id].left;
-    int right = target->sprite->position.x + units_dat_dimensionbox[target->unit_id].right - 1;
-    int top = target->sprite->position.y - units_dat_dimensionbox[target->unit_id].top;
-    int bottom = target->sprite->position.y + units_dat_dimensionbox[target->unit_id].bottom - 1;
+    int left = target->sprite->position.x - target->Type().DimensionBox().left;
+    int right = target->sprite->position.x + target->Type().DimensionBox().right - 1;
+    int top = target->sprite->position.y - target->Type().DimensionBox().top;
+    int bottom = target->sprite->position.y + target->Type().DimensionBox().bottom - 1;
     Point &pos = bullet->sprite->position;
     if (pos.x > left && pos.x < right && pos.y > top && pos.y < bottom)
         return 0;
@@ -469,11 +466,11 @@ int GetSplashDistance(Bullet *bullet, Unit *target)
     return Distance(Point32(0, 0), Point32(w, h));
 }
 
-int GetWeaponDamage(const Unit *target, int weapon_id, int player)
+int GetWeaponDamage(const Unit *target, WeaponType weapon_id, int player)
 {
-    if (weapons_dat_effect[weapon_id] == 5) // nuke
+    if (weapon_id.Effect() == 5) // nuke
     {
-        int hp = units_dat_hitpoints[target->unit_id] >> 8;
+        int hp = target->Type().HitPoints() >> 8;
         if (!hp)
         {
             hp = (target->hitpoints + 255) >> 8;
@@ -488,15 +485,15 @@ int GetWeaponDamage(const Unit *target, int weapon_id, int player)
     }
     else
     {
-        int dmg = weapons_dat_damage[weapon_id];
-        dmg += GetUpgradeLevel(weapons_dat_upgrade[weapon_id], player) * weapons_dat_upgrade_bonus[weapon_id];
+        int dmg = weapon_id.Damage();
+        dmg += GetUpgradeLevel(weapon_id.Upgrade(), player) * weapon_id.UpgradeBonus();
         return dmg * 256;
     }
 }
 
 static int GetWeaponDamage(const Bullet *bullet, const Unit *target)
 {
-    return GetWeaponDamage(target, bullet->weapon_id, bullet->player);
+    return GetWeaponDamage(target, bullet->Type(), bullet->player);
 }
 
 bool IsPlayerUnk(int player)
@@ -517,12 +514,11 @@ bool IsPlayerUnk(int player)
 
 void IncrementKillScores(Unit *target, int attacking_player)
 {
-    int target_id = target->unit_id;
-    if ((target->flags & UnitStatus::Hallucination) || (units_dat_flags[target_id] & UnitFlags::Subunit))
+    if ((target->flags & UnitStatus::Hallucination) || target->Type().IsSubunit())
         return;
 
     int target_player = target->player;
-    int group = units_dat_group_flags[target_id];
+    int group = target->Type().GroupFlags();
     if (group & 0x8)
     {
         bw::player_men_deaths[target_player]++;
@@ -533,15 +529,15 @@ void IncrementKillScores(Unit *target, int attacking_player)
         if (group & 0x20)
             bw::player_factory_deaths[target_player]++;
     }
-    bw::unit_deaths[target_id][target_player]++;
+    bw::unit_deaths[target->unit_id][target_player]++;
     if (target_player != attacking_player && IsActivePlayer(attacking_player) && !IsPlayerUnk(attacking_player))
     {
-        if ((~group & 0x8) && (target_id != Unit::Larva) && (target_id != Unit::Egg))
+        if ((~group & 0x8) && (target->Type() != UnitId::Larva) && (target->Type() != UnitId::Egg))
         {
             if (group & 0x10)
             {
                 bw::player_building_kills[attacking_player]++;
-                bw::player_building_kill_score[attacking_player] += units_dat_kill_score[target_id];
+                bw::player_building_kill_score[attacking_player] += target->Type().KillScore();
                 if (group & 0x20)
                     bw::player_factory_kills[attacking_player]++;
             }
@@ -549,9 +545,9 @@ void IncrementKillScores(Unit *target, int attacking_player)
         else
         {
             bw::player_men_kills[attacking_player]++;
-            bw::player_men_kill_score[attacking_player] += units_dat_kill_score[target_id];
+            bw::player_men_kill_score[attacking_player] += target->Type().KillScore();
         }
-        bw::unit_kills[target_id][attacking_player]++;
+        bw::unit_kills[target->unit_id][attacking_player]++;
     }
 }
 
@@ -609,7 +605,7 @@ bool UnitWasHit_Actual(Unit *target, Unit *attacker, ProgressBulletBufs *bufs)
             {
                 continue;
             }
-            if (unit->order != Order::Die)
+            if (unit->OrderType() != OrderId::Die)
                 unit->AskForHelp(attacker);
         }
     }
@@ -637,7 +633,7 @@ void DamageUnit(int damage, Unit *target, vector<Unit *> *killed_units)
     if (damage < target->hitpoints)
     {
         target->hitpoints -= damage;
-        if (images_dat_damage_overlay[target->sprite->main_image->image_id] && target->flags & UnitStatus::Completed)
+        if (target->sprite->main_image->Type().DamageOverlay() && target->flags & UnitStatus::Completed)
             UpdateDamageOverlay(target);
     }
     else
@@ -667,7 +663,7 @@ void HallucinationHit(Unit *target, Unit *attacker, int direction, vector<tuple<
         if (attacker->player != target->player)
             Notify_UnitWasHit(target);
     }
-    if (target->shields >= 256 && target->HasShields())
+    if (target->shields >= 256 && target->Type().HasShields())
         target->ShowShieldHitOverlay(direction);
 }
 
@@ -680,7 +676,7 @@ void Bullet::HitUnit(Unit *target, int dmg, ProgressBulletBufs *bufs)
     else if (!target->IsInvincible())
     {
         DamagedUnit dmg_unit = bufs->GetDamagedUnit(target);
-        dmg_unit.AddHit(dmg, weapon_id, player, facing_direction, parent, bufs);
+        dmg_unit.AddHit(dmg, Type(), player, facing_direction, parent, bufs);
     }
 }
 
@@ -723,7 +719,7 @@ BulletState Bullet::State_Bounce(BulletStateResults *results)
         }
 
         order_state = 0;
-        order_fow_unit = Unit::None;
+        order_fow_unit = UnitId::None.Raw();
         if (target)
             order_target_pos = target->sprite->position;
         SetIscriptAnimation(Iscript::Animation::Death, true, "Bullet::State_Bounce", results);
@@ -741,7 +737,7 @@ BulletState Bullet::State_Init(BulletStateResults *results)
     BulletState state;
     int anim;
     //debug_log->Log("Inited bullet %p %x %x\n", this, weapon_id, sprite->main_image->iscript.pos);
-    switch (weapons_dat_behaviour[weapon_id])
+    switch (Type().Behaviour())
     {
         case 0x2:
         case 0x4:
@@ -773,7 +769,7 @@ BulletState Bullet::State_Init(BulletStateResults *results)
     }
     if (target)
         order_target_pos = target->sprite->position;
-    order_fow_unit = Unit::None;
+    order_fow_unit = UnitId::None.Raw();
     order_state = 0;
     SetIscriptAnimation(anim, true, "Bullet::State_Init", results);
     return state;
@@ -787,7 +783,7 @@ BulletState Bullet::State_GroundDamage(BulletStateResults *results)
         if (target)
             order_target_pos = target->sprite->position;
         order_state = 0;
-        order_fow_unit = Unit::None;
+        order_fow_unit = UnitId::None.Raw();
         SetIscriptAnimation(Iscript::Animation::Death, true, "Bullet::State_GroundDamage", results);
         return BulletState::Die;
     }
@@ -896,8 +892,7 @@ void BulletSystem::ProcessHits(ProgressBulletBufs *bufs)
         if (!dmg_unit.IsDead())
         {
             unit->hitpoints -= dmg_unit.GetDamage();
-            if (images_dat_damage_overlay[unit->sprite->main_image->image_id] &&
-                    unit->flags & UnitStatus::Completed)
+            if (unit->sprite->main_image->Type().DamageOverlay() && unit->flags & UnitStatus::Completed)
             {
                 UpdateDamageOverlay(unit);
             }
@@ -925,7 +920,7 @@ void Bullet::NormalHit(ProgressBulletBufs *bufs)
     else
     {
         auto damage = GetWeaponDamage(this, target);
-        if (weapons_dat_behaviour[weapon_id] == 7 && bounces_remaining < 2) // Bounce
+        if (Type().Behaviour() == 7 && bounces_remaining < 2) // Bounce
         {
             if (bounces_remaining == 0)
                 damage /= 9;
@@ -939,14 +934,14 @@ void Bullet::NormalHit(ProgressBulletBufs *bufs)
 template <bool air_splash>
 void Bullet::Splash(ProgressBulletBufs *bufs, bool hit_own_units)
 {
-    int outer_splash = weapons_dat_outer_splash[weapon_id];
+    int outer_splash = Type().OuterSplash();
     Rect16 splash_area(sprite->position, outer_splash);
 
     int unit_amount;
     Unit **units, **units_beg;
     units = units_beg = unit_search->FindUnitsRect(splash_area, &unit_amount);
     bool hit_orig = false;
-    bool storm = weapon_id == Weapon::PsiStorm;
+    bool storm = Type() == WeaponId::PsiStorm;
     Unit **rand_fulldmg_pos = units;
     if (air_splash)
     {
@@ -971,7 +966,7 @@ void Bullet::Splash(ProgressBulletBufs *bufs, bool hit_own_units)
             int damage = GetWeaponDamage(this, unit);
             if (unit == target)
             {
-                if (distance <= weapons_dat_inner_splash[weapon_id])
+                if (distance <= Type().InnerSplash())
                 {
                     HitUnit(unit, damage, bufs);
                     hit_orig = true;
@@ -982,11 +977,11 @@ void Bullet::Splash(ProgressBulletBufs *bufs, bool hit_own_units)
                     *rand_fulldmg_pos++ = unit;
                 }
             }
-            else if (unit->unit_id != Unit::Interceptor) // Yeah..
+            else if (unit->Type() != UnitId::Interceptor) // Yeah..
             {
                 *rand_fulldmg_pos++ = unit;
 
-                if (distance <= weapons_dat_middle_splash[weapon_id])
+                if (distance <= Type().MiddleSplash())
                     HitUnit(unit, damage / 2, bufs);
                 else
                     HitUnit(unit, damage / 4, bufs);
@@ -1014,13 +1009,13 @@ void Bullet::Splash(ProgressBulletBufs *bufs, bool hit_own_units)
             }
 
             int damage = GetWeaponDamage(this, unit);
-            if (!air_splash && distance <= weapons_dat_inner_splash[weapon_id])
+            if (!air_splash && distance <= Type().InnerSplash())
                 HitUnit(unit, damage, bufs);
             else if (!air_splash && unit->flags & UnitStatus::Burrowed) // Actually burrowed is fully immune to air spalsh
                 continue;
-            else if (air_splash && unit->unit_id == Unit::Interceptor) // Yup
+            else if (air_splash && unit->Type() == UnitId::Interceptor) // Yup
                 continue;
-            else if (distance <= weapons_dat_middle_splash[weapon_id])
+            else if (distance <= Type().MiddleSplash())
                 HitUnit(unit, damage / 2, bufs);
             else
                 HitUnit(unit, damage / 4, bufs);
@@ -1044,14 +1039,14 @@ void Bullet::Splash(ProgressBulletBufs *bufs, bool hit_own_units)
 void Bullet::Splash_Lurker(ProgressBulletBufs *bufs)
 {
     // Yea inner splash (Even though they are same for default)
-    auto area = Rect16(sprite->position, weapons_dat_inner_splash[weapon_id]);
+    auto area = Rect16(sprite->position, Type().InnerSplash());
     unit_search->ForEachUnitInArea(area, [this, bufs](Unit *unit)
     {
         if (unit->player == player && unit != target)
             return false;
         if (!CanHitUnit(unit, unit, weapon_id)) // attacker is target.. well does not matter
             return false;
-        if (GetSplashDistance(this, unit) > weapons_dat_inner_splash[weapon_id])
+        if (GetSplashDistance(this, unit) > Type().InnerSplash())
             return false;
 
         if (parent)
@@ -1082,7 +1077,7 @@ void Bullet::AcidSporeHit() const
     Rect16 area(sprite->position, Spell::AcidSporeArea);
     unit_search->ForEachUnitInArea(area, [this](Unit *unit)
     {
-        if (unit->player != player && ~units_dat_flags[unit->unit_id] & UnitFlags::Building && unit->IsFlying())
+        if (unit->player != player && !unit->Type().IsBuilding() && unit->IsFlying())
         {
             if (!unit->IsInvincible())
             {
@@ -1103,7 +1098,7 @@ void Bullet::SpawnBroodlingHit(vector<Unit *> *killed_units) const
 
 Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
 {
-    auto effect = weapons_dat_effect[weapon_id];
+    auto effect = Type().Effect();
     switch (effect)
     {
         case 0x1:
@@ -1112,7 +1107,7 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
         case 0x2:
         case 0x3:
         case 0x5:
-            if (weapon_id == Weapon::SubterraneanSpines)
+            if (Type() == WeaponId::SubterraneanSpines)
                 Splash_Lurker(bufs);
             else
                 Splash<false>(bufs, effect != 0x3);
@@ -1145,7 +1140,7 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
                 }
                 SpawnBroodlingHit(bufs->killed_units);
                 if (~target->flags & UnitStatus::Hallucination)
-                    return SpellCast(player, target->sprite->position, Tech::SpawnBroodlings, parent);
+                    return SpellCast(player, target->sprite->position, TechId::SpawnBroodlings, parent);
             }
         break;
         case 0x8:
@@ -1169,7 +1164,7 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
                 Stasis(parent, order_target_pos);
         break;
         case 0xd:
-            return SpellCast(player, order_target_pos, Tech::DarkSwarm, parent);
+            return SpellCast(player, order_target_pos, TechId::DarkSwarm, parent);
         break;
         case 0xe:
             if (parent && target && !target->IsDying())
@@ -1184,7 +1179,7 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
                 target->Restoration();
         break;
         case 0x11:
-            return SpellCast(player, order_target_pos, Tech::DisruptionWeb, parent);
+            return SpellCast(player, order_target_pos, TechId::DisruptionWeb, parent);
         break;
         case 0x12:
             if (target != nullptr && !DoesMiss())
@@ -1272,13 +1267,13 @@ class BulletIscriptContext : public Iscript::Context
                 break;
                 case Iscript::Opcode::SprOl:
                     result = CmdResult::NotHandled;
-                    if (bullet->parent != nullptr && bullet->parent->IsGoliath())
+                    if (bullet->parent != nullptr && bullet->parent->Type().IsGoliath())
                     {
                         Unit *goliath = bullet->parent;
-                        bool range_upgrade = GetUpgradeLevel(Upgrade::CharonBooster, goliath->player) != 0;
-                        if (range_upgrade || (goliath->IsHero() && *bw::is_bw))
+                        bool range_upgrade = GetUpgradeLevel(UpgradeId::CharonBooster, goliath->player) != 0;
+                        if (range_upgrade || (goliath->Type().IsHero() && *bw::is_bw))
                         {
-                            Sprite::Spawn(img, Sprite::HaloRocketsTrail, cmd.point, bullet->sprite->elevation + 1);
+                            Sprite::Spawn(img, SpriteId::HaloRocketsTrail, cmd.point, bullet->sprite->elevation + 1);
                             result = CmdResult::Handled;
                         }
                     }
@@ -1427,15 +1422,15 @@ void BulletSystem::ProgressFrames(BulletFramesInput input)
     // These two are delayed as they invalidate unit search caches
     for (const auto &spell : spells.Inner())
     {
-        switch (spell.tech)
+        switch (spell.tech.Raw())
         {
-            case Tech::SpawnBroodlings:
+            case TechId::SpawnBroodlings:
                 spell.parent->SpawnBroodlings(spell.pos - Point(2, 2));
             break;
-            case Tech::DarkSwarm:
+            case TechId::DarkSwarm:
                 DarkSwarm(spell.player, spell.pos);
             break;
-            case Tech::DisruptionWeb:
+            case TechId::DisruptionWeb:
                 DisruptionWeb(spell.player, spell.pos);
             break;
         }
@@ -1484,7 +1479,7 @@ void Bullet::WarnUnhandledIscriptCommand(const Iscript::Command &cmd, const char
 std::string Bullet::DebugStr() const
 {
     char buf[64];
-    const char *name = (*bw::stat_txt_tbl)->GetTblString(weapons_dat_label[weapon_id]);
+    const char *name = (*bw::stat_txt_tbl)->GetTblString(Type().Label());
     snprintf(buf, sizeof buf / sizeof(buf[0]), "%x [%s]", weapon_id, name);
     return buf;
 }

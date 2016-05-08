@@ -50,13 +50,16 @@ class Flingy
         /// Bw generally behaves as if ctx actually modified the unit which created this flingy,
         /// and in some cases even depends on it.
         /// Returns false on failure.
-        bool Initialize(Iscript::Context *ctx, int flingy_id, int player, int direction, const Point &pos);
+        bool Initialize(Iscript::Context *ctx,
+                        FlingyType flingy_id, int player, int direction, const Point &pos);
 
         static void ProgressFrames();
         void ProgressFrame();
         FlingyMoveResults ProgressFlingy();
 
         static void DeleteAll();
+
+        FlingyType Type() const;
 
         bool ProgressTurning();
         void SetMovementDirectionToTarget();

@@ -47,7 +47,7 @@ void DrawStatusScreen_LoadedUnits(Dialog *dlg)
     Unit *transport = *bw::primary_selected;
     Control *first_button = dlg->FindChild(StatusScreen::TransportLargeUnit);
     Control *large_unit_button, *medium_unit_button, *small_unit_button;
-    int remaining_space = units_dat_space_provided[transport->unit_id];
+    int remaining_space = transport->Type().SpaceProvided();
     if (remaining_space < 8)
     {
         large_unit_button = dlg->FindChild(StatusScreen::TransportLargeUnit4, first_button);
@@ -67,7 +67,7 @@ void DrawStatusScreen_LoadedUnits(Dialog *dlg)
     }
     for (Unit *unit = transport->first_loaded; unit; unit = unit->next_loaded)
     {
-        int space = units_dat_space_required[unit->unit_id];
+        int space = unit->Type().SpaceRequired();
         remaining_space -= space;
         if (remaining_space < 0)
             break;
@@ -99,7 +99,7 @@ void DrawStatusScreen_LoadedUnits(Dialog *dlg)
         int border_id;
         if (unit->flags & UnitStatus::Hallucination)
             border_id = StatusScreen::SmallUnitBorderHallucination + ((space >> 1) * 2);
-        else if (units_dat_flags[unit->unit_id] & UnitFlags::Hero)
+        else if (unit->Type().Flags() & UnitFlags::Hero)
             border_id = StatusScreen::SmallUnitBorderHero + ((space >> 1) * 2);
         else if (unit->parasites)
             border_id = StatusScreen::SmallUnitBorderParasite + ((space >> 1) * 2);
@@ -122,8 +122,8 @@ static char ss_kills[0x20];
 void StatusScreen_DrawKills(Dialog *dlg)
 {
     Unit *unit = *bw::primary_selected;
-    int unit_id = unit->unit_id;
-    if (unit_id == Unit::Scourge || unit_id == Unit::InfestedTerran || unit->IsKnownHallucination() || (!unit->HasWayOfAttacking() && !unit->kills))
+    auto unit_id = unit->Type();
+    if (unit_id == UnitId::Scourge || unit_id == UnitId::InfestedTerran || unit->IsKnownHallucination() || (!unit->HasWayOfAttacking() && !unit->kills))
     {
         dlg->FindChild(StatusScreen::Kills)->Hide();
     }

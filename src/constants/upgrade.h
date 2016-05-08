@@ -1,75 +1,74 @@
 #ifndef C_UPGRADE_H
 #define C_UPGRADE_H
 
+#include "../upgrade.h"
+
 // @BWAPI: http://code.google.com/p/bwapi/source/browse/trunk/bwapi/BWAPI/Source/BW/UpgradeID.h
 
-namespace Upgrade
+namespace UpgradeId
 {
-    enum Enum
-    {
-        TerranInfantryArmor   = 0x00,
-        TerranVehiclePlating  = 0x01,
-        TerranShipPlating     = 0x02,
-        ZergCarapace          = 0x03,
-        ZergFlyerCarapace     = 0x04,
-        ProtossArmor          = 0x05,
-        ProtossPlating        = 0x06,
-        TerranInfantryWeapons = 0x07,
-        TerranVehicleWeapons  = 0x08,
-        TerranShipWeapons     = 0x09,
-        ZergMeleeAttacks      = 0x0A,
-        ZergMissileAttacks    = 0x0B,
-        ZergFlyerAttacks      = 0x0C,
-        ProtossGroundWeapons  = 0x0D,
-        ProtossAirWeapons     = 0x0E,
-        ProtossPlasmaShields  = 0x0F,
-        U_238Shells           = 0x10,
-        IonThrusters          = 0x11,
-        BurstLasers           = 0x12, // (Unused)
-        TitanReactor          = 0x13, // (SV +50)
-        OcularImplants        = 0x14,
-        MoebiusReactor        = 0x15, // (Ghost +50)
-        ApolloReactor         = 0x16, // (Wraith +50)
-        ColossusReactor       = 0x17, // (BC +50)
-        VentralSacs           = 0x18,
-        Antennae              = 0x19,
-        PneumatizedCarapace   = 0x1A,
-        MetabolicBoost        = 0x1B,
-        AdrenalGlands         = 0x1C,
-        MuscularAugments      = 0x1D,
-        GroovedSpines         = 0x1E,
-        GameteMeiosis         = 0x1F, // (Queen +50)
-        MetasynapticNode      = 0x20, // (Defiler +50)
-        SingularityCharge     = 0x21,
-        LegEnhancements       = 0x22,
-        ScarabDamage          = 0x23,
-        ReaverCapacity        = 0x24,
-        GraviticDrive         = 0x25,
-        SensorArray           = 0x26,
-        GraviticBoosters      = 0x27,
-        KhaydarinAmulet       = 0x28, // (HT +50)
-        ApialSensors          = 0x29,
-        GraviticThrusters     = 0x2A,
-        CarrierCapacity       = 0x2B,
-        KhaydarinCore         = 0x2C, // (Arbiter +50)
-        UnusedUpgrade45       = 0x2D,
-        UnusedUpgrade46       = 0x2E,
-        ArgusJewel            = 0x2F, // (Corsair +50)
-        UnusedUpgrade48       = 0x30,
-        ArgusTalisman         = 0x31, // (DA +50)
-        UnusedUpgrade50       = 0x32,
-        CaduceusReactor       = 0x33, // (Medic +50)
-        ChitinousPlating      = 0x34,
-        AnabolicSynthesis     = 0x35,
-        CharonBooster         = 0x36,
-        UnusedUpgrade55       = 0x37,
-        UnusedUpgrade56       = 0x38,
-        UnusedUpgrade57       = 0x39,
-        UnusedUpgrade58       = 0x3A,
-        UnusedUpgrade59       = 0x3B,
-        GlobalUpgrade60       = 0x3C, // (unused 60)
-        None                  = 0x3D
-    };
+    constexpr UpgradeType TerranInfantryArmor(0x00);
+    constexpr UpgradeType TerranVehiclePlating(0x01);
+    constexpr UpgradeType TerranShipPlating(0x02);
+    constexpr UpgradeType ZergCarapace(0x03);
+    constexpr UpgradeType ZergFlyerCarapace(0x04);
+    constexpr UpgradeType ProtossArmor(0x05);
+    constexpr UpgradeType ProtossPlating(0x06);
+    constexpr UpgradeType TerranInfantryWeapons(0x07);
+    constexpr UpgradeType TerranVehicleWeapons(0x08);
+    constexpr UpgradeType TerranShipWeapons(0x09);
+    constexpr UpgradeType ZergMeleeAttacks(0x0A);
+    constexpr UpgradeType ZergMissileAttacks(0x0B);
+    constexpr UpgradeType ZergFlyerAttacks(0x0C);
+    constexpr UpgradeType ProtossGroundWeapons(0x0D);
+    constexpr UpgradeType ProtossAirWeapons(0x0E);
+    constexpr UpgradeType ProtossPlasmaShields(0x0F);
+    constexpr UpgradeType U_238Shells(0x10);
+    constexpr UpgradeType IonThrusters(0x11);
+    constexpr UpgradeType BurstLasers(0x12);
+    constexpr UpgradeType TitanReactor(0x13);
+    constexpr UpgradeType OcularImplants(0x14);
+    constexpr UpgradeType MoebiusReactor(0x15);
+    constexpr UpgradeType ApolloReactor(0x16);
+    constexpr UpgradeType ColossusReactor(0x17);
+    constexpr UpgradeType VentralSacs(0x18);
+    constexpr UpgradeType Antennae(0x19);
+    constexpr UpgradeType PneumatizedCarapace(0x1A);
+    constexpr UpgradeType MetabolicBoost(0x1B);
+    constexpr UpgradeType AdrenalGlands(0x1C);
+    constexpr UpgradeType MuscularAugments(0x1D);
+    constexpr UpgradeType GroovedSpines(0x1E);
+    constexpr UpgradeType GameteMeiosis(0x1F);
+    constexpr UpgradeType MetasynapticNode(0x20);
+    constexpr UpgradeType SingularityCharge(0x21);
+    constexpr UpgradeType LegEnhancements(0x22);
+    constexpr UpgradeType ScarabDamage(0x23);
+    constexpr UpgradeType ReaverCapacity(0x24);
+    constexpr UpgradeType GraviticDrive(0x25);
+    constexpr UpgradeType SensorArray(0x26);
+    constexpr UpgradeType GraviticBoosters(0x27);
+    constexpr UpgradeType KhaydarinAmulet(0x28);
+    constexpr UpgradeType ApialSensors(0x29);
+    constexpr UpgradeType GraviticThrusters(0x2A);
+    constexpr UpgradeType CarrierCapacity(0x2B);
+    constexpr UpgradeType KhaydarinCore(0x2C);
+    constexpr UpgradeType UnusedUpgrade45(0x2D);
+    constexpr UpgradeType UnusedUpgrade46(0x2E);
+    constexpr UpgradeType ArgusJewel(0x2F);
+    constexpr UpgradeType UnusedUpgrade48(0x30);
+    constexpr UpgradeType ArgusTalisman(0x31);
+    constexpr UpgradeType UnusedUpgrade50(0x32);
+    constexpr UpgradeType CaduceusReactor(0x33);
+    constexpr UpgradeType ChitinousPlating(0x34);
+    constexpr UpgradeType AnabolicSynthesis(0x35);
+    constexpr UpgradeType CharonBooster(0x36);
+    constexpr UpgradeType UnusedUpgrade55(0x37);
+    constexpr UpgradeType UnusedUpgrade56(0x38);
+    constexpr UpgradeType UnusedUpgrade57(0x39);
+    constexpr UpgradeType UnusedUpgrade58(0x3A);
+    constexpr UpgradeType UnusedUpgrade59(0x3B);
+    constexpr UpgradeType GlobalUpgrade60(0x3C);
+    constexpr UpgradeType None(0x3D);
 }
 
 #endif // C_UPGRADE_H

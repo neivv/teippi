@@ -82,6 +82,15 @@ class Load;
 class GrpFrameHeader;
 class GameTests;
 
+class UnitType;
+class WeaponType;
+class FlingyType;
+class SpriteType;
+class ImageType;
+class UpgradeType;
+class TechType;
+class OrderType;
+
 struct Contour;
 struct PathingData;
 struct Surface;
@@ -109,6 +118,7 @@ struct MapDirEntry;
 struct MapDl;
 struct Event;
 struct CycleStruct;
+struct DatTable;
 
 // Trigger-related callback param structures
 struct KillUnitArgs;

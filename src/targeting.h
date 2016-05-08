@@ -5,7 +5,7 @@
 
 Unit *FindUnitAtPoint(int x, int y);
 
-void SendRightClickCommand(Unit *unit, uint16_t x, uint16_t y, uint16_t unit_id, uint8_t queued);
+void SendRightClickCommand(Unit *unit, uint16_t x, uint16_t y, UnitType unit_id, bool queued);
 
 void ClearOrderTargetingIfNeeded();
 void ClearOrderTargeting();
@@ -16,9 +16,9 @@ void Command_Targeted(const uint8_t *buf);
 void GameScreenRClickEvent(Event *event);
 void GameScreenLClickEvent_Targeting(Event *event);
 
-void DoTargetedCommand(int x, int y, Unit *target, int fow_unit);
+void DoTargetedCommand(int x, int y, Unit *target, UnitType fow_unit);
 
-void Test_SendTargetedOrderCommand(uint8_t order, int x, int y, Unit *target, int fow_unit, uint8_t queued);
+void Test_SendTargetedOrderCommand(uint8_t order, int x, int y, Unit *target, UnitType fow_unit, uint8_t queued);
 
 namespace RightClickAction
 {

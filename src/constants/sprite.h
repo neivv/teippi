@@ -1,25 +1,30 @@
+#ifndef CONSTANTS_SPRITE_H
+#define CONSTANTS_SPRITE_H
 
-enum
+#include "../dat.h"
+
+namespace SpriteId
 {
-    LastScDoodad = 0x81,
-    Drone = 0x8c,
-    ZergBuildingSpawn_Small = 0xb6,
-    Probe = 0xc2,
-    NukeDot = 0xe7,
-    SCV = 0xef,
-    CursorMarker = 0x13e,
-    LandingDust1 = 0x143,
-    StasisField = 0x169,
-    Ensnare = 0x16c,
-    HallucinationDeath = 0x176,
-    BunkerOverlay = 0x179,
-    FlameThrower = 0x17a,
-    Recall = 0x17b,
-    FirstBwDoodad = 0x182,
-    LastBwDoodad = 0x1e0,
-    Medic = 0x1e9,
-    FeedbackHit_Small = 0x1f4,
-    HaloRocketsTrail = 0x1f9,
-    Maelstrom = 0x202
-};
+    constexpr SpriteType LastScDoodad(0x81);
+    constexpr SpriteType Drone(0x8c);
+    constexpr SpriteType ZergBuildingSpawn_Small(0xb6);
+    constexpr SpriteType Probe(0xc2);
+    constexpr SpriteType NukeDot(0xe7);
+    constexpr SpriteType SCV(0xef);
+    constexpr SpriteType CursorMarker(0x13e);
+    constexpr SpriteType LandingDust1(0x143);
+    constexpr SpriteType StasisField(0x169);
+    constexpr SpriteType Ensnare(0x16c);
+    constexpr SpriteType HallucinationDeath(0x176);
+    constexpr SpriteType BunkerOverlay(0x179);
+    constexpr SpriteType FlameThrower(0x17a);
+    constexpr SpriteType Recall(0x17b);
+    constexpr SpriteType FirstBwDoodad(0x182);
+    constexpr SpriteType LastBwDoodad(0x1e0);
+    constexpr SpriteType Medic(0x1e9);
+    constexpr SpriteType FeedbackHit_Small(0x1f4);
+    constexpr SpriteType HaloRocketsTrail(0x1f9);
+    constexpr SpriteType Maelstrom(0x202);
+}
 
+#endif

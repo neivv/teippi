@@ -1,27 +1,30 @@
 #include "ai.h"
 
+#include <string.h>
+
+#include "constants/order.h"
+#include "constants/tech.h"
+#include "constants/unit.h"
+#include "assert.h"
+#include "bullet.h"
+#include "limits.h"
+#include "log.h"
 #include "offsets_hooks.h"
 #include "offsets.h"
-#include "unit.h"
 #include "order.h"
-#include "player.h"
-#include "tech.h"
-#include "pathing.h"
-#include "sprite.h"
-#include "yms.h"
 #include "patchmanager.h"
-#include "bullet.h"
-#include "unitlist.h"
-#include "thread.h"
-#include "assert.h"
-#include "limits.h"
+#include "pathing.h"
+#include "player.h"
 #include "rng.h"
+#include "sprite.h"
+#include "tech.h"
+#include "thread.h"
+#include "unit.h"
+#include "unitlist.h"
 #include "unitsearch.h"
+#include "yms.h"
 
-#include "log.h"
 #include "perfclock.h"
-
-#include <string.h>
 
 using std::get;
 
@@ -39,12 +42,12 @@ static void MedicRemove(Unit *medic)
 {
     if (!IsActivePlayer(medic->player))
         return;
-    if (medic->unit_id == Unit::Medic && medic == bw::player_ai[medic->player].free_medic)
+    if (medic->Type() == UnitId::Medic && medic == bw::player_ai[medic->player].free_medic)
     {
-        bw::player_ai[medic->player].free_medic = 0;
+        bw::player_ai[medic->player].free_medic = nullptr;
         for (Unit *unit : bw::first_player_unit[medic->player])
         {
-            if (unit->unit_id == Unit::Medic && unit->ai)
+            if (unit->Type() == UnitId::Medic && unit->ai != nullptr)
             {
                 bw::player_ai[medic->player].free_medic = unit;
                 break;
@@ -86,7 +89,7 @@ static void SetAttackTarget(Unit *unit, Unit *new_target, bool accept_if_sieged)
     else
         AttackUnit(unit, new_target, true, accept_if_sieged);
 
-    if (unit->HasHangar() && !unit->IsInAttackRange(new_target))
+    if (unit->Type().HasHangar() && !unit->IsInAttackRange(new_target))
         unit->flags |= UnitStatus::Disabled2;
 }
 
@@ -99,13 +102,17 @@ bool UpdateAttackTarget(Unit *unit, bool accept_if_sieged, bool accept_critters,
 
     if (unit->ai == nullptr || !unit->HasWayOfAttacking())
         return false;
-    if (unit->order_queue_begin && unit->order_queue_begin->order_id == Order::Patrol)
+    if (unit->order_queue_begin && unit->order_queue_begin->order_id == OrderId::Patrol)
         return false;
-    if (unit->order == Order::Pickup4)
+    if (unit->OrderType() == OrderId::Pickup4)
     {
         must_reach = true;
-        if (unit->previous_attacker == nullptr && unit->order_queue_begin && unit->order_queue_begin->order_id == Order::AttackUnit)
+        if (unit->previous_attacker == nullptr &&
+                unit->order_queue_begin != nullptr &&
+                unit->order_queue_begin->Type() == OrderId::AttackUnit)
+        {
             return false;
+        }
     }
     if (unit->target != nullptr && unit->flags & UnitStatus::Reacts && unit->move_target_unit != nullptr)
     {
@@ -136,7 +143,7 @@ bool UpdateAttackTarget(Unit *unit, bool accept_if_sieged, bool accept_critters,
     }
 
     Unit *previous_attack_target = nullptr;
-    if (orders_dat_use_weapon_targeting[unit->order] && unit->target != nullptr)
+    if (OrderType(unit->order).UseWeaponTargeting() && unit->target != nullptr)
         previous_attack_target = ctx.CheckValid(unit->target);
 
     if (unit->previous_attacker != nullptr)
@@ -212,7 +219,7 @@ void ProgressScripts()
 
 void RemoveTownGasReferences(Unit *unit)
 {
-    if (units_dat_flags[unit->unit_id] & UnitFlags::ResourceContainer)
+    if (unit->Type().Flags() & UnitFlags::ResourceContainer)
     {
         for (unsigned int i = 0; i < Limits::ActivePlayers; i++)
         {
@@ -274,7 +281,7 @@ void AddGuardAiToUnit(Unit *unit)
         return;
     if (bw::players[unit->player].type != 1)
         return;
-    if (units_dat_ai_flags[unit->unit_id] & 0x2)
+    if (unit->Type().AiFlags() & 0x2)
         return;
 
     for (GuardAi *ai = needed_guards[unit->player]; ai; ai = ai->list.next)
@@ -327,24 +334,24 @@ void UpdateGuardNeeds(int player)
                 uint32_t time;
                 if (ai->unk_count)
                 {
-                    int unit_id = ai->unit_id;
-                    if (unit_id == Unit::SiegeTank_Sieged)
-                        unit_id = Unit::SiegeTankTankMode;
-                    time = units_dat_build_time[unit_id];
-                    switch (unit_id)
+                    UnitType unit_id(ai->unit_id);
+                    if (unit_id == UnitId::SiegeTank_Sieged)
+                        unit_id = UnitId::SiegeTankTankMode;
+                    time = unit_id.BuildTime();
+                    switch (unit_id.Raw())
                     {
-                        case Unit::Guardian:
-                        case Unit::Devourer:
-                            time += units_dat_build_time[Unit::Mutalisk];
+                        case UnitId::Guardian:
+                        case UnitId::Devourer:
+                            time += UnitId::Mutalisk.BuildTime();
                         break;
-                        case Unit::Hydralisk:
-                            time += units_dat_build_time[Unit::Hydralisk];
+                        case UnitId::Hydralisk:
+                            time += UnitId::Hydralisk.BuildTime();
                         break;
-                        case Unit::Archon:
-                            time += units_dat_build_time[Unit::HighTemplar];
+                        case UnitId::Archon:
+                            time += UnitId::HighTemplar.BuildTime();
                         break;
-                        case Unit::DarkArchon:
-                            time += units_dat_build_time[Unit::DarkTemplar];
+                        case UnitId::DarkArchon:
+                            time += UnitId::DarkTemplar.BuildTime();
                         break;
                     }
                     time = ai->previous_update + time / 15 + 5;
@@ -359,7 +366,7 @@ void UpdateGuardNeeds(int player)
             Region *region = GetAiRegion(player, ai->unk_pos);
             if (region->state != 3 && !region->air_target && !region->ground_target && !(region->flags & 0x20))
             {
-                if (ai->unit_id == Unit::Zergling || ai->unit_id == Unit::Scourge)
+                if (UnitType(ai->unit_id) == UnitId::Zergling || UnitType(ai->unit_id) == UnitId::Scourge)
                 {
                     Unit *unit = FindNearestAvailableMilitary(ai->unit_id, ai->unk_pos.x, ai->unk_pos.y, player);
                     if (unit)
@@ -369,7 +376,7 @@ void UpdateGuardNeeds(int player)
                         ai->home = ai->unk_pos;
                         ai->parent = unit;
                         unit->ai = (UnitAi *)ai;
-                        unit->IssueOrderTargetingNothing(Order::ComputerAi);
+                        unit->IssueOrderTargetingNothing(OrderId::ComputerAi);
                         continue;
                     }
                 }
@@ -419,7 +426,7 @@ MilitaryAi::MilitaryAi()
 
 void AddUnitAi(Unit *unit, Town *town)
 {
-    if (unit->IsWorker())
+    if (unit->Type().IsWorker())
     {
         WorkerAi *ai = new WorkerAi;
         ai->list.Add(town->first_worker);
@@ -429,8 +436,10 @@ void AddUnitAi(Unit *unit, Town *town)
         unit->ai = (UnitAi *)ai;
         unit->worker.current_harvest_target = 0;
     }
-    else if (((units_dat_flags[unit->unit_id] & UnitFlags::Building) && (unit->unit_id != Unit::VespeneGeyser)) ||
-             (unit->unit_id == Unit::Larva) || (unit->unit_id == Unit::Egg) || (unit->unit_id == Unit::Overlord))
+    else if ((unit->Type().IsBuilding() && unit->Type() != UnitId::VespeneGeyser) ||
+             unit->Type() == UnitId::Larva ||
+             unit->Type() == UnitId::Egg ||
+             unit->Type() == UnitId::Overlord)
     {
         BuildingAi *ai = new BuildingAi;
         ai->list.Add(town->first_building);
@@ -438,12 +447,12 @@ void AddUnitAi(Unit *unit, Town *town)
         ai->town = town;
         unit->ai = (UnitAi *)ai;
 
-        if (unit->unit_id == Unit::Hatchery || unit->unit_id == Unit::Lair || unit->unit_id == Unit::Hive)
+        if (unit->Type() == UnitId::Hatchery || unit->Type() == UnitId::Lair || unit->Type() == UnitId::Hive)
         {
             if (unit->flags & UnitStatus::Completed)
             {
-                unit->IssueOrderTargetingNothing(Order::ComputerAi);
-                unit->IssueSecondaryOrder(Order::SpreadCreep);
+                unit->IssueOrderTargetingNothing(OrderId::ComputerAi);
+                unit->IssueSecondaryOrder(OrderId::SpreadCreep);
             }
         }
         if (~bw::player_ai[town->player].flags & 0x20)
@@ -452,15 +461,15 @@ void AddUnitAi(Unit *unit, Town *town)
         }
         else if ((unit->flags & UnitStatus::Building))
         {
-            switch (unit->unit_id)
+            switch (unit->Type().Raw())
             {
-                case Unit::MissileTurret:
-                case Unit::Bunker:
-                case Unit::CreepColony:
-                case Unit::SunkenColony:
-                case Unit::SporeColony:
-                case Unit::Pylon:
-                case Unit::PhotonCannon:
+                case UnitId::MissileTurret:
+                case UnitId::Bunker:
+                case UnitId::CreepColony:
+                case UnitId::SunkenColony:
+                case UnitId::SporeColony:
+                case UnitId::Pylon:
+                case UnitId::PhotonCannon:
                 break;
                 default:
                     Ai_UpdateRegionStateUnk(town->player, unit);
@@ -475,25 +484,25 @@ void AddUnitAi(Unit *unit, Town *town)
             town->gas_buildings[1] = 0;
             town->gas_buildings[2] = 0;
         }
-        int main_building = Unit::None;
+        UnitType main_building = UnitId::None;
         switch (bw::players[town->player].race)
         {
             case 0:
-                main_building = Unit::Hatchery;
+                main_building = UnitId::Hatchery;
             break;
             case 1:
-                main_building = Unit::CommandCenter;
+                main_building = UnitId::CommandCenter;
             break;
             case 2:
-                main_building = Unit::Nexus;
+                main_building = UnitId::Nexus;
             break;
         }
-        if (unit->unit_id == main_building || unit->IsResourceDepot())
+        if (unit->Type() == main_building || unit->IsResourceDepot())
         {
             if (!town->main_building)
                 town->main_building = unit;
         }
-        else if (unit->unit_id == Unit::Extractor || unit->unit_id == Unit::Refinery || unit->unit_id == Unit::Assimilator)
+        else if (unit->Type().IsGasBuilding())
         {
             for (int i = 0; i < 3; i++)
             {
@@ -546,9 +555,8 @@ void AddMilitaryAi(Unit *unit, Region *region, bool always_use_this_region)
     ai->parent = unit;
     unit->ai = (UnitAi *)ai;
     Pathing::Region *pathing_region = (*bw::pathing)->regions + region->region_id;
-    int order;
-    unit->unit_id == Unit::Medic ? order = Order::HealMove : order = Order::AiAttackMove;
-    ProgressMilitaryAi(unit, order, pathing_region->x >> 8, pathing_region->y >> 8);
+    OrderType order = unit->Type() == UnitId::Medic ? OrderId::HealMove : OrderId::AiAttackMove;
+    ProgressMilitaryAi(unit, order.Raw(), pathing_region->x >> 8, pathing_region->y >> 8);
     if (IsInAttack(unit))
         Ai_UpdateSlowestUnitInRegion(region);
 }
@@ -569,7 +577,6 @@ void UnitAi::Delete()
         case 4:
             delete (MilitaryAi *)this;
         break;
-
     }
 }
 
@@ -598,7 +605,7 @@ void DeleteTown(Town *town)
 
     for (Unit *unit = *bw::first_active_unit; unit; unit = unit->next())
     {
-        if (units_dat_flags[unit->unit_id] & UnitFlags::ResourceContainer)
+        if (unit->Type().Flags() & UnitFlags::ResourceContainer)
             unit->resource.ai_unk = 0;
     }
     if (town->resource_area)
@@ -647,7 +654,7 @@ void SetSuicideTarget(Unit *unit)
 {
     if ((~unit->flags & UnitStatus::Reacts && ~unit->flags & UnitStatus::Burrowed) || unit->IsDisabled())
         return;
-    if (unit->unit_id == Unit::Arbiter && unit->ai)
+    if (unit->Type() == UnitId::Arbiter && unit->ai != nullptr)
         return;
 
     int target_player_count = 0;
@@ -669,8 +676,9 @@ void SetSuicideTarget(Unit *unit)
     }
     if (target_player_count == 0)
         return;
-    Unit *target = 0;
-    int own_id = unit->unit_id;
+
+    Unit *target = nullptr;
+    auto own_id = unit->Type();
     bool can_attack = unit->HasWayOfAttacking();
     for (int i = Rand(0x36) % target_player_count; i < target_player_count; i++)
     {
@@ -679,7 +687,7 @@ void SetSuicideTarget(Unit *unit)
 
         for (Unit *enemy : bw::first_player_unit[player])
         {
-            if (!enemy->sprite || enemy->order == Order::Die)
+            if (!enemy->sprite || enemy->OrderType() == OrderId::Die)
                 continue;
             if (can_attack && !unit->CanAttackUnit(enemy))
                 continue;
@@ -700,14 +708,14 @@ void SetSuicideTarget(Unit *unit)
 
     if (can_attack)
     {
-        if (target->unit_id == Unit::Interceptor && target->interceptor.parent)
+        if (target->Type() == UnitId::Interceptor && target->interceptor.parent != nullptr)
             target = target->interceptor.parent;
         unit->Attack(target);
         if (unit->HasSubunit())
             unit->subunit->Attack(target);
 
         // Is this called ever because sieged tanks don't seem to react?
-        if (unit->ai && own_id == Unit::SiegeTank_Sieged && unit->order != Order::TankMode && !unit->IsInAttackRange(target))
+        if (unit->ai && own_id == UnitId::SiegeTank_Sieged && unit->OrderType() != OrderId::TankMode && !unit->IsInAttackRange(target))
         {
             if (HasTargetInRange(unit))
             {
@@ -715,14 +723,14 @@ void SetSuicideTarget(Unit *unit)
             }
             else
             {
-                unit->IssueOrderTargetingNothing(Order::TankMode);
-                unit->AppendOrderTargetingUnit(units_dat_attack_unit_order[Unit::SiegeTankTankMode], target);
+                unit->IssueOrderTargetingNothing(OrderId::TankMode);
+                unit->AppendOrderTargetingUnit(UnitId::SiegeTankTankMode.AttackUnitOrder(), target);
             }
         }
     }
     else
     {
-        unit->IssueOrderTargetingUnit(Order::Move, target);
+        unit->IssueOrderTargetingUnit(OrderId::Move, target);
     }
 
     RemoveUnitAi(unit, false);
@@ -730,7 +738,7 @@ void SetSuicideTarget(Unit *unit)
 
 void SetFinishedUnitAi(Unit *unit, Unit *parent)
 {
-    if (unit->unit_id == Unit::Guardian || unit->unit_id == Unit::Devourer)
+    if (unit->Type() == UnitId::Guardian || unit->Type() == UnitId::Devourer)
         return;
 
     if (unit->flags & UnitStatus::Hallucination)
@@ -738,12 +746,15 @@ void SetFinishedUnitAi(Unit *unit, Unit *parent)
         AddMilitaryAi(unit, GetAiRegion(unit), true);
         return;
     }
-    else if (unit->unit_id == Unit::Lurker || unit->unit_id == Unit::Archon || unit->unit_id == Unit::DarkArchon
-             || unit->unit_id == Unit::NuclearMissile || unit->unit_id == Unit::Observer)
+    else if (unit->Type() == UnitId::Lurker ||
+            unit->Type() == UnitId::Archon ||
+            unit->Type() == UnitId::DarkArchon ||
+            unit->Type() == UnitId::NuclearMissile ||
+            unit->Type() == UnitId::Observer)
     {
         return;
     }
-    if (!parent->ai)
+    if (parent->ai == nullptr)
     {
         return;
     }
@@ -848,22 +859,24 @@ void ForceGuardAiRefresh(uint8_t player, uint16_t unit_id)
     {
         if (!ai->previous_update)
             continue;
-        int ai_unit_id = ai->unit_id;
-        if (ai_unit_id == Unit::SiegeTank_Sieged)
-            ai_unit_id = Unit::SiegeTankTankMode;
-        if (unit_id != ai_unit_id)
+        UnitType ai_unit_id(ai->unit_id);
+        if (ai_unit_id == UnitId::SiegeTank_Sieged)
+            ai_unit_id = UnitId::SiegeTankTankMode;
+        if (UnitType(unit_id) != ai_unit_id)
             continue;
         ai->previous_update = 1;
     }
 }
 
-Unit *FindAvailableUnit(int player, int unit_id)
+Unit *FindAvailableUnit(int player, UnitType unit_id)
 {
     for (Unit *unit : bw::first_player_unit[player])
     {
-        if (unit->unit_id != unit_id)
+        if (unit->Type() != unit_id)
             continue;
-        if (!unit->sprite || unit->order == Order::Die || unit->target || unit->previous_attacker || !unit->ai)
+        if (unit->sprite == nullptr || unit->OrderType() == OrderId::Die)
+            continue;
+        if (unit->target != nullptr || unit->previous_attacker != nullptr || unit->ai == nullptr)
             continue;
         if (unit->ai->type == 1)
         {
@@ -885,16 +898,18 @@ void PopSpendingRequest(int player, bool also_available_resources)
     Ai_PopSpendingRequest(player);
 }
 
-bool Merge(int player, int unit_id, int order, const bool check_energy)
+bool Merge(int player, UnitType unit_id, OrderType order, const bool check_energy)
 {
     int count = 0;
     Unit *units[2];
     Unit *high_energy = 0;
     for (Unit *unit : bw::first_player_unit[player])
     {
-        if (unit->unit_id != unit_id || unit->order == order)
+        if (unit->Type() != unit_id || unit->OrderType() == order)
             continue;
-        if (!unit->sprite || unit->order == Order::Die || unit->target || unit->previous_attacker || !unit->ai)
+        if (unit->sprite == nullptr || unit->OrderType() == OrderId::Die)
+            continue;
+        if (unit->target != nullptr || unit->previous_attacker != nullptr || unit->ai == nullptr)
             continue;
         if (~unit->flags & UnitStatus::Completed)
             continue;
@@ -950,47 +965,49 @@ bool Merge(int player, int unit_id, int order, const bool check_energy)
     return true;
 }
 
-static bool IsAtBuildLimit(int player, int unit_id)
+static bool IsAtBuildLimit(int player, UnitType unit_id)
 {
-    int limit = bw::player_ai[player].unit_build_limits[unit_id];
+    int limit = bw::player_ai[player].unit_build_limits[unit_id.Raw()];
     if (!limit)
         return false;
     if (limit == 255)
         return true;
-    int count = bw::all_units_count[unit_id][player];
-    if (unit_id == Unit::SiegeTankTankMode)
-        count += bw::all_units_count[Unit::SiegeTank_Sieged][player];
+    int count = bw::all_units_count[unit_id.Raw()][player];
+    if (unit_id == UnitId::SiegeTankTankMode)
+        count += bw::all_units_count[UnitId::SiegeTank_Sieged.Raw()][player];
     return count >= limit;
 }
 
 int SpendReq_TrainUnit(int player, Unit *unit, int no_retry)
 {
+    using namespace UnitId;
+
     SpendingRequest *req = bw::player_ai[player].requests;
     Unit *parent = unit;
     switch (req->unit_id)
     {
-        case Unit::Guardian:
-        case Unit::Devourer:
-        case Unit::Lurker:
-            if (req->unit_id == Unit::Lurker)
-                parent = FindAvailableUnit(player, Unit::Hydralisk);
+        case Guardian:
+        case Devourer:
+        case Lurker:
+            if (UnitType(req->unit_id) == Lurker)
+                parent = FindAvailableUnit(player, Hydralisk);
             else
-                parent = FindAvailableUnit(player, Unit::Mutalisk);
-            if (!parent)
+                parent = FindAvailableUnit(player, Mutalisk);
+            if (parent == nullptr)
             {
                 PopSpendingRequest(player, false);
                 return 0;
             }
         break;
-        case Unit::Archon:
-            if (!Merge(player, Unit::HighTemplar, Order::WarpingArchon, true))
+        case Archon:
+            if (!Merge(player, HighTemplar, OrderId::WarpingArchon, true))
                 PopSpendingRequest(player, false);
             else
                 PopSpendingRequest(player, true);
             return 0;
         break;
-        case Unit::DarkArchon:
-            if (!Merge(player, Unit::DarkTemplar, Order::WarpingDarkArchon, false))
+        case DarkArchon:
+            if (!Merge(player, DarkTemplar, OrderId::WarpingDarkArchon, false))
                 PopSpendingRequest(player, false);
             else
                 PopSpendingRequest(player, true);
@@ -1006,7 +1023,7 @@ int SpendReq_TrainUnit(int player, Unit *unit, int no_retry)
                 PopSpendingRequest(player, false);
             return 0;
         }
-        if (IsAtBuildLimit(player, req->unit_id))
+        if (IsAtBuildLimit(player, UnitType(req->unit_id)))
         {
             PopSpendingRequest(player, false);
             return 0;
@@ -1036,10 +1053,10 @@ int SpendReq_TrainUnit(int player, Unit *unit, int no_retry)
             }
         }
         PopSpendingRequest(player, true);
-        if (parent->unit_id == Unit::Larva || parent->unit_id == Unit::Hydralisk || parent->unit_id == Unit::Mutalisk)
-            parent->IssueOrderTargetingNothing(Order::UnitMorph);
+        if (parent->Type() == Larva || parent->Type() == Hydralisk || parent->Type() == Mutalisk)
+            parent->IssueOrderTargetingNothing(OrderId::UnitMorph);
         else
-            parent->IssueSecondaryOrder(Order::Train);
+            parent->IssueSecondaryOrder(OrderId::Train);
         return 1;
     }
     else
@@ -1067,9 +1084,11 @@ void SuicideMission(int player, uint8_t random)
     {
         for (Unit *unit : bw::first_player_unit[player])
         {
-            if (!unit->sprite || unit->order == Order::Die || units_dat_flags[unit->unit_id] & UnitFlags::Subunit)
+            if (!unit->sprite || unit->OrderType() == OrderId::Die || unit->Type().IsSubunit())
                 continue;
-            if (unit->unit_id == Unit::NuclearMissile || unit->unit_id == Unit::Larva || unit->sprite->IsHidden())
+            if (unit->Type() == UnitId::NuclearMissile || unit->Type() == UnitId::Larva)
+                continue;
+            if (unit->sprite->IsHidden())
                 continue;
             if (Ai_ShouldKeepTarget(unit, nullptr))
                 continue;
@@ -1081,7 +1100,7 @@ void SuicideMission(int player, uint8_t random)
         Region *unk_region = nullptr;
         for (Unit *unit : bw::first_player_unit[player])
         {
-            if (!unit->sprite || unit->order == Order::Die || !unit->ai || unit->IsTransport())
+            if (!unit->sprite || unit->OrderType() == OrderId::Die || !unit->ai || unit->IsTransport())
                 continue;
             if (unit->flags & UnitStatus::InBuilding && bw::player_ai[player].flags & 0x20)
                 continue;
@@ -1124,10 +1143,10 @@ void AiScript_SwitchRescue(uint8_t player)
     }
     for (Unit *unit : bw::first_player_unit[player])
     {
-        if (!unit->sprite || unit->order == Order::Die)
+        if (!unit->sprite || unit->OrderType() == OrderId::Die)
             continue;
         RemoveUnitAi(unit, false);
-        unit->IssueOrderTargetingNothing(Order::RescuePassive);
+        unit->IssueOrderTargetingNothing(OrderId::RescuePassive);
     }
 }
 
@@ -1135,11 +1154,12 @@ static void AiScript_MoveDt(uint8_t player, int x, int y)
 {
     for (Unit *unit : bw::first_player_unit[player])
     {
-        if (!unit->sprite || unit->order == Order::Die)
+        if (unit->sprite == nullptr || unit->OrderType() == OrderId::Die)
             continue;
-        if (unit->unit_id != Unit::DarkTemplar && unit->unit_id != Unit::DarkTemplarHero) // O.o Checks normal dt
+        // O.o Checks normal dt
+        if (unit->Type() != UnitId::DarkTemplar && unit->Type() != UnitId::DarkTemplarHero)
             continue;
-        if (unit->ai)
+        if (unit->ai != nullptr)
             RemoveUnitAi(unit, false);
         AddMilitaryAi(unit, GetAiRegion(unit), true);
     }
@@ -1150,10 +1170,10 @@ static int RemoveWorkerOrBuildingAi(Unit *unit, bool only_building)
     // Seems to be an unused arg
     Assert(!only_building);
     RemoveTownGasReferences(unit);
-    if (!unit->ai || (unit->ai->type != 2 && unit->ai->type != 3))
+    if (unit->ai == nullptr || (unit->ai->type != 2 && unit->ai->type != 3))
         return 0;
     Town *town;
-    if (!only_building && unit->IsWorker())
+    if (!only_building && unit->Type().IsWorker())
     {
         WorkerAi *ai = (WorkerAi *)unit->ai;
         Assert(ai->type == 2);
@@ -1219,7 +1239,7 @@ bool ShouldCancelDamaged(const Unit *unit)
 {
     if (unit->player >= Limits::ActivePlayers || bw::players[unit->player].type != 1)
         return false;
-    if ((units_dat_flags[unit->unit_id] & UnitFlags::Building) && unit->ai)
+    if (unit->Type().IsBuilding() && unit->ai != nullptr)
     {
         bw::player_ai[unit->player].unk_count = *bw::elapsed_seconds;
         ((BuildingAi *)unit->ai)->town->building_was_hit = 1;
@@ -1235,24 +1255,24 @@ bool ShouldCancelDamaged(const Unit *unit)
 void EscapeStaticDefence(Unit *own, Unit *attacker)
 {
     Assert(IsComputerPlayer(own->player));
-    if (own->order == Order::Move)
+    if (own->OrderType() == OrderId::Move)
         return;
     if (~attacker->flags & UnitStatus::Reacts && !(bw::player_ai[own->player].flags & 0x20))
     {
         switch (own->unit_id)
         {
-            case Unit::Arbiter:
-            case Unit::Wraith:
-            case Unit::Mutalisk:
+            case UnitId::Arbiter:
+            case UnitId::Wraith:
+            case UnitId::Mutalisk:
                 if (own->GetHealth() < own->GetMaxHealth() / 4)
                 {
                     if (Ai_ReturnToNearestBaseForced(own))
                         return;
                 }
             break;
-            case Unit::Battlecruiser:
-            case Unit::Scout:
-            case Unit::Carrier:
+            case UnitId::Battlecruiser:
+            case UnitId::Scout:
+            case UnitId::Carrier:
                 if (own->GetHealth() < own->GetMaxHealth() * 2 / 3)
                 {
                     if (Ai_ReturnToNearestBaseForced(own))
@@ -1266,16 +1286,16 @@ void EscapeStaticDefence(Unit *own, Unit *attacker)
 bool TryDamagedFlee(Unit *own, Unit *attacker)
 {
     Assert(IsComputerPlayer(own->player));
-    if (own->order == Order::Move)
+    if (own->OrderType() == OrderId::Move)
         return false;
-    if (own->unit_id == Unit::Carrier && (own->carrier.in_hangar_count + own->carrier.out_hangar_count) <= 2)
+    if (own->Type() == UnitId::Carrier && (own->carrier.in_hangar_count + own->carrier.out_hangar_count) <= 2)
     {
         if (Ai_ReturnToNearestBaseForced(own))
             return true;
     }
-    if (own->unit_id == Unit::Lurker && !(own->flags & UnitStatus::Burrowed))
+    if (own->Type() == UnitId::Lurker && !(own->flags & UnitStatus::Burrowed))
     {
-        if (own->order != Order::Burrow && own->order != Order::Unburrow)
+        if (own->OrderType() != OrderId::Burrow && own->OrderType() != OrderId::Unburrow)
         {
             if (Flee(own, attacker))
                 return true;
@@ -1289,9 +1309,9 @@ bool TryDamagedFlee(Unit *own, Unit *attacker)
                 return true;
         }
     }
-    if (own->IsWorker() && own->target != attacker)
+    if (own->Type().IsWorker() && own->target != attacker)
     {
-        if (!attacker->IsWorker() && attacker->unit_id != Unit::Zergling)
+        if (!attacker->Type().IsWorker() && attacker->Type() != UnitId::Zergling)
         {
             // Sc calls this but it bugs and always return false
             // if (!FightsWithWorkers(player))
@@ -1314,23 +1334,23 @@ void Hide(Unit *own)
 {
     switch (own->unit_id)
     {
-        case Unit::Ghost:
-        case Unit::SarahKerrigan:
-        case Unit::SamirDuran:
-        case Unit::AlexeiStukov:
-        case Unit::InfestedDuran:
-        case Unit::InfestedKerrigan:
-            if (CanUseTech(Tech::PersonnelCloaking, own, own->player) == 1)
-                own->Cloak(Tech::PersonnelCloaking);
+        case UnitId::Ghost:
+        case UnitId::SarahKerrigan:
+        case UnitId::SamirDuran:
+        case UnitId::AlexeiStukov:
+        case UnitId::InfestedDuran:
+        case UnitId::InfestedKerrigan:
+            if (CanUseTech(TechId::PersonnelCloaking, own, own->player) == 1)
+                own->Cloak(TechId::PersonnelCloaking);
         break;
-        case Unit::Wraith:
-        case Unit::TomKazansky:
-            if (CanUseTech(Tech::CloakingField, own, own->player) == 1)
-                own->Cloak(Tech::CloakingField);
+        case UnitId::Wraith:
+        case UnitId::TomKazansky:
+            if (CanUseTech(TechId::CloakingField, own, own->player) == 1)
+                own->Cloak(TechId::CloakingField);
         break;
-        case Unit::Lurker:
-            if (~own->flags & UnitStatus::Burrowed && own->order != Order::Burrow)
-                own->IssueOrderTargetingNothing(Order::Burrow);
+        case UnitId::Lurker:
+            if (~own->flags & UnitStatus::Burrowed && own->OrderType() != OrderId::Burrow)
+                own->IssueOrderTargetingNothing(OrderId::Burrow);
         break;
     }
 }

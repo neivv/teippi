@@ -1,20 +1,22 @@
 #include "ai_hit_reactions.h"
 
-#include "offsets.h"
-#include "limits.h"
-#include "perfclock.h"
-#include "yms.h"
+#include <windows.h>
+
+#include "constants/order.h"
+#include "constants/unit.h"
+#include "constants/weapon.h"
 #include "ai.h"
 #include "bullet.h"
-#include "unit.h"
-#include "unitsearch.h"
+#include "limits.h"
+#include "log.h"
+#include "offsets.h"
 #include "order.h"
 #include "pathing.h"
-
+#include "perfclock.h"
 #include "player.h"
-#include "log.h"
-
-#include <windows.h>
+#include "unit.h"
+#include "unitsearch.h"
+#include "yms.h"
 
 using std::get;
 
@@ -39,20 +41,21 @@ class BestPickedTarget
 };
 
 
-static bool IsUsableSpellOrder(int order)
+static bool IsUsableSpellOrder(OrderType order)
 {
-    switch (order)
+    using namespace OrderId;
+    switch (order.Raw())
     {
-        case Order::YamatoGun:
-        case Order::Lockdown:
-        case Order::DarkSwarm:
-        case Order::SpawnBroodlings:
-        case Order::EmpShockwave:
-        case Order::PsiStorm:
-        case Order::Irradiate:
-        case Order::Plague:
-        case Order::Ensnare:
-        case Order::StasisField:
+        case YamatoGun:
+        case Lockdown:
+        case DarkSwarm:
+        case SpawnBroodlings:
+        case EmpShockwave:
+        case PsiStorm:
+        case Irradiate:
+        case Plague:
+        case Ensnare:
+        case StasisField:
             return true;
         default:
             return false;
@@ -123,9 +126,9 @@ bool HitReactions::AskForHelp_IsGood(Unit *unit, Unit *enemy, bool attacking_mil
             if (!unit->CanAttackUnit(enemy, true))
                 return false;
             // At least have to do this for carrier/reaver
-            if (enemy->IsFlying() && unit->GetTurret()->GetAirWeapon() == Weapon::None )
+            if (enemy->IsFlying() && unit->GetTurret()->GetAirWeapon() == WeaponId::None )
                 return false;
-            if (!enemy->IsFlying() && unit->GetTurret()->GetGroundWeapon() == Weapon::None )
+            if (!enemy->IsFlying() && unit->GetTurret()->GetGroundWeapon() == WeaponId::None )
                 return false;
 
             int dist = Distance(enemy->sprite->position, ((Ai::GuardAi *)unit->ai)->home);
@@ -170,7 +173,7 @@ void HitReactions::AskForHelp_CheckUnits(Unit *own, Unit *enemy, bool attacking_
         bool uninterruptable = unit->IsInUninterruptableState();
         // Optimization: Calling AddReaction with uninterruptable state barely does anything, so do it here
         // Not doing for buildings because there is some unk town stuff in start of AddReaction
-        if (uninterruptable && (~units_dat_flags[unit->unit_id] & UnitFlags::Building || unit->ai))
+        if (uninterruptable && (!unit->Type().IsBuilding() || unit->ai != nullptr))
         {
             region = unit->GetRegion();
             if (!AskForHelp_CheckRegion(unit->player, own_region, region, attacker_region, &region_list))
@@ -182,7 +185,7 @@ void HitReactions::AskForHelp_CheckUnits(Unit *own, Unit *enemy, bool attacking_
                 {
                     Region *ai_region = ((MilitaryAi *)unit->ai)->region;
                     // This building check is copied from ReactToHit, dunno if necessary
-                    if (ai_region->state == 1 && ~units_dat_flags[unit->unit_id] & UnitFlags::Building)
+                    if (ai_region->state == 1 && !unit->Type().IsBuilding())
                         ChangeAiRegionState(ai_region, 2);
                 }
                 if (AskForHelp_CheckIfDoesAnything(unit))
@@ -215,17 +218,17 @@ void HitReactions::AskForHelp_CheckUnits(Unit *own, Unit *enemy, bool attacking_
 // This is kinda different (faster, less bugs), but some unk ai region flags are not set if unit can't attack enemy
 void HitReactions::AskForHelp(Unit *own, Unit *enemy, bool attacking_military)
 {
-    if (enemy->IsWorker())
+    if (enemy->Type().IsWorker())
     {
         int search_radius = CallFriends_Radius;
-        if (units_dat_flags[own->unit_id] & UnitFlags::Building)
+        if (own->Type().IsBuilding())
             search_radius *= 2;
         if (bw::player_ai[own->player].flags & 0x20)
             search_radius *= 2;
         vector<Unit *> helping_workers;
         helping_workers.reserve(32);
         unit_search->ForEachUnitInArea(Rect16(own->sprite->position, search_radius), [&](Unit *unit) {
-            if (unit->IsWorker() && unit->ai && unit != own && unit->player == own->player)
+            if (unit->Type().IsWorker() && unit->ai && unit != own && unit->player == own->player)
                 helping_workers.emplace_back(unit);
             return false;
         });
@@ -255,7 +258,7 @@ void HitReactions::UnitWasHit(Unit *own, Unit *attacker, bool important_hit, boo
         if (own->ai->type == 4) // Military
         {
             Region *ai_region = ((MilitaryAi *)own->ai)->region;
-            if (ai_region->state == 1 && !(units_dat_flags[own->unit_id] & UnitFlags::Building))
+            if (ai_region->state == 1 && own->Type().IsBuilding())
                 ChangeAiRegionState(ai_region, 2);
             if (IsInAttack(own))
                 attacking = true;
@@ -265,8 +268,8 @@ void HitReactions::UnitWasHit(Unit *own, Unit *attacker, bool important_hit, boo
         {
             if (own->HasLoadedUnits())
             {
-                if (own->order != Order::Unload)
-                    own->IssueOrderTargetingNothing(Order::Unload);
+                if (own->order != OrderId::Unload)
+                    own->IssueOrderTargetingNothing(OrderId::Unload);
                 return;
             }
             else
@@ -317,7 +320,7 @@ void HitReactions::UnitWasHit(Unit *own, Unit *attacker, bool important_hit, boo
 
 void HitReactions::UpdatePickedTarget(Unit *own, Unit *attacker)
 {
-    const UpdateAttackTargetContext ctx(own, true, own->order == Order::Pickup4);
+    const UpdateAttackTargetContext ctx(own, true, own->order == OrderId::Pickup4);
 
     if (ctx.CheckPreviousAttackerValid(attacker) != nullptr)
     {
@@ -335,22 +338,22 @@ void HitReactions::React(Unit *own, Unit *attacker, bool important_hit)
     if (uninterruptable && !important_hit)
         return;
 
-    int order = own->order;
+    OrderType order(own->order);
 
-    if (~own->flags & UnitStatus::Completed || order == Order::CompletingArchonSummon ||
-        order == Order::ResetCollision1 || order == Order::ConstructingBuilding)
+    if (~own->flags & UnitStatus::Completed || order == OrderId::CompletingArchonSummon ||
+        order == OrderId::ResetCollision1 || order == OrderId::ConstructingBuilding)
     {
         return;
     }
     if (!important_hit && IsUsableSpellOrder(order))
         return;
-    if (own->unit_id == Unit::Marine && order == Order::EnterTransport) // What?
+    if (own->Type() == UnitId::Marine && order == OrderId::EnterTransport) // What?
         return;
 
     if (TryReactionSpell(own, important_hit))
         return;
 
-    if (order == Order::RechargeShieldsUnit || order == Order::Move)
+    if (order == OrderId::RechargeShieldsUnit || order == OrderId::Move)
         return;
 
     if (important_hit)
@@ -373,17 +376,17 @@ void HitReactions::React(Unit *own, Unit *attacker, bool important_hit)
     }
     else if (own->ai)
     {
-        if (order == Order::AiPatrol)
+        if (order == OrderId::AiPatrol)
         {
             uint32_t flee_pos_dword = PrepareFlee(own, attacker);
             Point flee_pos(flee_pos_dword & 0xffff, flee_pos_dword >> 16);
             if (flee_pos != own->sprite->position)
             {
-                own->IssueOrderTargetingGround(Order::Move, flee_pos);
+                own->IssueOrderTargetingGround(OrderId::Move, flee_pos);
                 return;
             }
         }
-        if (important_hit && own->unit_id != Unit::Medic)
+        if (important_hit && own->Type() != UnitId::Medic)
         {
             if (!own->target || !own->CanAttackUnit(own->target, true))
             {
@@ -408,7 +411,7 @@ void HitReactions::NewHit(Unit *own, Unit *attacker, bool important_hit)
     STATIC_PERF_CLOCK(AiHitReactions_NewHit);
     if ((attacker->flags & UnitStatus::FreeInvisibility) && !(attacker->flags & UnitStatus::Burrowed))
     {
-        attacker = FindNearestUnitOfId(own, Unit::Arbiter); // No danimoth <.<
+        attacker = FindNearestUnitOfId(own, UnitId::Arbiter.Raw()); // No danimoth <.<
         if (!attacker)
             return;
     }
@@ -505,13 +508,13 @@ bool TestBestTargetPicking()
     {
         if (!IsComputerPlayer(unit->player) || unit->ai == nullptr)
             continue;
-        if (unit->IsWorker() || ~unit->flags & UnitStatus::Completed)
+        if (unit->Type().IsWorker() || ~unit->flags & UnitStatus::Completed)
             continue;
 
         units.clear();
         for (Unit *other : *bw::first_active_unit)
         {
-            const UpdateAttackTargetContext ctx(unit, true, unit->order == Order::Pickup4);
+            const UpdateAttackTargetContext ctx(unit, true, unit->order == OrderId::Pickup4);
             if (unit->IsEnemy(other) && ctx.CheckPreviousAttackerValid(other) != nullptr)
                 units.emplace_back(other);
         }

@@ -1,43 +1,22 @@
 #ifndef UNIT_H
 #define UNIT_H
 
+#include "ai_hit_reactions.h"
+#include "dat.h"
 #include "types.h"
 #include "list.h"
 #include "unitlist.h"
 #include "offsets.h"
 #include "sprite.h"
 #include "unitsearch_cache.h" // For UnitSearchRegionCache::Entry
+#include "unit_type.h"
 #include "game.h"
-#include "ai_hit_reactions.h"
 #include "pathing.h"
+
+#include "constants/unit.h"
 
 #include <atomic>
 
-namespace UnitFlags
-{
-    const unsigned int Building = 0x1;
-    const unsigned int Addon = 0x2;
-    const unsigned int Air = 0x4;
-    const unsigned int Worker = 0x8;
-    const unsigned int Subunit = 0x10;
-    const unsigned int FlyingBuilding = 0x20;
-    const unsigned int Hero = 0x40;
-    const unsigned int Regenerate = 0x80;
-    const unsigned int SingleEntity = 0x0800;
-    const unsigned int ResourceDepot = 0x1000;
-    const unsigned int ResourceContainer = 0x2000;
-    const unsigned int Detector = 0x8000;
-    const unsigned int Organic = 0x00010000;
-    const unsigned int RequiresCreep = 0x00020000;
-    const unsigned int RequiresPsi = 0x00080000;
-    const unsigned int Burrowable = 0x00100000;
-    const unsigned int Spellcaster = 0x00200000;
-    const unsigned int PermamentlyCloaked = 0x00400000;
-    const unsigned int MediumOverlays = 0x02000000;
-    const unsigned int LargeOverlays = 0x04000000;
-    const unsigned int Invincible = 0x20000000;
-    const unsigned int Mechanical = 0x40000000;
-}
 namespace UnitStatus
 {
     const unsigned int Completed = 0x1;
@@ -72,17 +51,7 @@ namespace UnitStatus
     const unsigned int Hallucination = 0x40000000;
     const unsigned int SelfDestructing = 0x80000000;
 }
-namespace Race
-{
-    enum e
-    {
-        Zerg = 0,
-        Terran,
-        Protoss,
-        Unused, // Yep
-        Neutral
-    };
-}
+
 namespace MovementState
 {
     const int Subunit = 0x3;
@@ -428,7 +397,7 @@ class Unit
         void *operator new(size_t size);
 #endif
         Unit();
-        ~Unit() { if (unit_id == Pylon) { pylon.aura.~unique_ptr<Sprite>(); } }
+        ~Unit();
 
         // Bw hook, does also some initialization...
         static Unit *AllocateAndInit(uint8_t player, int unused_seed, uint16_t x, uint16_t y, uint16_t unit_id);
@@ -440,6 +409,16 @@ class Unit
 
         void SingleDelete(); // When you don't want to delete all
         static void DeleteAll();
+
+        UnitType Type() const { return UnitType(unit_id); }
+        class OrderType OrderType() const {
+            class OrderType order_type(order);
+            return order_type;
+        }
+        class OrderType SecondaryOrderType() const {
+            class OrderType order_type(secondary_order);
+            return order_type;
+        }
 
         // results may be nullptr but should only be when called from BulletSystem
         void Kill(ProgressUnitResults *results);
@@ -459,27 +438,21 @@ class Unit
         void DeletePath();
 
         bool IsUnreachable(const Unit *other) const;
-        bool IsCritter() const;
-        bool IsWorker() const { return units_dat_flags[unit_id] & UnitFlags::Worker; }
-        bool IsHero() const { return units_dat_flags[unit_id] & UnitFlags::Hero; }
         bool IsFlying() const { return flags & UnitStatus::Air; }
         bool IsInvincible() const { return flags & UnitStatus::Invincible; }
 
         static Unit *FindById(uint32_t id);
 
-        int GetRace() const;
-        bool HasRally() const;
-        bool HasShields() const { return units_dat_has_shields[unit_id]; }
         bool IsOnBurningHealth() const;
         int GetMaxShields() const;
         int GetShields() const;
         int GetMaxHealth() const;
         int GetHealth() const;
-        int GetMaxHitPoints() const { return units_dat_hitpoints[unit_id] >> 8; }
+        int GetMaxHitPoints() const { return Type().HitPoints() >> 8; }
         int GetHitPoints() const { return hitpoints >> 8; }
-        int GetArmor() const { return GetArmorUpgrades() + units_dat_armor[unit_id]; }
+        int GetArmor() const { return GetArmorUpgrades() + Type().Armor(); }
         int GetArmorUpgrades() const;
-        int GetIdleOrder() const;
+        class OrderType GetIdleOrder() const;
         int GetWeaponRange(bool ground) const;
         int GetSightRange(bool dont_check_blind) const;
         int GetTargetAcquisitionRange() const;
@@ -518,15 +491,6 @@ class Unit
         bool HasSubunit() const;
         Unit *GetTurret();
         const Unit *GetTurret() const;
-        bool IsCarrier() const { return unit_id == Unit::Carrier || unit_id == Unit::Gantrithor; }
-        bool IsReaver() const { return unit_id == Unit::Reaver || unit_id == Unit::Warbringer; }
-        bool HasHangar() const { return IsCarrier() || IsReaver(); }
-        bool IsGoliath() const { return unit_id == Unit::Goliath || unit_id == Unit::AlanSchezar; }
-        bool IsMineralField() const
-            { return unit_id == Unit::MineralPatch1 || unit_id == Unit::MineralPatch2 || unit_id == Unit::MineralPatch3; }
-        static bool IsGasBuilding(int unit_id)
-            { return unit_id == Unit::Assimilator || unit_id == Unit::Refinery || unit_id == Unit::Extractor; }
-        int GetSize() const;
 
         int GetRegion() const;
         bool CanLocalPlayerControl() const;
@@ -546,46 +510,49 @@ class Unit
         void LoadUnit(Unit *unit);
         bool UnloadUnit(Unit *unit);
 
-        void TargetedOrder(int new_order, Unit *target, const Point &pos, int fow_unit, bool queued);
-        void IssueOrderTargetingNothing(int order) {
-            IssueOrder(order, nullptr, Point(0, 0), None);
+        void TargetedOrder(class OrderType new_order, Unit *target, const Point &pos, UnitType fow_unit, bool queued);
+        void IssueOrderTargetingNothing(class OrderType order) {
+            IssueOrder(order, nullptr, Point(0, 0), UnitId::None);
         }
-        void IssueOrderTargetingGround(int order_id, const Point &pos) {
-            IssueOrder(order_id, nullptr, pos, None);
+        void IssueOrderTargetingGround(class OrderType order_id, const Point &pos) {
+            IssueOrder(order_id, nullptr, pos, UnitId::None);
         }
-        void IssueOrderTargetingUnit(int order, Unit *target) {
-            IssueOrder(order, target, target->sprite->position, None);
+        void IssueOrderTargetingUnit(class OrderType order, Unit *target) {
+            IssueOrder(order, target, target->sprite->position, UnitId::None);
         }
         /// IssueOrder changes the current order - at least once uninterruptable state is over.
-        void IssueOrder(int new_order, Unit *target, const Point &pos, int fow_unit);
+        void IssueOrder(class OrderType new_order, Unit *target, const Point &pos, UnitType fow_unit);
         /// PrependOrder/AppendOrder/InsertOrder do not change the currently executed order
-        void PrependOrderTargetingNothing(int order) {
-            PrependOrder(order, nullptr, Point(0, 0), None);
+        void PrependOrderTargetingNothing(class OrderType order) {
+            PrependOrder(order, nullptr, Point(0, 0), UnitId::None);
         }
-        void PrependOrderTargetingGround(int order_id, const Point &pos) {
-            PrependOrder(order_id, nullptr, pos, None);
+        void PrependOrderTargetingGround(class OrderType order_id, const Point &pos) {
+            PrependOrder(order_id, nullptr, pos, UnitId::None);
         }
-        void PrependOrderTargetingUnit(int order, Unit *target) {
-            PrependOrder(order, target, target->sprite->position, None);
+        void PrependOrderTargetingUnit(class OrderType order, Unit *target) {
+            PrependOrder(order, target, target->sprite->position, UnitId::None);
         }
-        void PrependOrder(int order, Unit *target, const Point &pos, int fow_unit);
-        void AppendOrderTargetingNothing(int order_id) {
-            AppendOrder(order_id, nullptr, Point(0, 0), None, false);
+        void PrependOrder(class OrderType order, Unit *target, const Point &pos, UnitType fow_unit);
+        void AppendOrderTargetingNothing(class OrderType order_id) {
+            AppendOrder(order_id, nullptr, Point(0, 0), UnitId::None, false);
         }
-        void AppendOrderTargetingGround(int order_id, const Point &pos) {
-            AppendOrder(order_id, nullptr, pos, None, false);
+        void AppendOrderTargetingGround(class OrderType order_id, const Point &pos) {
+            AppendOrder(order_id, nullptr, pos, UnitId::None, false);
         }
-        void AppendOrderTargetingUnit(int order_id, Unit *target) {
-            AppendOrder(order_id, target, target->sprite->position, None, false);
+        void AppendOrderTargetingUnit(class OrderType order_id, Unit *target) {
+            AppendOrder(order_id, target, target->sprite->position, UnitId::None, false);
         }
-        void AppendOrder(int order_id, Unit *target, const Point &pos, int fow_unit, bool clear_others);
-        void InsertOrderAfter(int order_id, Unit *target, const Point &pos, int fow_unit, Order *insert_after);
-        void InsertOrderBefore(int order_id, Unit *target, const Point &pos, int fow_unit, Order *insert_before);
+        void AppendOrder(class OrderType order_id, Unit *target, const Point &pos,
+                UnitType fow_unit, bool clear_others);
+        void InsertOrderAfter(class OrderType order_id, Unit *target, const Point &pos,
+                UnitType fow_unit, Order *insert_after);
+        void InsertOrderBefore(class OrderType order_id, Unit *target, const Point &pos,
+                UnitType fow_unit, Order *insert_before);
 
         void Recall(Unit *other);
 
-        int Order_AttackMove_ReactToAttack(int order);
-        void Order_AttackMove_TryPickTarget(int order);
+        int Order_AttackMove_ReactToAttack(class OrderType order);
+        void Order_AttackMove_TryPickTarget(class OrderType order);
 
         void AllowSwitchingTarget() {
             flags |= UnitStatus::CanSwitchTarget;
@@ -593,9 +560,9 @@ class Unit
                 subunit->flags |= UnitStatus::CanSwitchTarget;
         }
 
-        void IssueSecondaryOrder(int order_id);
+        void IssueSecondaryOrder(class OrderType order_id);
         void DeleteOrder(Order *order);
-        void DeleteSpecificOrder(uint8_t order_id);
+        void DeleteSpecificOrder(class OrderType order_id);
         bool IsTransport() const;
 
         bool IsEnemy(const Unit *other) const;
@@ -605,13 +572,13 @@ class Unit
 
         void UpdateStrength();
 
-        void RemoveOverlayFromSelf(int first_id, int last_id);
-        void RemoveOverlayFromSelfOrSubunit(int first_id, int last_id);
-        void AddSpellOverlay(int small_overlay_id);
+        void RemoveOverlayFromSelf(ImageType first_id, int id_amount);
+        void RemoveOverlayFromSelfOrSubunit(ImageType first_id, int id_amount);
+        void AddSpellOverlay(ImageType small_overlay_id);
 
-        int GetAirWeapon() const;
-        int GetGroundWeapon() const;
-        int GetCooldown(int weapon_id) const;
+        WeaponType GetAirWeapon() const;
+        WeaponType GetGroundWeapon() const;
+        int GetCooldown(WeaponType weapon_id) const;
 
         /// Returns 0 if moving, 1 if not and 2 if can't tell???
         int IsStandingStill() const;
@@ -619,12 +586,12 @@ class Unit
 
         bool Reaver_CanAttackUnit(const Unit *enemy) const;
         bool CanBeInfested() const;
-        bool CanAttackFowUnit(int unit_id) const;
-        bool CanTargetSelf(int order) const;
-        bool CanUseTargetedOrder(int order) const;
+        bool CanAttackFowUnit(UnitType unit_id) const;
+        bool CanTargetSelf(class OrderType order) const;
+        bool CanUseTargetedOrder(class OrderType order) const;
 
         void Attack(Unit *enemy) {
-            IssueOrderTargetingUnit(units_dat_attack_unit_order[unit_id], enemy);
+            IssueOrderTargetingUnit(Type().AttackUnitOrder(), enemy);
         }
         void ReactToHit(Unit *attacker);
 
@@ -650,11 +617,7 @@ class Unit
         void AskForHelp(Unit *attacker);
         Unit *GetActualTarget(Unit *target) const;
 
-        bool IsTriggerUnitId(int unit_id) const;
-
-        void Cloak(int tech);
-
-        static bool IsClickable(int unit_id);
+        void Cloak(TechType tech);
 
         bool CanBeAttacked() const;
         bool CanAttackUnit(const Unit *other, bool check_detection = true) const;
@@ -722,6 +685,7 @@ class Unit
         void AddToLookup();
         Entity *AsEntity() { return (Entity *)this; }
         Flingy *AsFlingy() { return (Flingy *)this; }
+        const Flingy *AsFlingy() const { return (const Flingy *)this; }
 
         Unit *PickBestTarget(Unit **targets, int amount) const;
         /// These two are used by Ai_IsBetterTarget
@@ -771,7 +735,7 @@ class Unit
         void Order_AttackUnit(ProgressUnitResults *results);
         void Order_HoldPosition(ProgressUnitResults *results);
         void DoAttack(ProgressUnitResults *results, int iscript_anim);
-        void DoAttack_Main(int weapon, int iscript_anim, bool ground, ProgressUnitResults *results);
+        void DoAttack_Main(WeaponType weapon, int iscript_anim, bool ground, ProgressUnitResults *results);
         void AttackMelee(int sound_amt, uint16_t *sounds, ProgressUnitResults *results);
         bool AttackAtPoint(ProgressUnitResults *results);
         /// If it picks anything, this->target is overwritten
@@ -831,7 +795,6 @@ class Unit
     public:
         static uint32_t next_id;
         static const int OrderWait = 8;
-#include "constants/unit.h" // Heh
 };
 
 extern DummyListHead<Unit, Unit::offset_of_allocated> first_allocated_unit;

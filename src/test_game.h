@@ -25,8 +25,8 @@ class GameTest
         void Fail(const char *reason) { status = Status::Failed; fail_reason = reason; }
         void Pass() { status = Status::Passed; }
 
-        Unit *CreateUnitForTest(int unit_id, int player);
-        Unit *CreateUnitForTestAt(int unit_id, int player, const Point &point);
+        Unit *CreateUnitForTest(UnitType unit_id, int player);
+        Unit *CreateUnitForTestAt(UnitType unit_id, int player, const Point &point);
 
         const char *name;
         int id;
