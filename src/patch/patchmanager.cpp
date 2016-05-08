@@ -7,8 +7,6 @@
 
 template class std::vector<Common::Patch>;
 
-Common::PatchManager *patch_mgr;
-
 namespace Common
 {
 

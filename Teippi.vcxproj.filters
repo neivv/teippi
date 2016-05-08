@@ -22,6 +22,12 @@
     <Filter Include="Headers\constants">
       <UniqueIdentifier>{5b5665f0-11e1-4e65-b9bc-4e0592ce2a50}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Headers\patch">
+      <UniqueIdentifier>{28950ba4-c3f4-49ce-8924-145aaeaade79}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sources\patch">
+      <UniqueIdentifier>{2332ec5d-5302-4489-b008-37504a9342ed}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\ai.cpp">
@@ -99,9 +105,6 @@
     <ClCompile Include="src\mainpatch.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
-    <ClCompile Include="src\memory.cpp">
-      <Filter>Sources</Filter>
-    </ClCompile>
     <ClCompile Include="src\mpqdraft.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
@@ -111,8 +114,14 @@
     <ClCompile Include="src\order.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
-    <ClCompile Include="src\patchmanager.cpp">
-      <Filter>Sources</Filter>
+    <ClCompile Include="src\patch\memory.cpp">
+      <Filter>Sources\patch</Filter>
+    </ClCompile>
+    <ClCompile Include="src\patch\patchmanager.cpp">
+      <Filter>Sources\patch</Filter>
+    </ClCompile>
+    <ClCompile Include="src\patch\x86.cpp">
+      <Filter>Sources\patch</Filter>
     </ClCompile>
     <ClCompile Include="src\pathing.cpp">
       <Filter>Sources</Filter>
@@ -181,9 +190,6 @@
       <Filter>Sources</Filter>
     </ClCompile>
     <ClCompile Include="src\warn.cpp">
-      <Filter>Sources</Filter>
-    </ClCompile>
-    <ClCompile Include="src\x86.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
     <ClCompile Include="src\yms.cpp">
@@ -336,9 +342,6 @@
     <ClInclude Include="src\mapdirectory.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="src\memory.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
     <ClInclude Include="src\mpqdraft.h">
       <Filter>Headers</Filter>
     </ClInclude>
@@ -354,11 +357,17 @@
     <ClInclude Include="src\order.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="src\patch_hook.h">
-      <Filter>Headers</Filter>
+    <ClInclude Include="src\patch\hook.h">
+      <Filter>Headers\patch</Filter>
     </ClInclude>
-    <ClInclude Include="src\patchmanager.h">
-      <Filter>Headers</Filter>
+    <ClInclude Include="src\patch\memory.h">
+      <Filter>Headers\patch</Filter>
+    </ClInclude>
+    <ClInclude Include="src\patch\patchmanager.h">
+      <Filter>Headers\patch</Filter>
+    </ClInclude>
+    <ClInclude Include="src\patch\x86.h">
+      <Filter>Headers\patch</Filter>
     </ClInclude>
     <ClInclude Include="src\pathing.h">
       <Filter>Headers</Filter>
@@ -448,9 +457,6 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="src\warn.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\x86.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="src\yms.h">

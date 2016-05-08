@@ -3,6 +3,8 @@
 
 #include "types.h"
 
+extern Common::PatchManager *patch_mgr;
+
 namespace Limits
 {
     const unsigned MapWidth_Tiles = 256;

@@ -176,6 +176,7 @@ def build(bld):
     src = bld.path.ant_glob('src/*.cpp')
     src += bld.path.ant_glob('src/console/*.cpp')
     src += bld.path.ant_glob('src/common/*.cpp')
+    src += bld.path.ant_glob('src/patch/*.cpp')
     src, exception_src = split_files(src, ['save', 'patchmanager'])
     src, debug_src = split_files(src, ['test_game'])
     # Have to console.cpp as split_files does just a simple substring match atm

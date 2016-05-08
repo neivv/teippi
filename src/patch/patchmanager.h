@@ -4,11 +4,11 @@
 #include <vector>
 #include <stdint.h>
 #include <string>
+#include "../common/assert.h"
+#include "hook.h"
 #include "memory.h"
 #include "x86.h"
-#include "patch_hook.h"
 
-#include "common/assert.h"
 
 const int PATCH_HOOKBEFORE = 2;
 const int PATCH_HOOK = 2;
@@ -176,7 +176,4 @@ void PatchContext::CallHook(const HookType &hook, typename HookType::MemberFnTar
 
 } // namespace Common
 
-extern Common::PatchManager *patch_mgr;
-
 #endif // PATCHMANAGER_H
-

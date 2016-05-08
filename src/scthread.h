@@ -2,7 +2,7 @@
 #define SCTHREAD_H
 
 #include "thread.h"
-#include "memory.h"
+#include "patch/memory.h"
 
 struct ScThreadVars
 {

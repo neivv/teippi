@@ -1,11 +1,12 @@
 #include "mainpatch.h"
 
-#include "console/windows_wrap.h"
 #include <time.h>
+#include "console/windows_wrap.h"
+#include "common/log_freeze.h"
+#include "patch/patchmanager.h"
 
 #include "offsets_hooks.h"
 #include "offsets.h"
-#include "patchmanager.h"
 #include "memory.h"
 #include "commands.h"
 #include "unit.h"
@@ -28,7 +29,6 @@
 #include "yms.h"
 #include "unit_cache.h"
 #include "perfclock.h"
-#include "common/log_freeze.h"
 
 namespace bw
 {

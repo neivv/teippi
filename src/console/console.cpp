@@ -1,7 +1,7 @@
 #include "console.h"
 
 #include "../resolution.h"
-#include "../patchmanager.h"
+#include "../patch/patchmanager.h"
 
 #include <string.h>
 #include <windows.h>

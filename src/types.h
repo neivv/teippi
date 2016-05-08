@@ -133,6 +133,7 @@ template <class SaveLoad> class SaveBase;
 namespace Common
 {
     class PatchContext;
+    class PatchManager;
 }
 
 namespace Ai

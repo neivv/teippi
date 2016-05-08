@@ -1,8 +1,8 @@
 #include "limits.h"
 
+#include "patch/patchmanager.h"
 #include "offsets_hooks.h"
 #include "offsets.h"
-#include "patchmanager.h"
 #include "image.h"
 #include "sprite.h"
 #include "unit.h"
@@ -30,6 +30,8 @@
 #include "player.h"
 #include "draw.h"
 #include "building.h"
+
+Common::PatchManager *patch_mgr;
 
 // Hack from game.cpp
 extern bool unitframes_in_progress;

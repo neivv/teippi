@@ -5,7 +5,7 @@
 #include <type_traits>
 
 #include "offsets.h"
-#include "patch_hook.h"
+#include "patch/hook.h"
 
 class hook_offset : public offset_base
 {
