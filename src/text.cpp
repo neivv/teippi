@@ -13,5 +13,5 @@ void Print(const char *format, ...)
     vsnprintf(buf, 256, format, varg);
     va_end(varg);
 
-    PrintText(buf, 0, 8);
+    bw::PrintText(buf, 0, 8);
 }

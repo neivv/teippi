@@ -186,16 +186,16 @@ void HitReactions::AskForHelp_CheckUnits(Unit *own, Unit *enemy, bool attacking_
                     Region *ai_region = ((MilitaryAi *)unit->ai)->region;
                     // This building check is copied from ReactToHit, dunno if necessary
                     if (ai_region->state == 1 && !unit->Type().IsBuilding())
-                        ChangeAiRegionState(ai_region, 2);
+                        bw::ChangeAiRegionState(ai_region, 2);
                 }
                 if (AskForHelp_CheckIfDoesAnything(unit))
                 {
                     AskForHelp_AddRegion(unit->player, region_list, region, attacker_region);
                     Region *unit_ai_region = bw::player_ai_regions[unit->player] + region;
                     if (unit_ai_region->state == 4 || unit_ai_region->state == 5)
-                        ChangeAiRegionState(unit_ai_region, 6);
+                        bw::ChangeAiRegionState(unit_ai_region, 6);
                     if (attacker_region->state == 0 && unit_ai_region->state != 0 && *bw::elapsed_seconds > 60)
-                        ChangeAiRegionState(attacker_region, 5);
+                        bw::ChangeAiRegionState(attacker_region, 5);
                 }
             }
         }
@@ -259,7 +259,7 @@ void HitReactions::UnitWasHit(Unit *own, Unit *attacker, bool important_hit, boo
         {
             Region *ai_region = ((MilitaryAi *)own->ai)->region;
             if (ai_region->state == 1 && own->Type().IsBuilding())
-                ChangeAiRegionState(ai_region, 2);
+                bw::ChangeAiRegionState(ai_region, 2);
             if (IsInAttack(own))
                 attacking = true;
         }
@@ -276,7 +276,7 @@ void HitReactions::UnitWasHit(Unit *own, Unit *attacker, bool important_hit, boo
             {
                 if (!own->Ai_TryReturnHome(false))
                 {
-                    if (Ai_ReturnToNearestBaseForced(own))
+                    if (bw::Ai_ReturnToNearestBaseForced(own))
                         return;
                 }
                 if (bw::player_ai[player].flags & 0x20)
@@ -298,9 +298,9 @@ void HitReactions::UnitWasHit(Unit *own, Unit *attacker, bool important_hit, boo
                 if (own->ai->type != 1 || !(bw::player_ai[player].flags & 0x20))
                 {
                     if (target_region->state == 4 || target_region->state == 5)
-                        ChangeAiRegionState(target_region, 6);
+                        bw::ChangeAiRegionState(target_region, 6);
                     if (target_region->state != 0 && attacker_region->state == 0 && *bw::elapsed_seconds > 60)
-                        ChangeAiRegionState(attacker_region, 5);
+                        bw::ChangeAiRegionState(attacker_region, 5);
                 }
             }
             if (call_help)
@@ -366,7 +366,7 @@ void HitReactions::React(Unit *own, Unit *attacker, bool important_hit)
         return;
 
     if (important_hit && own->ai && attacker->IsInvisibleTo(own))
-        Ai_Detect(own, attacker);
+        bw::Ai_Detect(own, attacker);
     if (uninterruptable)
         return;
 
@@ -378,7 +378,7 @@ void HitReactions::React(Unit *own, Unit *attacker, bool important_hit)
     {
         if (order == OrderId::AiPatrol)
         {
-            uint32_t flee_pos_dword = PrepareFlee(own, attacker);
+            uint32_t flee_pos_dword = bw::PrepareFlee(own, attacker);
             Point flee_pos(flee_pos_dword & 0xffff, flee_pos_dword >> 16);
             if (flee_pos != own->sprite->position)
             {
@@ -390,7 +390,7 @@ void HitReactions::React(Unit *own, Unit *attacker, bool important_hit)
         {
             if (!own->target || !own->CanAttackUnit(own->target, true))
             {
-                Flee(own, attacker);
+                bw::Flee(own, attacker);
             }
         }
     }
@@ -411,7 +411,7 @@ void HitReactions::NewHit(Unit *own, Unit *attacker, bool important_hit)
     STATIC_PERF_CLOCK(AiHitReactions_NewHit);
     if ((attacker->flags & UnitStatus::FreeInvisibility) && !(attacker->flags & UnitStatus::Burrowed))
     {
-        attacker = FindNearestUnitOfId(own, UnitId::Arbiter.Raw()); // No danimoth <.<
+        attacker = bw::FindNearestUnitOfId(own, UnitId::Arbiter.Raw()); // No danimoth <.<
         if (!attacker)
             return;
     }
@@ -478,8 +478,8 @@ void HitReactions::UpdateRegionEnemyStrengths()
             if (region_enemy_strength_updates[i + region_id] != 0)
             {
                 Region *region = bw::player_ai_regions[player] + region_id;
-                region->enemy_air_strength = GetEnemyAirStrength(region_id, player);
-                region->enemy_ground_strength = GetEnemyStrength(region_id, player, false);
+                region->enemy_air_strength = bw::GetEnemyAirStrength(region_id, player);
+                region->enemy_ground_strength = bw::GetEnemyStrength(region_id, player, false);
             }
         }
     }

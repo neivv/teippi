@@ -132,7 +132,7 @@ void SendChangeSelectionCommand(int count, Unit **units)
                 {
                     *out++ = removed_units[i];
                 }
-                SendCommand(command_buf, 6 + removed_count * 4);
+                bw::SendCommand(command_buf, 6 + removed_count * 4);
             }
             if (added_count)
             {
@@ -143,7 +143,7 @@ void SendChangeSelectionCommand(int count, Unit **units)
                 {
                     *out++ = added_units[i];
                 }
-                SendCommand(command_buf, 6 + added_count * 4);
+                bw::SendCommand(command_buf, 6 + added_count * 4);
             }
         }
     }
@@ -164,7 +164,7 @@ void SendChangeSelectionCommand(int count, Unit **units)
             {
                 *out++ = units[i]->lookup_id;
             }
-            SendCommand(command_buf, 6 + count * 4);
+            bw::SendCommand(command_buf, 6 + count * 4);
         }
     }
 }
@@ -191,7 +191,7 @@ void Command_SelectionRemove(const uint8_t *buf)
             if (unit->IsDying() || sprite->IsHidden() || unit->player != player)
                 continue;
 
-            if (HasTeamSelection(player))
+            if (bw::HasTeamSelection(player))
             {
                 int ally_selections = (sprite->flags & SpriteFlags::DashedSelectionMask) >> 1;
                 if (ally_selections != 0)
@@ -200,13 +200,13 @@ void Command_SelectionRemove(const uint8_t *buf)
                     sprite->flags &= ~SpriteFlags::DashedSelectionMask;
                     sprite->flags |= (ally_selections << 1);
                     if (ally_selections == 0)
-                        RemoveDashedSelectionCircle(sprite);
+                        bw::RemoveDashedSelectionCircle(sprite);
                 }
             }
-            remaining = RemoveFromSelection(unit, player);
+            remaining = bw::RemoveFromSelection(unit, player);
         }
         if (remaining > 1)
-            AddToRecentSelections();
+            bw::AddToRecentSelections();
     }
 }
 
@@ -235,7 +235,7 @@ void Command_SelectionAdd(const uint8_t *buf)
                 Unit *unit = Unit::FindById(unit_ids[i]);
                 if (!unit || unit->IsDying() || unit->sprite->IsHidden() || unit->player != player)
                     continue;
-                if (original_count != 0 && !IsMultiSelectable(unit))
+                if (original_count != 0 && !bw::IsMultiSelectable(unit))
                     continue;
 
                 bool found = false;
@@ -251,11 +251,11 @@ void Command_SelectionAdd(const uint8_t *buf)
                     continue;
 
                 selection[selection_index++] = unit;
-                if (HasTeamSelection(player))
-                    MakeDashedSelectionCircle(unit);
+                if (bw::HasTeamSelection(player))
+                    bw::MakeDashedSelectionCircle(unit);
             }
             if (count > 1)
-                AddToRecentSelections();
+                bw::AddToRecentSelections();
         }
     }
 }
@@ -272,21 +272,20 @@ void Command_Select(const uint8_t *buf)
         uint32_t count = *(uint32_t *)(buf + 2);
         uint32_t *unit_ids = (uint32_t *)(buf + 6);
 
-        ClearSelection(player);
+        bw::ClearSelection(player);
         int selection_index = 0;
         for (uint32_t i = 0; i < count; i++)
         {
             Unit *unit = Unit::FindById(unit_ids[i]);
             if (!unit || unit->IsDying() || unit->sprite->IsHidden())
                 continue;
-            // Didn't bother preventing selecting nuke >:D
-            if (!AddToPlayerSelection(player, selection_index, unit))
+            if (!bw::AddToPlayerSelection(player, selection_index, unit))
                 continue;
 
             selection_index++;
         }
         if (count > 1)
-            AddToRecentSelections();
+            bw::AddToRecentSelections();
     }
 }
 
@@ -307,14 +306,14 @@ void CenterOnSelectionGroup(uint8_t group_id)
         Unit *unit = group[i];
         if (unit->IsDying() || unit->sprite->IsHidden())
             continue;
-        if (IsMultiSelectable(unit) || count == 1)
+        if (bw::IsMultiSelectable(unit) || count == 1)
         {
             x += unit->sprite->position.x;
             y += unit->sprite->position.y;
         }
     }
 
-    MoveScreen((x / count - resolution::game_width / 2) & ~8, (y / count - resolution::game_height / 2) & ~8);
+    bw::MoveScreen((x / count - resolution::game_width / 2) & ~8, (y / count - resolution::game_height / 2) & ~8);
 }
 
 static uint32_t hotkey_select_tick = 0;
@@ -340,7 +339,7 @@ void SelectHotkeyGroup(uint8_t group_id)
         {
             continue;
         }
-        if (IsMultiSelectable(unit) || count == 1)
+        if (bw::IsMultiSelectable(unit) || count == 1)
             valid_units[valid_units_count++] = unit;
     }
     if (valid_units_count == 1 && valid_units[0]->Type().HasRally())
@@ -348,21 +347,21 @@ void SelectHotkeyGroup(uint8_t group_id)
 
     ClearOrderTargeting();
 
-    UpdateSelectionOverlays(valid_units, valid_units_count);
+    bw::UpdateSelectionOverlays(valid_units, valid_units_count);
     Unit *highest_rank = 0;
     for (int i = 0; i < valid_units_count; i++)
     {
-        if (IsHigherRank(valid_units[i], highest_rank))
+        if (bw::IsHigherRank(valid_units[i], highest_rank))
             highest_rank = valid_units[i];
     }
-    PlaySelectionSound(highest_rank);
+    bw::PlaySelectionSound(highest_rank);
     *bw::client_selection_changed = 1;
     *bw::force_portrait_refresh = 1;
     *bw::force_button_refresh = 1;
     *bw::ui_refresh = 1;
 
     uint8_t cmdbuf[3] = { commands::Hotkey, 1, group_id };
-    SendCommand(cmdbuf, 3);
+    bw::SendCommand(cmdbuf, 3);
 
     std::fill(bw::client_selection_group2.begin(), bw::client_selection_group2.end(), nullptr);
     for (int i = 0; i < valid_units_count; i++)
@@ -389,7 +388,7 @@ void Command_LoadHotkeyGroup(uint8_t group_id)
     if (!count)
         return;
 
-    ClearSelection(player);
+    bw::ClearSelection(player);
 
     unsigned int valid_units_count = 0;
     for (unsigned i = 0; i < count; i++)
@@ -399,21 +398,21 @@ void Command_LoadHotkeyGroup(uint8_t group_id)
             (unit->IsDying()) ||
             (unit->sprite->IsHidden()) ||
             (unit->player != *bw::command_user) ||
-            (!IsMultiSelectable(unit) && valid_units_count > 1)
+            (!bw::IsMultiSelectable(unit) && valid_units_count > 1)
             ) {
             continue;
         }
 
         selection[valid_units_count++] = unit;
-        if (HasTeamSelection(player))
-            MakeDashedSelectionCircle(unit);
+        if (bw::HasTeamSelection(player))
+            bw::MakeDashedSelectionCircle(unit);
     }
     if (valid_units_count < Limits::Selection)
         selection[valid_units_count] = nullptr;
     if (group_id >= 10)
         bw::recent_selection_times[player][(group_id - 10)] = *bw::frame_counter;
     else
-        AddToRecentSelections();
+        bw::AddToRecentSelections();
 }
 
 void Command_SaveHotkeyGroup(int group_id, bool shift_add)
@@ -430,8 +429,8 @@ void Command_SaveHotkeyGroup(int group_id, bool shift_add)
         Unit *unit = group[0];
         if (unit)
         {
-            // IsMultiSelectable requires alive unit I guess
-            if (!unit->IsDying() && !IsMultiSelectable(unit))
+            // bw::IsMultiSelectable requires alive unit I guess
+            if (!unit->IsDying() && !bw::IsMultiSelectable(unit))
                 return;
             count++;
             while (count < Limits::Selection && group[count] != nullptr)
@@ -460,7 +459,7 @@ void Command_SaveHotkeyGroup(int group_id, bool shift_add)
             if (skip)
                 continue;
         }
-        if (count == 0 || IsMultiSelectable(unit))
+        if (count == 0 || bw::IsMultiSelectable(unit))
         {
             group[count++] = unit;
         }
@@ -569,7 +568,7 @@ void StatusScreenButton(Control *clicked_button)
             return;
     }
 
-    UpdateSelectionOverlays(units.data(), units.size());
+    bw::UpdateSelectionOverlays(units.data(), units.size());
     SendChangeSelectionCommand(units.size(), units.data());
     *bw::client_selection_changed = 1;
     RefreshUi();

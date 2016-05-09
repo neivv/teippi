@@ -4,6 +4,8 @@
 #include "types.h"
 #include <type_traits>
 
+#include "offsets_funcs.h"
+
 class offset_base
 {
     public:
@@ -588,18 +590,6 @@ namespace bw
     // other related data
     const array_offset<char, 0xc00> validation_replay_path = 0x00628668;
 
-    namespace storm
-    {
-        extern intptr_t base_diff;
-    }
-    namespace funcs
-    {
-        namespace storm
-        {
-            using bw::storm::base_diff;
-        }
-        #include "funcs.autogen"
-    }
     namespace base
     {
         const uintptr_t starcraft = 0x00400000;
@@ -608,10 +598,6 @@ namespace bw
         const uintptr_t standard = 0x1D000000;
     }
 }
-
-using namespace bw::funcs;
-
-void SetStormOffsets(int diff);
 
 #endif // OFFSETS_HOO
 

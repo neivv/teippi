@@ -47,8 +47,8 @@ class Entity
                         // These work but are casted to Unit in order to
                         // keep most of the calls accepting Units.
                         uint32_t x, y;
-                        GetClosestPointOfTarget((Unit *)this, &x, &y);
-                        if (IsPointInArea((Unit *)this, cmd.val, x, y))
+                        bw::GetClosestPointOfTarget((Unit *)this, &x, &y);
+                        if (bw::IsPointInArea((Unit *)this, cmd.val, x, y))
                             script->pos = cmd.pos;
                     }
                 }
@@ -59,7 +59,7 @@ class Entity
                     if (target != nullptr)
                     {
                         auto target_position = target->sprite->position;
-                        int dir = GetFacingDirection(own.x, own.y, target_position.x, target_position.y);
+                        int dir = bw::GetFacingDirection(own.x, own.y, target_position.x, target_position.y);
                         if (abs(dir - cmd.val1()) < cmd.val2())
                             script->pos = cmd.pos;
                     }
@@ -69,7 +69,7 @@ class Entity
                     // Allows missile turret to pick targets more quickly
                     // as it can turn to its target without iscript overriding it ._.
                     if (target == nullptr)
-                        SetDirection(&flingy, flingy.facing_direction + 8);
+                        bw::SetDirection(&flingy, flingy.facing_direction + 8);
                 break;
                 case SigOrder:
                     order_signal |= cmd.val;

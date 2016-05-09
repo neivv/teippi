@@ -16,7 +16,7 @@ void TransportStatus_UpdateDrawnValues()
         ui_transported_units[i] = unit;
         bw::ui_transported_unit_hps[i] = unit->hitpoints;
     }
-    *bw::redraw_transport_ui = Ui_NeedsRedraw_Unk(); // ???
+    *bw::redraw_transport_ui = bw::Ui_NeedsRedraw_Unk(); // ???
     *bw::ui_hitpoints = transport->hitpoints;
     *bw::ui_shields = transport->shields >> 8;
     *bw::ui_energy = transport->energy;
@@ -28,7 +28,7 @@ int TransportStatus_DoesNeedRedraw()
     if (*bw::redraw_transport_ui)
         return true;
     if (!*bw::is_replay && transport->player != *bw::local_player_id)
-        return GenericStatus_DoesNeedRedraw();
+        return bw::GenericStatus_DoesNeedRedraw();
 
     int i = 0;
     for (Unit *unit = transport->first_loaded; unit; unit = unit->next_loaded, i++)
@@ -39,7 +39,7 @@ int TransportStatus_DoesNeedRedraw()
             return true;
     }
 
-    return GenericStatus_DoesNeedRedraw();
+    return bw::GenericStatus_DoesNeedRedraw();
 }
 
 void DrawStatusScreen_LoadedUnits(Dialog *dlg)
@@ -130,7 +130,7 @@ void StatusScreen_DrawKills(Dialog *dlg)
     else
     {
         snprintf(ss_kills, sizeof ss_kills, "%s %d", (*bw::stat_txt_tbl)->GetTblString(String::Kills), unit->kills);
-        SetLabel(dlg, ss_kills, StatusScreen::Kills);
+        bw::SetLabel(dlg, ss_kills, StatusScreen::Kills);
     }
 }
 
@@ -139,7 +139,7 @@ void Control::MarkDirty()
     if (~flags & 0x1)
     {
         flags |= 0x1;
-        MarkControlDirty(this);
+        bw::MarkControlDirty(this);
     }
 }
 

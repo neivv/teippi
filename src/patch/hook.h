@@ -1,6 +1,8 @@
 #ifndef PATCH_HOOK_H
 #define PATCH_HOOK_H
 
+#include "write_asm.h"
+
 /// Hooking functionality.
 ///
 /// Mostly you just want to define the hooks with `Stdcall<FuncSignature>`,
@@ -175,55 +177,6 @@ REG_IMPLS(Edi, 0x57)
         return length;
     }
 
-    inline int WriteJump(uint8_t *out, int out_size, void *target_) {
-        if (out_size < 5) { return -5; }
-        uintptr_t target = (uintptr_t)target_;
-        *out++ = 0xe9;
-        uintptr_t value = target - (uintptr_t)out - 4;
-        memcpy(out, &value, 4);
-        return 5;
-    }
-
-    template <typename Ret, typename... Args>
-    int WriteCall(uint8_t *out, int out_size, Ret (*target_)(Args...)) {
-        if (out_size < 5) { return -5; }
-        uintptr_t target = (uintptr_t)target_;
-        *out++ = 0xe8;
-        uintptr_t value = target - (uintptr_t)out - 4;
-        memcpy(out, &value, 4);
-        return 5;
-    }
-
-    template <typename Type>
-    inline int WritePushConstant(uint8_t *out, int out_size, Type value) {
-        static_assert(sizeof(Type) == 4, "Bad constant size");
-        if (out_size < 5) {
-            return -5;
-        }
-        *out++ = 0x68;
-        auto ptr = &value;
-        memcpy(out, ptr, 4);
-        return 5;
-    }
-
-    inline int WritePushad(StackState *state, uint8_t *out, int out_size) {
-        if (out_size < 1) {
-            return -1;
-        }
-        *out++ = 0x60;
-        state->stack_diff += 8;
-        return 1;
-    }
-
-    inline int WritePopad(StackState *state, uint8_t *out, int out_size) {
-        if (out_size < 1) {
-            return -1;
-        }
-        *out++ = 0x61;
-        state->stack_diff -= 8;
-        return 1;
-    }
-
     inline int WriteStackArgPop(uint8_t *out, int out_size, int arg_count) {
         if (arg_count == 0) {
             return 0;
@@ -240,20 +193,6 @@ REG_IMPLS(Edi, 0x57)
             uint32_t val = arg_count * 4;
             memcpy(out, &val, 4);
             return 6;
-        }
-    }
-
-    inline int WriteReturn(uint8_t *out, int out_size, int pop_arg_count) {
-        if (pop_arg_count == 0) {
-            if (out_size < 1) { return -1; }
-            *out = 0xc3;
-            return 1;
-        } else {
-            if (out_size < 3) { return -3; }
-            *out++ = 0xc2;
-            uint16_t value = pop_arg_count * sizeof(void *);
-            memcpy(out, &value, 2);
-            return 3;
         }
     }
 
@@ -304,6 +243,16 @@ REG_IMPLS(Edi, 0x57)
             using Target = Ret (Args...);
     };
 
+    inline int WritePushad(StackState *state, uint8_t *out, int out_size) {
+        state->stack_diff += 8;
+        return WritePushad(out, out_size);
+    }
+
+    inline int WritePopad(StackState *state, uint8_t *out, int out_size) {
+        state->stack_diff -= 8;
+        return WritePopad(out, out_size);
+    }
+
     template <typename Signature>
     class Stdcall;
 
@@ -334,7 +283,7 @@ REG_IMPLS(Edi, 0x57)
                 }
                 written = Write(WriteArguments<Args...>(&stack_state, pos, buf_size));
                 if (written < 0) { return written; }
-                written = Write(WriteCall(pos, buf_size, target));
+                written = Write(WriteCall(pos, buf_size, (void *)target));
                 if (written < 0) { return written; }
                 written = Write(WriteStackArgPop(pos, buf_size, stack_state.hook_stack_amt));
                 if (written < 0) { return written; }
@@ -387,7 +336,7 @@ REG_IMPLS(Edi, 0x57)
                 if (written < 0) { return written; }
                 written = Write(WritePushConstant(pos, buf_size, target));
                 if (written < 0) { return written; }
-                written = Write(WriteCall(pos, buf_size, intermediate_target));
+                written = Write(WriteCall(pos, buf_size, (void *)intermediate_target));
                 if (written < 0) { return written; }
                 written = Write(WriteStackArgPop(pos, buf_size, stack_state.hook_stack_amt + 1));
                 if (written < 0) { return written; }

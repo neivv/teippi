@@ -42,8 +42,8 @@ void ProgressTriggers()
         return;
 
     int msecs = 0x2a;
-    CheckVictoryState();
-    ProgressTime(msecs);
+    bw::CheckVictoryState();
+    bw::ProgressTime(msecs);
     bool progressed_something = false;
 
     if (trigger_check_rate == 0 || (*bw::trigger_cycle_count)-- == 0)
@@ -58,12 +58,12 @@ void ProgressTriggers()
             {
                 progressed_something = true;
                 *bw::trigger_current_player = player;
-                ProgressTriggerList(triggers);
+                bw::ProgressTriggerList(triggers);
             }
         }
     }
     if (progressed_something)
-        ApplyVictory();
+        bw::ApplyVictory();
 }
 
 static int FindUnitInLocation_Check_Main(Unit *unit, FindUnitLocationParam *param)
@@ -73,7 +73,7 @@ static int FindUnitInLocation_Check_Main(Unit *unit, FindUnitLocationParam *para
         if (FindUnitInLocation_Check_Main(unit->worker.powerup, param))
             return 1;
     }
-    if (!IsOwnedByPlayer(param->player, 0, unit))
+    if (!bw::IsOwnedByPlayer(param->player, 0, unit))
         return 0;
     for (Unit *loaded = unit->first_loaded; loaded; loaded = loaded->next_loaded)
     {
@@ -86,7 +86,7 @@ static int FindUnitInLocation_Check_Main(Unit *unit, FindUnitLocationParam *para
 
 int FindUnitInLocation_Check(Unit *unit, FindUnitLocationParam *param)
 {
-    if (param->location_flags && MatchesHeight(unit, param->location_flags)) // location height flags are reversed
+    if (param->location_flags && bw::MatchesHeight(unit, param->location_flags)) // location height flags are reversed
         return 0;
 
     return FindUnitInLocation_Check_Main(unit, param);
@@ -96,7 +96,7 @@ static void ChangeInvincibility_Main(Unit *unit, ChangeInvincibilityParam *param
 {
     if (unit->flags & UnitStatus::Hallucination)
         return;
-    if (!IsOwnedByPlayer(param->player, 0, unit))
+    if (!bw::IsOwnedByPlayer(param->player, 0, unit))
         return;
 
     for (Unit *loaded = unit->first_loaded; loaded; loaded = loaded->next_loaded)
@@ -125,7 +125,7 @@ static void ChangeInvincibility_Main(Unit *unit, ChangeInvincibilityParam *param
 
 int ChangeInvincibility(Unit *unit, ChangeInvincibilityParam *param)
 {
-    if (param->location_flags && MatchesHeight(unit, param->location_flags)) // location height flags are reversed
+    if (param->location_flags && bw::MatchesHeight(unit, param->location_flags)) // location height flags are reversed
         return 0;
 
     ChangeInvincibility_Main(unit, param);
@@ -134,7 +134,7 @@ int ChangeInvincibility(Unit *unit, ChangeInvincibilityParam *param)
 
 int Trig_KillUnitGeneric(Unit *unit, KillUnitArgs *args, bool check_height, bool killing_additional_unit)
 {
-    if (check_height && MatchesHeight(unit, args->flags))
+    if (check_height && bw::MatchesHeight(unit, args->flags))
         return 0;
 
     for (Unit *loaded = unit->first_loaded; loaded; loaded = loaded->next_loaded)
@@ -151,7 +151,7 @@ int Trig_KillUnitGeneric(Unit *unit, KillUnitArgs *args, bool check_height, bool
         Unit *worker = unit->powerup.carrying_unit;
         if (worker->carried_powerup_flags)
         {
-            DeletePowerupImages(worker);
+            bw::DeletePowerupImages(worker);
             if (worker->worker.powerup)
             {
                 worker->worker.powerup->order_flags |= 0x4;
@@ -169,7 +169,7 @@ int Trig_KillUnitGeneric(Unit *unit, KillUnitArgs *args, bool check_height, bool
     else
     {
         if (*bw::trig_remove_unit_active)
-            HideUnit(unit);
+            bw::HideUnit(unit);
     }
     unit->Kill(nullptr);
     if (!killing_additional_unit)
@@ -190,7 +190,7 @@ int __fastcall TrigAction_CenterView(TriggerAction *action)
         Location *loc = &bw::locations[action->location - 1];
         int x = (loc->area.left + loc->area.right - resolution::game_width) / 2;
         int y = (loc->area.top + loc->area.bottom - resolution::game_height) / 2;
-        MoveScreen(x, y);
+        bw::MoveScreen(x, y);
     }
     return 1;
 }
@@ -234,23 +234,23 @@ int __fastcall TrigAction_Transmission(TriggerAction *action)
     {
         // Play wav
         bw::trigger_actions[0x8](action);
-        Unit *unit = FindUnitInLocation(action->unit_id, AllPlayers, action->location - 1);
+        Unit *unit = bw::FindUnitInLocation(action->unit_id, AllPlayers, action->location - 1);
         if (unit != nullptr)
         {
             unit->sprite->selection_flash_timer = 45;
-            PingMinimap(unit->sprite->position.x, unit->sprite->position.y, AllPlayers);
-            Trigger_Portrait(action->unit_id, time, unit->sprite->position.x, unit->sprite->position.y);
+            bw::PingMinimap(unit->sprite->position.x, unit->sprite->position.y, AllPlayers);
+            bw::Trigger_Portrait(action->unit_id, time, unit->sprite->position.x, unit->sprite->position.y);
         }
         else
         {
-            Trigger_Portrait(action->unit_id, time, 0xffffffff, 0xffffffff);
+            bw::Trigger_Portrait(action->unit_id, time, 0xffffffff, 0xffffffff);
         }
         // Check for subtitles or always display
         if (*bw::options & 0x400 || action->flags & 0x4)
         {
-            const char *str = GetChkString(action->string_id);
-            auto text_time = GetTextDisplayTime(str);
-            Trigger_DisplayText(str, max(text_time, time));
+            const char *str = bw::GetChkString(action->string_id);
+            auto text_time = bw::GetTextDisplayTime(str);
+            bw::Trigger_DisplayText(str, max(text_time, time));
         }
     }
     return 0;

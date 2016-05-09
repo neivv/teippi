@@ -28,11 +28,11 @@ static bool DidUnderflow(uint16_t new_val, uint16_t old_val)
 void Unit::MovementState_Flyer()
 {
     STATIC_PERF_CLOCK(Unit_MovementState_Flyer);
-    ForceMoveTargetInBounds(this);
+    bw::ForceMoveTargetInBounds(this);
 
     AsFlingy()->ProgressFlingy();
 
-    bool repulsed = ProgressRepulse(this);
+    bool repulsed = bw::ProgressRepulse(this);
 
     const auto dbox = Type().DimensionBox();
     if (*bw::new_flingy_x - dbox.left < 0 || DidUnderflow(*bw::new_flingy_x, position.x))
@@ -45,7 +45,7 @@ void Unit::MovementState_Flyer()
         *bw::new_flingy_y = *bw::map_height - dbox.bottom - 1;
 
     FinishMovement_Fast();
-    FinishRepulse(this, repulsed);
+    bw::FinishRepulse(this, repulsed);
 }
 
 int Unit::MovementState13()
@@ -62,7 +62,7 @@ int Unit::MovementState13()
         *bw::dodge_unit_from_path = nullptr;
         return 1;
     }
-    if (MakePath(this, move_target.AsDword()))
+    if (bw::MakePath(this, move_target.AsDword()))
     {
         movement_state = 0x14;
         *bw::dodge_unit_from_path = nullptr;
@@ -83,7 +83,7 @@ int Unit::MovementState17()
         *bw::dodge_unit_from_path = path->dodge_unit;
         DeletePath();
     }
-    if (MakePath(this, move_target.AsDword()))
+    if (bw::MakePath(this, move_target.AsDword()))
         movement_state = MovementState::FollowPath;
     else
         movement_state = 0xf;
@@ -98,19 +98,19 @@ int Unit::MovementState20()
 {
     if (path_frame < 0xff)
         path_frame++;
-    if (UpdateMovementState(this, true))
+    if (bw::UpdateMovementState(this, true))
         return 1;
 
     Unit *dodge_unit = path->dodge_unit;
     flingy_flags |= 0x1;
     target_direction = path->direction;
-    ChangedDirection(this);
+    bw::ChangedDirection(this);
     AsFlingy()->ProgressTurning();
     sprite->SetDirection256(facing_direction);
     if (flingy_movement_type == 2)
         current_speed = flingy_top_speed;
     else
-        ProgressSpeed(this);
+        bw::ProgressSpeed(this);
 
     int original_movement_direction = movement_direction;
     auto original_speed = next_speed = current_speed;
@@ -124,17 +124,17 @@ int Unit::MovementState20()
         if (tmp_speed > 256)
             tmp_speed = 256;
         flingy_flags &= ~0x1;
-        ProgressMoveWith(this, path->direction, tmp_speed);
-        if (FindCollidingUnit(this) || TerrainCollision(this))
+        bw::ProgressMoveWith(this, path->direction, tmp_speed);
+        if (bw::FindCollidingUnit(this) || bw::TerrainCollision(this))
         {
             new_movement_state = 0x21;
             break;
         }
-        MoveUnit_Partial(this);
+        bw::MoveUnit_Partial(this);
         movement_direction = original_movement_direction;
-        ChangeDirectionToMoveWaypoint(this);
-        ProgressMoveWith(this, new_direction, original_speed);
-        colliding = FindCollidingUnit(this);
+        bw::ChangeDirectionToMoveWaypoint(this);
+        bw::ProgressMoveWith(this, new_direction, original_speed);
+        colliding = bw::FindCollidingUnit(this);
         if (colliding != dodge_unit)
             break;
     }
@@ -159,7 +159,7 @@ int Unit::MovementState20()
 
 int Unit::MovementState1c()
 {
-    if (UpdateMovementState(this, true))
+    if (bw::UpdateMovementState(this, true))
         return 1;
     if (path_frame < 0xff)
         path_frame++;
@@ -171,21 +171,21 @@ int Unit::MovementState1c()
         return 0;
     }
     int unk;
-    if (move_target_unit && IsInArea(this, 0, move_target_unit))
+    if (move_target_unit && bw::IsInArea(this, 0, move_target_unit))
     {
         unk = 1; // Finished
     }
-    else if (DoesBlockPoint(other, unit_id, move_target.x, move_target.y))
+    else if (bw::DoesBlockPoint(other, unit_id, move_target.x, move_target.y))
     {
         if (other->path_frame < 30 && !DoesCollideAt(move_target, other, other->move_target))
-            unk = IsInFrontOfMovement(other, this) ? 4 : 6;
+            unk = bw::IsInFrontOfMovement(other, this) ? 4 : 6;
         else
             unk = move_target_unit != nullptr ? 3 : 2;
     }
-    else if (DoesBlockPoint(other, unit_id, next_move_waypoint.x, next_move_waypoint.y))
+    else if (bw::DoesBlockPoint(other, unit_id, next_move_waypoint.x, next_move_waypoint.y))
     {
         if (other->path_frame < 30 && !DoesCollideAt(next_move_waypoint, other, other->move_target))
-            unk = IsInFrontOfMovement(other, this) ? 4 : 6;
+            unk = bw::IsInFrontOfMovement(other, this) ? 4 : 6;
         else
             unk = 3;
     }
@@ -214,18 +214,18 @@ int Unit::MovementState1c()
     int frames = *bw::frame_count - path->start_frame;
     if (frames < 7 && unk >= 3 && unk <= 5)
     {
-        Iscript_StopMoving(this);
+        bw::Iscript_StopMoving(this);
         return 0;
     }
     switch (unk)
     {
         case 1: // Finished
-            InstantStop(this);
+            bw::InstantStop(this);
             movement_state = 0xb;
             flags &= ~UnitStatus::MovePosUpdated;
         break;
         case 2:
-            InstantStop(this);
+            bw::InstantStop(this);
             movement_state = 0xb;
         break;
         case 3:
@@ -236,7 +236,7 @@ int Unit::MovementState1c()
         break;
         case 5:
             movement_state = 0x13;
-            SetSpeed_Iscript(this, 0);
+            bw::SetSpeed_Iscript(this, 0);
         break;
         case 6:
             movement_state = 0x1d;
@@ -283,22 +283,22 @@ int Unit::ProgressUnstackMovement()
     if (*bw::new_flingy_x - dbox.left < 0 || *bw::new_flingy_x + dbox.right >= *bw::map_width ||
         *bw::new_flingy_y - dbox.top < 0 || *bw::new_flingy_y + dbox.bottom >= *bw::map_height)
     {
-        if (IsMovingToMoveWaypoint(this))
+        if (bw::IsMovingToMoveWaypoint(this))
             return 1;
         AsFlingy()->ProgressFlingy(); // again???
         AsFlingy()->SetMovementDirectionToTarget();
         return 0;
     }
-    FinishUnitMovement(this);
+    bw::FinishUnitMovement(this);
     return 0;
 }
 
 // State 19
 int Unit::MovementState_FollowPath()
 {
-    if (UpdateMovementState(this, true))
+    if (bw::UpdateMovementState(this, true))
         return 1;
-    if (MakePath(this, move_target.AsDword()) == 0)
+    if (bw::MakePath(this, move_target.AsDword()) == 0)
     {
         movement_state = 0x16;
         return 1;
@@ -311,8 +311,8 @@ int Unit::MovementState_FollowPath()
 
     Unit *colliding = nullptr;
     if (flags & UnitStatus::Collides)
-        colliding = FindCollidingUnit(this);
-    bool terrain_collision = TerrainCollision(this) != 0;
+        colliding = bw::FindCollidingUnit(this);
+    bool terrain_collision = bw::TerrainCollision(this) != 0;
 
     if (terrain_collision)
     {
@@ -349,7 +349,7 @@ int Unit::MovementState_FollowPath()
             *bw::new_exact_y = exact_position.y + speed[1] / 2;
             *bw::new_flingy_x = *bw::new_exact_x / 256;
             *bw::new_flingy_y = *bw::new_exact_y / 256;
-            if (FindCollidingUnit(this) == nullptr)
+            if (bw::FindCollidingUnit(this) == nullptr)
             {
                 colliding = nullptr;
             }
@@ -359,7 +359,7 @@ int Unit::MovementState_FollowPath()
                 *bw::new_exact_y = exact_position.y + speed[1] / 4;
                 *bw::new_flingy_x = *bw::new_exact_x / 256;
                 *bw::new_flingy_y = *bw::new_exact_y / 256;
-                if (FindCollidingUnit(this) == nullptr)
+                if (bw::FindCollidingUnit(this) == nullptr)
                 {
                     colliding = nullptr;
                 }
@@ -413,7 +413,7 @@ int Unit::MovementState_FollowPath()
             path_frame -= 1;
         }
     }
-    FinishUnitMovement(this);
+    bw::FinishUnitMovement(this);
     if (IsStandingStill() == 0)
     {
         if (path->unk_count != 0)
@@ -444,7 +444,7 @@ const Unit *Unit::FindCollidingWithDirection(int direction)
     *bw::new_exact_y = exact_position.y + y_speed;
     *bw::new_flingy_x = *bw::new_exact_x >> 8;
     *bw::new_flingy_y = *bw::new_exact_y >> 8;
-    Unit *ret = FindCollidingUnit(this);
+    Unit *ret = bw::FindCollidingUnit(this);
 
     *bw::new_exact_x = orig_exact_x;
     *bw::new_exact_y = orig_exact_y;

@@ -143,7 +143,7 @@ void Sprite::AddToHlines()
 void Sprite::Hide()
 {
     flags |= SpriteFlags::Hidden;
-    SetVisibility(this, 0);
+    bw::SetVisibility(this, 0);
 }
 
 void Sprite::AddOverlayAboveMain(Iscript::Context *ctx, ImageType image_id, int x, int y, int direction)
@@ -171,7 +171,7 @@ void Sprite::AddOverlayAboveMain(Iscript::Context *ctx, ImageType image_id, int 
         image->SingleDelete();
         return;
     }
-    SetImageDirection32(image, direction);
+    bw::SetImageDirection32(image, direction);
 }
 
 bool Sprite::Initialize(Iscript::Context *ctx, SpriteType sprite_id_, const Point &pos, int player_)
@@ -253,11 +253,11 @@ Sprite *LoneSpriteSystem::AllocateFow(Sprite *base, UnitType unit_id)
     {
         if (img->drawfunc == Image::HpBar || img->drawfunc == Image::SelectionCircle)
             continue;
-        Image *current = AddOverlayNoIscript(sprite, img->image_id, img->x_off, img->y_off, img->direction);
+        Image *current = bw::AddOverlayNoIscript(sprite, img->image_id, img->x_off, img->y_off, img->direction);
         current->frame = img->frame;
         current->frameset = img->frameset;
         current->SetFlipping(img->IsFlipped());
-        PrepareDrawImage(current);
+        bw::PrepareDrawImage(current);
         if (img == base->main_image)
             sprite->main_image = current;
     }
@@ -373,7 +373,7 @@ void Sprite::CreateDrawSpriteList()
                 draw_order[draw_order_amount++] = sprite;
                 sprite->sort_order = sprite->GetZCoord();
             }
-            PrepareDrawSprite(sprite); // Has to be done outside the loop or cursor marker sprite will bug
+            bw::PrepareDrawSprite(sprite); // Has to be done outside the loop or cursor marker sprite will bug
         }
         first_y++;
     }
@@ -417,7 +417,7 @@ void Sprite::CreateDrawSpriteListFullRedraw()
 void Sprite::DrawSprites()
 {
     PerfClock clock;
-    std::for_each(draw_order, draw_order + draw_order_amount, DrawSprite);
+    std::for_each(draw_order, draw_order + draw_order_amount, bw::DrawSprite);
     auto time = clock.GetTime();
     if (!*bw::is_paused && time > 12.0)
         perf_log->Log("DrawSprites %f ms\n", time);
@@ -451,9 +451,9 @@ void Sprite::UpdateVisibilityArea()
     if (y_tile + h_tile > map_height && map_height <= y_tile)
         return;
 
-    uint8_t visibility = GetAreaVisibility(x_tile, y_tile, w_tile, h_tile);
+    uint8_t visibility = bw::GetAreaVisibility(x_tile, y_tile, w_tile, h_tile);
     if (visibility != visibility_mask)
-        SetVisibility(this, visibility);
+        bw::SetVisibility(this, visibility);
 
     // orig func returns shit but not necessary now
 }
@@ -466,7 +466,7 @@ bool Sprite::UpdateVisibilityPoint()
     int old_local_visibility = visibility_mask & *bw::player_visions;
     if (new_visibility != visibility_mask)
     {
-        SetVisibility(this, new_visibility);
+        bw::SetVisibility(this, new_visibility);
         if (old_local_visibility && !(visibility_mask & *bw::player_visions)) // That is, if vision was lost
             return true;
     }
@@ -493,10 +493,10 @@ void UpdateDoodadVisibility(Sprite *sprite)
     if (*bw::is_replay && *bw::replay_show_whole_map)
         visibility = 0xff;
     else
-        visibility = GetAreaExploration(x_tile, y_tile, width, height);
+        visibility = bw::GetAreaExploration(x_tile, y_tile, width, height);
 
     if (visibility != sprite->visibility_mask)
-        SetVisibility(sprite, visibility);
+        bw::SetVisibility(sprite, visibility);
 
     // Orig func returns shit but not necessary now
 }
@@ -522,16 +522,16 @@ static bool ProgressLoneSpriteFrame(Sprite *sprite)
 static bool ProgressFowSpriteFrame(Sprite *sprite)
 {
     if (sprite->player < Limits::Players)
-        DrawTransmissionSelectionCircle(sprite, bw::self_alliance_colors[sprite->player]);
+        bw::DrawTransmissionSelectionCircle(sprite, bw::self_alliance_colors[sprite->player]);
     int place_width = UnitType(sprite->index).PlacementBox().width;
     int place_height = UnitType(sprite->index).PlacementBox().height;
     int width = (place_width + 31) / 32;
     int height = (place_height + 31) / 32;
     int x = (sprite->position.x - place_width / 2) / 32;
     int y = (sprite->position.y - place_height / 2) / 32;
-    if (!IsCompletelyHidden(x, y, width, height))
+    if (!bw::IsCompletelyHidden(x, y, width, height))
     {
-        RemoveSelectionCircle(sprite);
+        bw::RemoveSelectionCircle(sprite);
         return true;
     }
     return false;
@@ -570,15 +570,15 @@ void DrawMinimapUnits()
         *bw::player_visions = 0xff;
     for (int i = 11; i > 7; i--)
     {
-        DrawNeutralMinimapUnits(i);
+        bw::DrawNeutralMinimapUnits(i);
     }
     for (int i = 7; i >= 0; i--)
     {
         if (replay || i != local_player)
-            bw::funcs::DrawMinimapUnits(i);
+            bw::DrawMinimapUnits(i);
     }
     if (!replay)
-        DrawOwnMinimapUnits(local_player);
+        bw::DrawOwnMinimapUnits(local_player);
 
     *bw::player_visions = orig_visions;
 
@@ -594,7 +594,7 @@ void DrawMinimapUnits()
                 int height = (place_height + 31) / 32;
                 int x = (sprite->position.x - place_width / 2) / 32;
                 int y = (sprite->position.y - place_height / 2) / 32;
-                if (IsCompletelyUnExplored(x, y, width, height))
+                if (bw::IsCompletelyUnExplored(x, y, width, height))
                     continue;
             }
             int color;
@@ -612,7 +612,7 @@ void DrawMinimapUnits()
                 else
                     color = bw::player_minimap_color.index_overflowing(sprite->player);
             }
-            DrawMinimapDot(color, sprite->position.x, sprite->position.y, place_width, place_height, 1);
+            bw::DrawMinimapDot(color, sprite->position.x, sprite->position.y, place_width, place_height, 1);
             (*bw::minimap_dot_count)--;
         }
     }
@@ -684,8 +684,8 @@ void DrawCursorMarker()
     {
         Sprite *marker = *bw::cursor_marker;
         for (Image *img : marker->first_overlay)
-            PrepareDrawImage(img);
-        DrawSprite(marker);
+            bw::PrepareDrawImage(img);
+        bw::DrawSprite(marker);
         for (Image *img : marker->first_overlay)
             img->flags |= ImageFlags::Redraw;
     }
@@ -699,7 +699,7 @@ void Sprite::SetIscriptAnimation_Lone(int anim, bool force, Rng *rng, const char
 void ShowCursorMarker(uint16_t x, uint16_t y)
 {
     Sprite *marker = *bw::cursor_marker;
-    MoveSprite(marker, x, y);
+    bw::MoveSprite(marker, x, y);
     marker->SetIscriptAnimation_Lone(Iscript::Animation::GndAttkInit, true, MainRng(), "ShowCursorMarker");
     *bw::draw_cursor_marker = 1;
 }
@@ -753,7 +753,7 @@ void Sprite::SetDirection32(int direction)
 {
     for (Image *img : first_overlay)
     {
-        SetImageDirection32(img, direction);
+        bw::SetImageDirection32(img, direction);
     }
 }
 
@@ -761,7 +761,7 @@ void Sprite::SetDirection256(int direction)
 {
     for (Image *img : first_overlay)
     {
-        SetImageDirection256(img, direction);
+        bw::SetImageDirection256(img, direction);
     }
 }
 
@@ -795,7 +795,7 @@ void Sprite::RemoveSelectionOverlays()
         {
             if (img->drawfunc == Image::HpBar)
             {
-                DeleteHealthBarImage(img);
+                bw::DeleteHealthBarImage(img);
                 break;
             }
         }
@@ -808,7 +808,7 @@ void Sprite::RemoveSelectionOverlays()
             if (img->Type() >= ImageId::FirstDashedSelectionCircle &&
                     img->Type() <= ImageId::LastDashedSelectionCircle)
             {
-                DeleteSelectionCircleImage(img);
+                bw::DeleteSelectionCircleImage(img);
                 break;
             }
         }
@@ -821,7 +821,7 @@ void Sprite::RemoveSelectionOverlays()
             if (img->Type() >= ImageId::FirstSelectionCircle &&
                     img->Type() <= ImageId::LastSelectionCircle)
             {
-                DeleteSelectionCircleImage(img);
+                bw::DeleteSelectionCircleImage(img);
                 break;
             }
         }
@@ -864,7 +864,7 @@ void Sprite::AddDamageOverlay()
             int variation = img->image_id - ImageId::FirstMinorDamageOverlay.Raw();
             img->SingleDelete();
             Point32 pos = overlay.GetValues(main_image, variation);
-            AddOverlayHighest(this, ImageId::FirstMajorDamageOverlay.Raw() + variation, pos.x, pos.y, 0);
+            bw::AddOverlayHighest(this, ImageId::FirstMajorDamageOverlay.Raw() + variation, pos.x, pos.y, 0);
             return;
         }
     }
@@ -896,7 +896,7 @@ void Sprite::AddDamageOverlay()
     {
         int variation = results[MainRng()->Rand(result_pos - results.begin())];
         Point32 pos = overlay.GetValues(main_image, variation);
-        AddOverlayHighest(this, ImageId::FirstMinorDamageOverlay.Raw() + variation, pos.x, pos.y, 0);
+        bw::AddOverlayHighest(this, ImageId::FirstMinorDamageOverlay.Raw() + variation, pos.x, pos.y, 0);
     }
 }
 
@@ -938,7 +938,7 @@ void Sprite::IscriptToIdle(Iscript::Context *ctx)
 void Sprite::InitSpriteSystem()
 {
     lone_sprites->DeleteAll();
-    LoadDat(&bw::sprites_dat[0], "arr\\sprites.dat");
+    bw::LoadDat(&bw::sprites_dat[0], "arr\\sprites.dat");
     std::fill(bw::horizontal_sprite_lines.begin(), bw::horizontal_sprite_lines.end(), nullptr);
     std::fill(bw::horizontal_sprite_lines_rev.begin(), bw::horizontal_sprite_lines_rev.end(), nullptr);
 }

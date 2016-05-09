@@ -129,7 +129,7 @@ namespace bw
 
     const Stdcall<Unit *(uint8_t player, int, Esi<uint16_t>, Edx<uint16_t>, Edi<uint16_t>)>
         AllocateUnit = 0x004A06C0;
-    const Stdcall<void()> InitUnitSystem = 0x0049F380;
+    const Stdcall<void()> InitUnitSystem_Hook = 0x0049F380;
     const Stdcall<void()> InitSpriteSystem = 0x00499900;
 
     const Stdcall<void(Ecx<Image *>, uint8_t)> SetIscriptAnimation = 0x004D8470;

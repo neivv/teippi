@@ -147,7 +147,7 @@ void DamagedUnit::AddHit(uint32_t dmg, WeaponType weapon_id, int player, int dir
     else if (attacker != nullptr)
     {
         if (base->player != attacker->player && weapon_id != WeaponId::Irradiate)
-            Notify_UnitWasHit(base);
+            bw::Notify_UnitWasHit(base);
         if (UnitWasHit(base, attacker, weapon_id != WeaponId::Irradiate))
             bufs->unit_was_hit->emplace_back(base, attacker);
     }
@@ -208,7 +208,7 @@ void Bullet::Move(const Point &where)
 {
     position = where;
     exact_position = Point32(where.x * 256, where.y * 256);
-    MoveSprite(sprite.get(), where.x, where.y);
+    bw::MoveSprite(sprite.get(), where.x, where.y);
 }
 
 // Spawner is not necessarily parent, in case of subunits/fighters
@@ -297,7 +297,7 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, WeaponType we
         case 0x2: case 0x4: // Appear on target unit / site
         if (target && parent)
         {
-            if (MainRng()->Rand(0x100) <= GetMissChance(parent, target))
+            if (MainRng()->Rand(0x100) <= bw::GetMissChance(parent, target))
             {
                 int x = sprite->position.x - bw::circle[direction][0] * 30 / 256;
                 int y = sprite->position.y - bw::circle[direction][1] * 30 / 256;
@@ -332,7 +332,7 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, WeaponType we
             bounces_remaining = 3; // Won't matter on others
             if (target && parent)
             {
-                if (MainRng()->Rand(0x100) <= GetMissChance(parent, target))
+                if (MainRng()->Rand(0x100) <= bw::GetMissChance(parent, target))
                 {
                     int x = order_target_pos.x - bw::circle[direction][0] * 30 / 256;
                     int y = order_target_pos.y - bw::circle[direction][1] * 30 / 256;
@@ -622,7 +622,7 @@ bool UnitWasHit(Unit *target, Unit *attacker, bool notify)
     target->StartHelperSearch();
     if (notify && !attacker->IsInvisibleTo(target) && target->player < 8)
     {
-        ShowArea(1, 1 << target->player, attacker->sprite->position.x, attacker->sprite->position.y, attacker->IsFlying());
+        bw::ShowArea(1, 1 << target->player, attacker->sprite->position.x, attacker->sprite->position.y, attacker->IsFlying());
     }
     return true;
 }
@@ -634,7 +634,7 @@ void DamageUnit(int damage, Unit *target, vector<Unit *> *killed_units)
     {
         target->hitpoints -= damage;
         if (target->sprite->main_image->Type().DamageOverlay() && target->flags & UnitStatus::Completed)
-            UpdateDamageOverlay(target);
+            bw::UpdateDamageOverlay(target);
     }
     else
     {
@@ -661,7 +661,7 @@ void HallucinationHit(Unit *target, Unit *attacker, int direction, vector<tuple<
             }
         }
         if (attacker->player != target->player)
-            Notify_UnitWasHit(target);
+            bw::Notify_UnitWasHit(target);
     }
     if (target->shields >= 256 && target->Type().HasShields())
         target->ShowShieldHitOverlay(direction);
@@ -700,9 +700,9 @@ Unit *Bullet::ChooseBounceTarget()
 BulletState Bullet::State_Bounce(BulletStateResults *results)
 {
     if (target != nullptr && !DoesMiss())
-        ChangeMovePos(this, target->sprite->position.x, target->sprite->position.y);
+        bw::ChangeMovePos(this, target->sprite->position.x, target->sprite->position.y);
 
-    ProgressBulletMovement(this);
+    bw::ProgressBulletMovement(this);
     if (move_target == position)
     {
         bounces_remaining--;
@@ -794,7 +794,7 @@ BulletState Bullet::State_GroundDamage(BulletStateResults *results)
 
 BulletState Bullet::State_MoveToPoint(BulletStateResults *results)
 {
-    ProgressBulletMovement(this);
+    bw::ProgressBulletMovement(this);
     if (time_remaining-- != 0 && position != move_target)
         return BulletState::MoveToPoint;
 
@@ -815,7 +815,7 @@ BulletState Bullet::State_MoveToUnit(BulletStateResults *results)
     }
     else
     {
-        ChangeMovePos(this, target->sprite->position.x, target->sprite->position.y);
+        bw::ChangeMovePos(this, target->sprite->position.x, target->sprite->position.y);
         auto result = State_MoveToPoint(results);
         if (result == BulletState::MoveToPoint)
             return BulletState::MoveToTarget;
@@ -839,7 +839,7 @@ BulletState Bullet::State_MoveNearUnit(BulletStateResults *results)
         Point &pos = target->sprite->position;
         int x = min(*bw::map_width - 1, max(0, pos.x - diff.x));
         int y = min(*bw::map_height - 1, max(0, pos.y - diff.y));
-        ChangeMovePos(this, x, y);
+        bw::ChangeMovePos(this, x, y);
         auto result = State_MoveToPoint(results);
         if (result == BulletState::MoveToPoint)
             return BulletState::MoveNearUnit;
@@ -894,7 +894,7 @@ void BulletSystem::ProcessHits(ProgressBulletBufs *bufs)
             unit->hitpoints -= dmg_unit.GetDamage();
             if (unit->sprite->main_image->Type().DamageOverlay() && unit->flags & UnitStatus::Completed)
             {
-                UpdateDamageOverlay(unit);
+                bw::UpdateDamageOverlay(unit);
             }
             if (IsComputerPlayer(unit->player))
                 Ai::Hide(unit);
@@ -949,7 +949,7 @@ void Bullet::Splash(ProgressBulletBufs *bufs, bool hit_own_units)
         {
             if (!hit_own_units && unit->player == player && unit != target)
                 continue;
-            if (!CanHitUnit(unit, unit, weapon_id))
+            if (!bw::CanHitUnit(unit, unit, weapon_id))
                 continue;
             if (!storm && unit == parent)
                 continue;
@@ -994,7 +994,7 @@ void Bullet::Splash(ProgressBulletBufs *bufs, bool hit_own_units)
         {
             if (!hit_own_units && unit->player == player && unit != target)
                 continue;
-            if (!CanHitUnit(unit, unit, weapon_id))
+            if (!bw::CanHitUnit(unit, unit, weapon_id))
                 continue;
             if (!storm && unit == parent)
                 continue;
@@ -1044,7 +1044,7 @@ void Bullet::Splash_Lurker(ProgressBulletBufs *bufs)
     {
         if (unit->player == player && unit != target)
             return false;
-        if (!CanHitUnit(unit, unit, weapon_id)) // attacker is target.. well does not matter
+        if (!bw::CanHitUnit(unit, unit, weapon_id)) // attacker is target.. well does not matter
             return false;
         if (GetSplashDistance(this, unit) > Type().InnerSplash())
             return false;
@@ -1082,7 +1082,7 @@ void Bullet::AcidSporeHit() const
             if (!unit->IsInvincible())
             {
                 if (!unit->IsInvisible() || (unit->detection_status & 1 << player))
-                    AcidSporeUnit(unit);
+                    bw::AcidSporeUnit(unit);
             }
         }
         return false;
@@ -1149,7 +1149,7 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
         case 0x9:
             if (target && !target->IsDying())
             {
-                PlaySound(Sound::Irradiate, target, 1, 0);
+                bw::PlaySound(Sound::Irradiate, target, 1, 0);
                 target->Irradiate(parent, player);
             }
         break;

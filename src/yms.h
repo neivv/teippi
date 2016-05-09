@@ -55,7 +55,7 @@ inline bool IsCheatActive(uint32_t cheats)
 
 inline int Distance(const Point32 &first, const Point32 &second)
 {
-    return Distance_(first.x, first.y, second.x, second.y);
+    return bw::Distance(first.x, first.y, second.x, second.y);
 }
 
 #endif // YMS_H

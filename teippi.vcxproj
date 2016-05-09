@@ -38,6 +38,7 @@
     <ClCompile Include="src\mainpatch.cpp" />
     <ClCompile Include="src\mpqdraft.cpp" />
     <ClCompile Include="src\nuke.cpp" />
+    <ClCompile Include="src\offsets_funcs.cpp" />
     <ClCompile Include="src\order.cpp" />
     <ClCompile Include="src\patch\memory.cpp" />
     <ClCompile Include="src\patch\patchmanager.cpp" />
@@ -118,11 +119,14 @@
     <ClInclude Include="src\mpqdraft.h" />
     <ClInclude Include="src\nuke.h" />
     <ClInclude Include="src\offsets.h" />
+    <ClInclude Include="src\offsets_funcs.h" />
     <ClInclude Include="src\offsets_hooks.h" />
     <ClInclude Include="src\order.h" />
+    <ClInclude Include="src\patch\func.h" />
     <ClInclude Include="src\patch\hook.h" />
     <ClInclude Include="src\patch\memory.h" />
     <ClInclude Include="src\patch\patchmanager.h" />
+    <ClInclude Include="src\patch\write_asm.h" />
     <ClInclude Include="src\patch\x86.h" />
     <ClInclude Include="src\pathing.h" />
     <ClInclude Include="src\perfclock.h" />
@@ -155,12 +159,10 @@
     <ClInclude Include="src\upgrade.h" />
     <ClInclude Include="src\warn.h" />
     <ClInclude Include="src\yms.h" />
+    <ClInclude Include="src\patch\func.hpp" />
     <ClInclude Include="src\possearch.hpp" />
     <ClInclude Include="src\unitsearch.hpp" />
     <ClInclude Include="src\unitsearch_cache.hpp" />
-    <Text Include="src\func\nuottei.txt" />
-    <None Include="src\func\functonuot.py" />
-    <None Include="src\func\genfuncs.py" />
     <None Include="wscript" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

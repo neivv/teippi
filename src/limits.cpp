@@ -57,7 +57,7 @@ void SendUnloadCommand(const Unit *unit)
     uint8_t buf[5];
     buf[0] = commands::Unload;
     *(uint32_t *)(buf + 1) = unit->lookup_id;
-    SendCommand(buf, 5);
+    bw::SendCommand(buf, 5);
 }
 
 Unit ** FindUnitsRect(const Rect16 *rect)
@@ -234,7 +234,7 @@ class MovementIscriptContext : public Iscript::Context
         {
             if (cmd.opcode == Iscript::Opcode::Move)
             {
-                auto speed = CalculateSpeedChange(unit, cmd.val * 256);
+                auto speed = bw::CalculateSpeedChange(unit, cmd.val * 256);
                 *out_speed = speed;
             }
             auto result = img->ConstIscriptCommand(this, script, cmd);
@@ -276,13 +276,13 @@ void AddLoadedUnitsToCompletedUnitLbScore(Unit *transport)
 {
     for (Unit *unit = transport->first_loaded; unit; unit = unit->next_loaded)
     {
-        AddToCompletedUnitLbScore(unit);
+        bw::AddToCompletedUnitLbScore(unit);
     }
 }
 
 void TriggerPortraitFinished_Hook(Control *ctrl, int timer_id)
 {
-    DeleteTimer(ctrl, timer_id);
+    bw::DeleteTimer(ctrl, timer_id);
     *bw::trigger_portrait_active = 0;
     // Not including the code which clears waits in singleplayer, as it causes replays to desync
 }
@@ -367,7 +367,7 @@ static bool __fastcall DrawGrp_Flipped_Hook(int x, int y, GrpFrameHeader * frame
 static void MakeDetected_Hook(Sprite *sprite)
 {
     if (sprite->flags & 0x40)
-        RemoveCloakDrawfuncs(sprite);
+        bw::RemoveCloakDrawfuncs(sprite);
     else
     {
         for (Image *img : sprite->first_overlay)
@@ -438,7 +438,7 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->Hook(bw::CreateBunkerShootOverlay, CreateBunkerShootOverlay);
 
     patch->Hook(bw::AllocateUnit, &Unit::AllocateAndInit);
-    patch->CallHook(bw::InitUnitSystem, []{ Unit::DeleteAll(); });
+    patch->CallHook(bw::InitUnitSystem_Hook, []{ Unit::DeleteAll(); });
     patch->Hook(bw::InitSpriteSystem, Sprite::InitSpriteSystem);
 
     patch->Hook(bw::CreateBullet,

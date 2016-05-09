@@ -251,12 +251,12 @@ bool ScConsole::Spawn(const CmdArgs &args)
     Point16 pos = Point16(*bw::screen_x + *bw::mouse_clickpos_x, *bw::screen_y + *bw::mouse_clickpos_y);
     for (int i = 0; i < amount; i++)
     {
-        Unit *unit = CreateUnit(unit_ids[0], pos.x, pos.y, player);
+        Unit *unit = bw::CreateUnit(unit_ids[0], pos.x, pos.y, player);
         if (unit == nullptr)
             return false;
-        FinishUnit_Pre(unit);
-        FinishUnit(unit);
-        GiveAi(unit);
+        bw::FinishUnit_Pre(unit);
+        bw::FinishUnit(unit);
+        bw::GiveAi(unit);
     }
     return true;
 }
@@ -413,7 +413,7 @@ bool ScConsole::Give(const CmdArgs &args)
 
     for (Unit *unit : client_select)
     {
-        GiveUnit(unit, player, false);
+        bw::GiveUnit(unit, player, false);
     }
     return true;
 }
@@ -556,7 +556,7 @@ bool ScConsole::UnitCmd(const CmdArgs &args)
             {
                 int x = unit->sprite->position.x - resolution::game_width / 2;
                 int y = unit->sprite->position.y - resolution::game_height / 2;
-                MoveScreen(std::max(0, x), std::max(0, y));
+                bw::MoveScreen(std::max(0, x), std::max(0, y));
                 return true;
             }
         }
@@ -718,13 +718,13 @@ void ScConsole::DrawLocations(uint8_t *framebuf, xuint w, yuint h)
     {
         Rect32 &area = location.area;
         surface.DrawLine(Point32(area.left, area.top) - screen_pos, Point32(area.right, area.top) - screen_pos, 0x7c,
-                [](int x, int y){ return !IsOutsideGameScreen(x, y); });
+                [](int x, int y){ return !bw::IsOutsideGameScreen(x, y); });
         surface.DrawLine(Point32(area.left, area.top) - screen_pos, Point32(area.left, area.bottom) - screen_pos, 0x7c,
-                [](int x, int y){ return !IsOutsideGameScreen(x, y); });
+                [](int x, int y){ return !bw::IsOutsideGameScreen(x, y); });
         surface.DrawLine(Point32(area.right, area.top) - screen_pos, Point32(area.right, area.bottom) - screen_pos, 0x7c,
-                [](int x, int y){ return !IsOutsideGameScreen(x, y); });
+                [](int x, int y){ return !bw::IsOutsideGameScreen(x, y); });
         surface.DrawLine(Point32(area.left, area.bottom) - screen_pos, Point32(area.right, area.bottom) - screen_pos, 0x7c,
-                [](int x, int y){ return !IsOutsideGameScreen(x, y); });
+                [](int x, int y){ return !bw::IsOutsideGameScreen(x, y); });
     }
 }
 
@@ -740,13 +740,13 @@ void ScConsole::DrawCrects(uint8_t *framebuf, xuint w, yuint h)
     {
         Rect16 crect = unit->GetCollisionRect();
         surface.DrawLine(Point32(crect.left, crect.top) - screen_pos, Point32(crect.right, crect.top) - screen_pos, 0x74,
-                [](int x, int y){ return !IsOutsideGameScreen(x, y); });
+                [](int x, int y){ return !bw::IsOutsideGameScreen(x, y); });
         surface.DrawLine(Point32(crect.left, crect.top) - screen_pos, Point32(crect.left, crect.bottom) - screen_pos, 0x74,
-                [](int x, int y){ return !IsOutsideGameScreen(x, y); });
+                [](int x, int y){ return !bw::IsOutsideGameScreen(x, y); });
         surface.DrawLine(Point32(crect.right, crect.top) - screen_pos, Point32(crect.right, crect.bottom) - screen_pos, 0x74,
-                [](int x, int y){ return !IsOutsideGameScreen(x, y); });
+                [](int x, int y){ return !bw::IsOutsideGameScreen(x, y); });
         surface.DrawLine(Point32(crect.left, crect.bottom) - screen_pos, Point32(crect.right, crect.bottom) - screen_pos, 0x74,
-                [](int x, int y){ return !IsOutsideGameScreen(x, y); });
+                [](int x, int y){ return !bw::IsOutsideGameScreen(x, y); });
         return false;
     });
 }
@@ -1070,10 +1070,10 @@ void ScConsole::DrawRange(uint8_t *framebuf, xuint w, yuint h)
         int unit_radius_approx = (dbox.top + dbox.bottom + dbox.left + dbox.right) / 4 + 1;
         if (ground_weapon != WeaponId::None)
             surface.DrawCircle(pos, unit->GetWeaponRange(true) + unit_radius_approx, 0x75,
-                    [](int x, int y){ return !IsOutsideGameScreen(x, y); });
+                    [](int x, int y){ return !bw::IsOutsideGameScreen(x, y); });
         if (air_weapon != WeaponId::None && ground_weapon != air_weapon)
             surface.DrawCircle(pos, unit->GetWeaponRange(false) + unit_radius_approx, 0x7a,
-                    [](int x, int y){ return !IsOutsideGameScreen(x, y); });
+                    [](int x, int y){ return !bw::IsOutsideGameScreen(x, y); });
     }
 }
 
@@ -1153,13 +1153,13 @@ void ScConsole::DrawDebugInfo(uint8_t *framebuf, xuint w, yuint h)
         {
             if (*(uint32_t *)(buffer + y * resolution::screen_width + x) == 0)
                 continue;
-            if (buffer[y * resolution::screen_width + x] != 0 && !IsOutsideGameScreen(x, y))
+            if (buffer[y * resolution::screen_width + x] != 0 && !bw::IsOutsideGameScreen(x, y))
                 framebuf[y * w + x] = buffer[y * resolution::screen_width + x];
-            if (buffer[y * resolution::screen_width + x + 1] != 0 && !IsOutsideGameScreen(x + 1, y))
+            if (buffer[y * resolution::screen_width + x + 1] != 0 && !bw::IsOutsideGameScreen(x + 1, y))
                 framebuf[y * w + x + 1] = buffer[y * resolution::screen_width + x + 1];
-            if (buffer[y * resolution::screen_width + x + 2] != 0 && !IsOutsideGameScreen(x + 2, y))
+            if (buffer[y * resolution::screen_width + x + 2] != 0 && !bw::IsOutsideGameScreen(x + 2, y))
                 framebuf[y * w + x + 2] = buffer[y * resolution::screen_width + x + 2];
-            if (buffer[y * resolution::screen_width + x + 3] != 0 && !IsOutsideGameScreen(x + 3, y))
+            if (buffer[y * resolution::screen_width + x + 3] != 0 && !bw::IsOutsideGameScreen(x + 3, y))
                 framebuf[y * w + x + 3] = buffer[y * resolution::screen_width + x + 3];
         }
     }

@@ -124,7 +124,7 @@ void DrawRegionBorders(uint8_t *framebuf, int w, int h)
                 for (int i = 0; i < 8; i++)
                 {
                     int x = pos.x - sub.x + i, y = pos.y + add.y;
-                    if (x >= 0 && !IsOutsideGameScreen(x, y))
+                    if (x >= 0 && !bw::IsOutsideGameScreen(x, y))
                         framebuf[y * w + x] = 0x6f;
                 }
             }
@@ -133,7 +133,7 @@ void DrawRegionBorders(uint8_t *framebuf, int w, int h)
                 for (int i = 0; i < 8; i++)
                 {
                     int x = pos.x + add.x, y = pos.y - sub.y + i;
-                    if (y >= 0 && !IsOutsideGameScreen(x, y))
+                    if (y >= 0 && !bw::IsOutsideGameScreen(x, y))
                         framebuf[y * w + x] = 0x6f;
                 }
             }
@@ -161,7 +161,7 @@ void DrawRegionData(uint8_t *framebuf, int w, int h)
                 Point32 center = Point32(region->x / 0x100, region->y / 0x100) - screen_pos;
                 char buf[32];
                 sprintf(buf, "%02x (%d)", reg_id, reg_id);
-                surface.DrawText(Common::console->GetFont(), buf, center, 0x6f, [](int x, int y){ return !IsOutsideGameScreen(x, y); });
+                surface.DrawText(Common::console->GetFont(), buf, center, 0x6f, [](int x, int y){ return !bw::IsOutsideGameScreen(x, y); });
             }
         }
         pos.x = 0;
@@ -174,21 +174,21 @@ static void DrawPaths(uint8_t *framebuf, int w, int h)
     Point32 screen_pos(*bw::screen_x, *bw::screen_y);
     for (Unit *unit : *bw::first_active_unit)
     {
-        if (unit->path)
+        if (unit->path != nullptr)
         {
             surface.DrawLine(Point32(unit->path->start) - screen_pos, Point32(unit->path->values[0], unit->path->values[1]) - screen_pos, 0x70,
-                [](int x, int y){ return !IsOutsideGameScreen(x, y); });
+                [](int x, int y){ return !bw::IsOutsideGameScreen(x, y); });
             for (int i = 1; i < unit->path->position_count; i++)
             {
                 surface.DrawLine(Point32(unit->path->values[(i - 1) * 2], unit->path->values[(i - 1) * 2 + 1]) - screen_pos,
                     Point32(unit->path->values[(i) * 2], unit->path->values[(i) * 2 + 1]) - screen_pos, 0x70,
-                    [](int x, int y){ return !IsOutsideGameScreen(x, y); });
+                    [](int x, int y){ return !bw::IsOutsideGameScreen(x, y); });
             }
-            if (unit->path->dodge_unit)
+            if (unit->path->dodge_unit != nullptr)
             {
                 surface.DrawLine(Point32(unit->path->dodge_unit->sprite->position) - screen_pos,
                         Point32(unit->sprite->position) - screen_pos, 0x6f,
-                    [](int x, int y){ return !IsOutsideGameScreen(x, y); });
+                    [](int x, int y){ return !bw::IsOutsideGameScreen(x, y); });
             }
         }
     }
@@ -196,7 +196,7 @@ static void DrawPaths(uint8_t *framebuf, int w, int h)
     {
         if (unit->path)
         {
-            surface.DrawLine(Point32(unit->sprite->position) - screen_pos, Point32(unit->path->next_pos) - screen_pos, 0x75, [](int x, int y){ return !IsOutsideGameScreen(x, y); });
+            surface.DrawLine(Point32(unit->sprite->position) - screen_pos, Point32(unit->path->next_pos) - screen_pos, 0x75, [](int x, int y){ return !bw::IsOutsideGameScreen(x, y); });
         }
     }
 }

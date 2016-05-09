@@ -188,12 +188,6 @@ def build(bld):
         src += debug_src
 
     includes += [bld.bldnode.find_dir('src')]
-    if msvc:
-        bld(rule = 'py -3 ${SRC} ${TGT} --msvc', source = ['src/func/genfuncs.py', 'src/func/nuottei.txt'], target = 'src/funcs.autogen')
-    elif clang:
-        bld(rule = 'py -3 ${SRC} ${TGT} --clang', source = ['src/func/genfuncs.py', 'src/func/nuottei.txt'], target = 'src/funcs.autogen')
-    else:
-        bld(rule = 'py -3 ${SRC} ${TGT}', source = ['src/func/genfuncs.py', 'src/func/nuottei.txt'], target = 'src/funcs.autogen')
 
     if msvc:
         def_file = ['msvc.def'] # Why doesn't msvc allow @4 prefix on stdcall ???

@@ -63,12 +63,12 @@ static void CommandToBuild(Unit *builder, UnitType building, const Point &pos, O
     memcpy(cmd + 2, &x_tile, 2);
     memcpy(cmd + 4, &y_tile, 2);
     memcpy(cmd + 6, &building_id, 2);
-    SendCommand(cmd, sizeof cmd);
+    bw::SendCommand(cmd, sizeof cmd);
 }
 
 static void ClearTriggers() {
     for (int i = 0; i < Limits::ActivePlayers; i++)
-        FreeTriggerList(&bw::triggers[i]);
+        bw::FreeTriggerList(&bw::triggers[i]);
 }
 
 Unit *GameTest::CreateUnitForTest(UnitType unit_id, int player) {
@@ -76,11 +76,11 @@ Unit *GameTest::CreateUnitForTest(UnitType unit_id, int player) {
 }
 
 Unit *GameTest::CreateUnitForTestAt(UnitType unit_id, int player, const Point &point) {
-    Unit *unit = CreateUnit(unit_id.Raw(), point.x, point.y, player);
+    Unit *unit = bw::CreateUnit(unit_id.Raw(), point.x, point.y, player);
     Assert(unit != nullptr);
-    FinishUnit_Pre(unit);
-    FinishUnit(unit);
-    GiveAi(unit);
+    bw::FinishUnit_Pre(unit);
+    bw::FinishUnit(unit);
+    bw::GiveAi(unit);
     unit->energy = unit->GetMaxEnergy();
     return unit;
 }
@@ -270,7 +270,7 @@ struct Test_Plague : public GameTest {
                     TestAssert(target->plague_timer != 0);
                     TestAssert(defi->plague_timer == 0);
                     TestAssert(dmg == WeaponId::Plague.Damage() / (Spell::PlagueTime + 1));
-                    SetHp(target, 5 * 256); // Test that it doesn't kill
+                    bw::SetHp(target, 5 * 256); // Test that it doesn't kill
                     state++;
                 }
             } break; case 3: {
@@ -643,7 +643,7 @@ struct Test_Bunker : public GameTest {
                 if (marine->flags & UnitStatus::InBuilding) {
                     SelectUnit(bunker);
                     uint8_t cmd[] = {commands::UnloadAll, 0};
-                    SendCommand(cmd, sizeof cmd);
+                    bw::SendCommand(cmd, sizeof cmd);
                     state++;
                 }
             } break; case 9: {
@@ -898,8 +898,8 @@ struct Test_Liftoff : public GameTest {
             } break; case 2: {
                 if (building->order == OrderId::Land && building->order_state == 3)
                 {
-                    MoveUnit(tank, 100, 100);
-                    MoveUnit(burrower, 100, 100);
+                    bw::MoveUnit(tank, 100, 100);
+                    bw::MoveUnit(burrower, 100, 100);
                     state++;
                 }
             } break; case 3: {
@@ -1074,7 +1074,7 @@ struct Test_RightClick : public GameTest {
             } break; case 1: {
                 // Screen position is rounded down to eights,
                 // so MoveScreen(300, 200) would do same thing
-                MoveScreen(296, 200);
+                bw::MoveScreen(296, 200);
                 frames_remaining = 50;
                 SelectUnit(building);
                 Event event;
@@ -1359,9 +1359,9 @@ struct Test_AttackMove : public GameTest {
                 unit->IssueOrderTargetingGround(OrderId::AttackMove, Point(400, 100));
                 state++;
             } break; case 1: {
-                SetHp(unit, 100 * 256);
-                SetHp(enemy, 100 * 256);
-                SetHp(enemy2, 100 * 256);
+                bw::SetHp(unit, 100 * 256);
+                bw::SetHp(enemy, 100 * 256);
+                bw::SetHp(enemy2, 100 * 256);
                 if (unit->target != nullptr) {
                     target = unit->target;
                     target->IssueOrderTargetingGround(OrderId::Move, Point(1000, 100));
@@ -1372,9 +1372,9 @@ struct Test_AttackMove : public GameTest {
                     state++;
                 }
             } break; case 3: {
-                SetHp(unit, 100 * 256);
-                SetHp(enemy, 100 * 256);
-                SetHp(enemy2, 100 * 256);
+                bw::SetHp(unit, 100 * 256);
+                bw::SetHp(enemy, 100 * 256);
+                bw::SetHp(enemy2, 100 * 256);
                 TestAssert(target->order == OrderId::Move);
                 if (unit->target != target && unit->target != nullptr) {
                     Pass();
@@ -1880,7 +1880,7 @@ struct Test_Transmission : public GameTest {
                 unit = CreateUnitForTestAt(variant->unit_id, 0, variant->pos);
                 *bw::current_trigger = &trigger;
                 *bw::trigger_current_player = 0;
-                ProgressActions(&trigger);
+                bw::ProgressActions(&trigger);
                 TestAssert(bw::player_wait_active[0] != 0);
                 state++;
             } break; case 1: {
@@ -1920,7 +1920,7 @@ struct Test_NearbyHelpers : public GameTest {
         helper = CreateUnitForTestAt(UnitId::Probe, player, pos + Point(0, 100));
         Unit *mineral = CreateUnitForTestAt(UnitId::MineralPatch1, NeutralPlayer, pos + Point(0, 200));
         mineral->resource.resource_amount = 1500;
-        AiScript_StartTown(pos.x, pos.y, 1, player);
+        bw::AiScript_StartTown(pos.x, pos.y, 1, player);
     }
     void NextFrame() override {
         switch (state) {
@@ -1937,15 +1937,15 @@ struct Test_NearbyHelpers : public GameTest {
                     state++;
                 }
             } break; case 2: {
-                SetHp(target, target->GetMaxHitPoints() * 256);
-                SetHp(enemy, enemy->GetMaxHitPoints() * 256);
+                bw::SetHp(target, target->GetMaxHitPoints() * 256);
+                bw::SetHp(enemy, enemy->GetMaxHitPoints() * 256);
                 if (target->carrier.out_child != nullptr) {
                     enemy->IssueOrderTargetingUnit(OrderId::AttackUnit, target->carrier.out_child);
                     state++;
                 }
             } break; case 3: {
-                SetHp(target, target->GetMaxHitPoints() * 256);
-                SetHp(enemy, enemy->GetMaxHitPoints() * 256);
+                bw::SetHp(target, target->GetMaxHitPoints() * 256);
+                bw::SetHp(enemy, enemy->GetMaxHitPoints() * 256);
                 TestAssert(helper->target != enemy);
                 if (enemy->target == nullptr || enemy->target->unit_id != UnitId::Interceptor) {
                     enemy->IssueOrderTargetingGround(OrderId::Move, Point(100, 100));
@@ -1953,7 +1953,7 @@ struct Test_NearbyHelpers : public GameTest {
                 } else if (enemy->target->GetHealth() != enemy->target->GetMaxHealth()) {
                     // This test makes only sense if interceptors have no ai
                     TestAssert(enemy->target->ai == nullptr);
-                    if (IsInArea(enemy->target, CallFriends_Radius, helper)) {
+                    if (bw::IsInArea(enemy->target, CallFriends_Radius, helper)) {
                         frames_remaining = 50;
                         state++;
                     }
@@ -1969,16 +1969,16 @@ struct Test_NearbyHelpers : public GameTest {
                     state++;
                 }
             } break; case 5: {
-                SetHp(target, target->GetMaxHitPoints() * 256);
-                SetHp(enemy, enemy->GetMaxHitPoints() * 256);
+                bw::SetHp(target, target->GetMaxHitPoints() * 256);
+                bw::SetHp(enemy, enemy->GetMaxHitPoints() * 256);
                 if (enemy->target->GetHealth() != enemy->target->GetMaxHealth()) {
-                    if (IsInArea(enemy->target, CallFriends_Radius, helper)) {
+                    if (bw::IsInArea(enemy->target, CallFriends_Radius, helper)) {
                         frames_remaining = 50;
                         state++;
                     }
                 }
             } break; case 6: {
-                SetHp(target, target->GetMaxHitPoints() * 256);
+                bw::SetHp(target, target->GetMaxHitPoints() * 256);
                 if (frames_remaining == 1) {
                     TestAssert(helper->target == enemy);
                     Pass();
@@ -2133,7 +2133,7 @@ struct Test_Extractor : public GameTest {
                     TestAssert(bw::minerals[0] == 0);
                     SelectUnit(FindUnit(UnitId::Extractor));
                     uint8_t cmd[] = {commands::CancelMorph};
-                    SendCommand(cmd, sizeof cmd);
+                    bw::SendCommand(cmd, sizeof cmd);
                     state++;
                 }
             } break; case 2: {

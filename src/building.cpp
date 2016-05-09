@@ -23,13 +23,13 @@ static int GetBuildingPlacementError(Unit *builder, int player, x32 x_tile, y32 
     }
     if (builder && !(builder->flags & (UnitStatus::Building | UnitStatus::Air)))
     {
-        if (!CanWalkHere(builder, x_tile * 32, y_tile * 32))
+        if (!bw::CanWalkHere(builder, x_tile * 32, y_tile * 32))
             return 0x7;
     }
     if (unit_id.IsGasBuilding())
-        return GetGasBuildingPlacementState(x_tile, y_tile, player, check_vision);
+        return bw::GetGasBuildingPlacementState(x_tile, y_tile, player, check_vision);
     if (unit_id.Flags() & UnitFlags::RequiresPsi)
-        return GetPsiPlacementState(x_tile, y_tile, unit_id.Raw(), player);
+        return bw::GetPsiPlacementState(x_tile, y_tile, unit_id.Raw(), player);
     return 0;
 }
 
@@ -51,14 +51,46 @@ int UpdateBuildingPlacementState(Unit *builder, int player, x32 x_tile, y32 y_ti
     unsigned int size_wh = height << 16 | width;
     int specific_state;
     if (builder && builder->Type() == UnitId::NydusCanal)
-        specific_state = UpdateNydusPlacementState(player, x_tile, y_tile, size_wh, placement_state_entry, check_vision);
+    {
+        specific_state = bw::UpdateNydusPlacementState(player,
+                                                       x_tile,
+                                                       y_tile,
+                                                       size_wh,
+                                                       placement_state_entry,
+                                                       check_vision);
+    }
     else if (unit_id.Flags() & UnitFlags::RequiresCreep)
-        specific_state = UpdateCreepBuildingPlacementState(player, x_tile, y_tile, size_wh, placement_state_entry, check_vision, without_vision);
+    {
+        specific_state = bw::UpdateCreepBuildingPlacementState(player,
+                                                               x_tile,
+                                                               y_tile,
+                                                               size_wh,
+                                                               placement_state_entry,
+                                                               check_vision,
+                                                               without_vision);
+    }
     else
-        specific_state = UpdateBuildingPlacementState_MapTileFlags(x_tile, y_tile, player, size_wh, placement_state_entry, check_vision, unit_id.Raw());
+    {
+        specific_state = bw::UpdateBuildingPlacementState_MapTileFlags(x_tile,
+                                                                       y_tile,
+                                                                       player,
+                                                                       size_wh,
+                                                                       placement_state_entry,
+                                                                       check_vision,
+                                                                       unit_id.Raw());
+    }
 
     if (*bw::ai_building_placement_hack)
         builder = *bw::ai_building_placement_hack;
-    int generic_state = UpdateBuildingPlacementState_Units(builder, x_tile, y_tile, player, unit_id.Raw(), size_wh, placement_state_entry, ~unit_id.Flags() & UnitFlags::Addon, also_invisible, without_vision);
+    int generic_state = bw::UpdateBuildingPlacementState_Units(builder,
+                                                               x_tile,
+                                                               y_tile,
+                                                               player,
+                                                               unit_id.Raw(),
+                                                               size_wh,
+                                                               placement_state_entry,
+                                                               ~unit_id.Flags() & UnitFlags::Addon,
+                                                               also_invisible,
+                                                               without_vision);
     return max(generic_state, specific_state);
 }

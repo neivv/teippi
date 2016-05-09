@@ -22,7 +22,7 @@
 
 Unit *FindUnitAtPoint(int x, int y)
 {
-    Unit **units = GetClickableUnits(x, y);
+    Unit **units = bw::GetClickableUnits(x, y);
     Unit *picked = nullptr;
     uint32_t picked_z = -1;
     int area = INT_MAX;
@@ -42,7 +42,8 @@ Unit *FindUnitAtPoint(int x, int y)
                 is_above_picked = picked->sprite->id < unit->sprite->id;
             if (is_above_picked)
             {
-                if (IsClickablePixel(unit, x, y) || (unit->subunit && IsClickablePixel(unit->subunit, x, y)))
+                if (bw::IsClickablePixel(unit, x, y) ||
+                        (unit->subunit != nullptr && bw::IsClickablePixel(unit->subunit, x, y)))
                 {
                     picked_z = new_z;
                     picked = unit;
@@ -52,7 +53,8 @@ Unit *FindUnitAtPoint(int x, int y)
             }
             else
             {
-                if (!IsClickablePixel(picked, x, y) && (!picked->subunit || !IsClickablePixel(picked->subunit, x, y)))
+                if (!bw::IsClickablePixel(picked, x, y) &&
+                        (picked->subunit == nullptr || !bw::IsClickablePixel(picked->subunit, x, y)))
                 {
                     int new_area = unit->Type().PlacementBox().Area();
                     if (new_area < area)
@@ -79,12 +81,12 @@ void ClearOrderTargeting()
 {
     if (*bw::is_placing_building)
     {
-        MarkPlacementBoxAreaDirty();
-        EndBuildingPlacement();
+        bw::MarkPlacementBoxAreaDirty();
+        bw::EndBuildingPlacement();
     }
     if (*bw::is_targeting)
     {
-        EndTargeting();
+        bw::EndTargeting();
     }
 }
 
@@ -116,7 +118,7 @@ void SendRightClickCommand(Unit *target, uint16_t x, uint16_t y, UnitType fow_un
     {
         cmd[9] |= 0x80;
     }
-    SendCommand(cmd, 10);
+    bw::SendCommand(cmd, 10);
 }
 
 void Command_RightClick(const uint8_t *buf)
@@ -129,7 +131,7 @@ void Command_RightClick(const uint8_t *buf)
         MovementGroup formation;
         formation.target[0] = x;
         formation.target[1] = y;
-        PrepareFormationMovement(&formation, true);
+        bw::PrepareFormationMovement(&formation, true);
 
         Unit *target;
         UnitType fow_unit = UnitId::None;
@@ -142,7 +144,7 @@ void Command_RightClick(const uint8_t *buf)
         {
             queued ^= 0x40;
             if (!((*bw::map_tile_flags)[*bw::map_width_tiles * (y / 32) + (x / 32)] & (1 << (*bw::command_user)))) // If there's vis due to latency
-                target = FindFowUnit(x, y, *(uint16_t *)(buf + 5));
+                target = bw::FindFowUnit(x, y, *(uint16_t *)(buf + 5));
             else
             {
                 formation.current_target[0] = formation.target[0];
@@ -160,7 +162,7 @@ void Command_RightClick(const uint8_t *buf)
 
 
         ResetSelectionIter();
-        for (Unit *unit = NextCommandedUnit(); unit; unit = NextCommandedUnit())
+        for (Unit *unit = bw::NextCommandedUnit(); unit; unit = bw::NextCommandedUnit())
         {
             int action = unit->GetRClickAction();
 
@@ -197,7 +199,7 @@ void Command_RightClick(const uint8_t *buf)
                     }
                     order = unit->Type().AttackUnitOrder();
                 }
-                if (CanIssueOrder(unit, order, *bw::command_user) == 1)
+                if (bw::CanIssueOrder(unit, order, *bw::command_user) == 1)
                 {
                     if (target != nullptr)
                     {
@@ -207,7 +209,7 @@ void Command_RightClick(const uint8_t *buf)
                     {
                         if (fow_unit == UnitId::None)
                         {
-                            GetFormationMovementTarget(unit, &formation);
+                            bw::GetFormationMovementTarget(unit, &formation);
                         }
                         Point pos(formation.current_target[0], formation.current_target[1]);
                         unit->TargetedOrder(order, nullptr, pos, fow_unit, queued);
@@ -231,7 +233,7 @@ void Command_Targeted(const uint8_t *buf)
     MovementGroup formation;
     formation.target[0] = x;
     formation.target[1] = y;
-    PrepareFormationMovement(&formation, order.TerrainClip());
+    bw::PrepareFormationMovement(&formation, order.TerrainClip());
 
     Unit *target;
     UnitType fow_unit = UnitId::None;
@@ -258,16 +260,16 @@ void Command_Targeted(const uint8_t *buf)
     TechType spell_tech = order.EnergyTech();
 
     ResetSelectionIter();
-    for (Unit *unit = NextCommandedUnit(); unit; unit = NextCommandedUnit())
+    for (Unit *unit = bw::NextCommandedUnit(); unit; unit = bw::NextCommandedUnit())
     {
         if (spell_tech != TechId::None)
         {
-            if (CanUseTech(spell_tech.Raw(), unit, *bw::command_user) != 1)
+            if (bw::CanUseTech(spell_tech.Raw(), unit, *bw::command_user) != 1)
                 continue;
         }
         else
         {
-            if (CanIssueOrder(unit, order.Raw(), *bw::command_user) != 1)
+            if (bw::CanIssueOrder(unit, order.Raw(), *bw::command_user) != 1)
                 continue;
         }
 
@@ -329,7 +331,7 @@ void Command_Targeted(const uint8_t *buf)
         {
             if (fow_unit == UnitId::None)
             {
-                GetFormationMovementTarget(unit, &formation);
+                bw::GetFormationMovementTarget(unit, &formation);
             }
             Point pos(formation.current_target[0], formation.current_target[1]);
             unit->TargetedOrder(current_order, nullptr, pos, fow_unit, queued);
@@ -362,7 +364,7 @@ void SendTargetedOrderCommand(uint8_t order, int x, int y, Unit *target, UnitTyp
     }
     cmd[9] = queued;
     cmd[10] = order;
-    SendCommand(cmd, 11);
+    bw::SendCommand(cmd, 11);
 }
 
 void Test_SendTargetedOrderCommand(uint8_t order, int x, int y, Unit *target, UnitType fow_unit, uint8_t queued)
@@ -396,7 +398,7 @@ void DoTargetedCommand(int x, int y, Unit *target, UnitType fow_unit)
 {
     if (!*bw::is_targeting)
         return;
-    EndTargeting();
+    bw::EndTargeting();
 
     int16_t error = -1;
     OrderType order;
@@ -439,12 +441,12 @@ void DoTargetedCommand(int x, int y, Unit *target, UnitType fow_unit)
                 {
                     if (unit->GetRClickAction() == RightClickAction::Attack) // sieged tank, towers, etc.
                     {
-                        if (IsOutOfRange(unit, target))
+                        if (bw::IsOutOfRange(unit, target))
                         {
                             error = String::Error_OutOfRange;
                             continue;
                         }
-                        else if (IsTooClose(unit, target))
+                        else if (bw::IsTooClose(unit, target))
                         {
                             error = String::Error_TooClose;
                             continue;
@@ -455,12 +457,12 @@ void DoTargetedCommand(int x, int y, Unit *target, UnitType fow_unit)
             }
             else
             {
-                if (!CanHitUnit(target, unit, targeting_weapon.Raw()) &&
+                if (!bw::CanHitUnit(target, unit, targeting_weapon.Raw()) &&
                         (fow_unit.Raw() >= UnitId::None || fow_unit.Flags() & UnitFlags::Invincible))
                 {
                     continue;
                 }
-                if (!NeedsMoreEnergy(unit, energy))
+                if (!bw::NeedsMoreEnergy(unit, energy))
                     has_energy = true;
                 can_attack = true;
             }
@@ -468,20 +470,20 @@ void DoTargetedCommand(int x, int y, Unit *target, UnitType fow_unit)
         }
         else if (tech != TechId::None)
         {
-            if (CanTargetSpell(unit, x, y, &error, tech.Raw(), target, fow_unit.Raw()))
+            if (bw::CanTargetSpell(unit, x, y, &error, tech.Raw(), target, fow_unit.Raw()))
             {
-                if (!NeedsMoreEnergy(unit, energy))
+                if (!bw::NeedsMoreEnergy(unit, energy))
                     has_energy = true;
                 can_cast_spell = true;
             }
         }
         else if (fow_unit == UnitId::None)
         {
-            CanTargetOrder(unit, target, order.Raw(), &error); // Not checking anything, just to get error
+            bw::CanTargetOrder(unit, target, order.Raw(), &error); // Not checking anything, just to get error
         }
         else
         {
-            CanTargetOrderOnFowUnit(unit, fow_unit, order.Raw(), &error); // Same
+            bw::CanTargetOrderOnFowUnit(unit, fow_unit, order.Raw(), &error); // Same
         }
     }
 
@@ -492,7 +494,7 @@ void DoTargetedCommand(int x, int y, Unit *target, UnitType fow_unit)
         if (!can_attack || error != -1)
         {
             GetAttackErrorMessage(target, targeting_weapon, &error);
-            ShowInfoMessage(error, Sound::Error_Zerg + unit->Type().Race(), unit->player);
+            bw::ShowInfoMessage(error, Sound::Error_Zerg + unit->Type().Race(), unit->player);
             if (targeting_weapon == WeaponId::None)
                 SendTargetedOrderCommand(order, x, y, target, fow_unit, *bw::is_queuing_command); // So it'll move there anyways
             return;
@@ -500,7 +502,7 @@ void DoTargetedCommand(int x, int y, Unit *target, UnitType fow_unit)
         else if (energy && !has_energy)
         {
             int race = unit->Type().Race();
-            ShowInfoMessage(String::NotEnoughEnergy + race, Sound::NotEnoughEnergy + race, unit->player);
+            bw::ShowInfoMessage(String::NotEnoughEnergy + race, Sound::NotEnoughEnergy + race, unit->player);
             return;
         }
     }
@@ -510,30 +512,30 @@ void DoTargetedCommand(int x, int y, Unit *target, UnitType fow_unit)
         {
             if (error == -1)
                 error = String::Error_InvalidTarget;
-            ShowErrorMessage((*bw::stat_txt_tbl)->GetTblString(error), *bw::command_user, unit);
+            bw::ShowErrorMessage((*bw::stat_txt_tbl)->GetTblString(error), *bw::command_user, unit);
             return;
         }
         else if (/*energy && */!has_energy)
         {
             int race = unit->Type().Race();
-            ShowInfoMessage(String::NotEnoughEnergy + race, Sound::NotEnoughEnergy + race, unit->player);
+            bw::ShowInfoMessage(String::NotEnoughEnergy + race, Sound::NotEnoughEnergy + race, unit->player);
             return;
         }
     }
     if (error != -1)
     {
-        ShowErrorMessage((*bw::stat_txt_tbl)->GetTblString(error), unit->player, unit);
+        bw::ShowErrorMessage((*bw::stat_txt_tbl)->GetTblString(error), unit->player, unit);
     }
     else
     {
-        PlayYesSoundAnim(*bw::primary_selected);
+        bw::PlayYesSoundAnim(*bw::primary_selected);
         SendTargetedOrderCommand(order, x, y, target, fow_unit, *bw::is_queuing_command);
     }
 }
 
 void GameScreenLClickEvent_Targeting(Event *event)
 {
-    if (IsOutsideGameScreen(event->x, event->y))
+    if (bw::IsOutsideGameScreen(event->x, event->y))
         return;
 
     int x = event->x + *bw::screen_x;
@@ -550,15 +552,15 @@ void GameScreenLClickEvent_Targeting(Event *event)
     else
         DoTargetedCommand(x, y, target, UnitId::None);
 
-    SetCursorSprite(0);
+    bw::SetCursorSprite(0);
 }
 
 void GameScreenRClickEvent(Event *event)
 {
-    if (IsOutsideGameScreen(event->x, event->y) || bw::client_selection_group2[0] == nullptr)
+    if (bw::IsOutsideGameScreen(event->x, event->y) || bw::client_selection_group2[0] == nullptr)
         return;
     Unit *highest_ranked = *bw::primary_selected;
-    if (highest_ranked == nullptr || !CanControlUnit(highest_ranked))
+    if (highest_ranked == nullptr || !bw::CanControlUnit(highest_ranked))
         return;
 
     unsigned i;
@@ -610,6 +612,6 @@ void GameScreenRClickEvent(Event *event)
         SendRightClickCommand(target, x, y, UnitId::None, *bw::is_queuing_command);
     }
 
-    if (ShowRClickErrorIfNeeded(target) == 1)
-        PlayYesSoundAnim(highest_ranked);
+    if (bw::ShowRClickErrorIfNeeded(target) == 1)
+        bw::PlayYesSoundAnim(highest_ranked);
 }

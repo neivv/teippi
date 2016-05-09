@@ -72,7 +72,7 @@ uint32_t GetRngSeed()
 uint32_t __stdcall VersionCheckGuard(uint8_t *a, void *b, void *c, void *d, void *e)
 {
     patch_mgr->Unpatch();
-    uint32_t ret = SNetInitializeProvider(a, b, c, d, e);
+    uint32_t ret = storm::SNetInitializeProvider(a, b, c, d, e);
     patch_mgr->Repatch();
     return ret;
 }
@@ -205,6 +205,8 @@ void InitialPatch()
     perf_log->Log("Thread amount: %d\n", thread_count);
 
     patch_mgr = new Common::PatchManager;
+    InitBwFuncs_1161(patch_mgr, (uintptr_t)GetModuleHandle(NULL));
+    InitStormFuncs_1161(patch_mgr, (uintptr_t)GetModuleHandle("storm"));
     Common::PatchContext patch = patch_mgr->BeginPatch(nullptr, bw::base::starcraft);
 
     patch.CallHook(bw::WinMain, WinMainPatch);
@@ -215,7 +217,6 @@ void InitialPatch()
     patch.Patch(bw::RngSeedPatch, (void *)&GetRngSeed, 0, PATCH_CALLHOOK);
 
     Common::PatchContext storm_patch = patch_mgr->BeginPatch("storm", bw::base::storm);
-    bw::storm::base_diff = storm_patch.GetDiff();
     // #117 is SNetInitializeProvider
     storm_patch.Patch((void *)GetProcAddress(GetModuleHandle("storm"), (char *)117), (void *)&VersionCheckGuard, 0, PATCH_JMPHOOK);
 

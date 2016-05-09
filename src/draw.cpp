@@ -58,7 +58,7 @@ void DrawScreen()
     {
         memset(game_screen->image, 0, game_screen->w * game_screen->h);
         Rect32 area(0, 0, resolution::screen_width, resolution::screen_height);
-        CopyToFrameBuffer(&area);
+        bw::CopyToFrameBuffer(&area);
     }
     else
     {
@@ -70,7 +70,7 @@ void DrawScreen()
                 continue;
             if (!(layer->flags & 0x21))
             {
-                if (ContainsDirtyArea(layer->area.left, layer->area.top, layer->area.left + layer->area.right, layer->area.top + layer->area.bottom))
+                if (bw::ContainsDirtyArea(layer->area.left, layer->area.top, layer->area.left + layer->area.right, layer->area.top + layer->area.bottom))
                     layer->flags |= 0x4;
                 else if (~layer->flags & 0x2)
                     continue;
@@ -85,10 +85,10 @@ void DrawScreen()
 
     if (*bw::trans_list && *bw::game_screen_redraw_trans)
     {
-        // Äh..
-        STransBind(*bw::game_screen_redraw_trans);
-        STrans437(*bw::trans_list, &bw::screen_redraw_tiles[0], 3, &*bw::game_screen_redraw_trans);
-        CopyGameScreenToFramebuf();
+        // Ew...
+        bw::STransBind(*bw::game_screen_redraw_trans);
+        bw::STrans437(*bw::trans_list, &bw::screen_redraw_tiles[0], 3, &*bw::game_screen_redraw_trans);
+        bw::CopyGameScreenToFramebuf();
         std::fill(bw::screen_redraw_tiles.begin(), bw::screen_redraw_tiles.end(), 0);
     }
 

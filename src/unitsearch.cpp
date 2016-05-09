@@ -605,11 +605,11 @@ void MainUnitSearch::GetNearbyBlockingUnits(PathingData *pd)
         Rect16 cbox = other->GetCollisionRect();
         if (cbox.bottom <= area.bottom)
         {
-            if (other == pd->always_dodge || HasToDodge(pd->self, other))
+            if (other == pd->always_dodge || bw::HasToDodge(pd->self, other))
             {
                 Contour *wall_begin = pd->top_walls;
                 Contour wall = { { uint16_t(cbox.bottom - 1), cbox.left, uint16_t(cbox.right - 1)}, Pathing::top, 0x3d };
-                InsertContour(&wall, pd, &wall_begin, &wall_it);
+                bw::InsertContour(&wall, pd, &wall_begin, &wall_it);
             }
         }
         return false;
@@ -624,11 +624,11 @@ void MainUnitSearch::GetNearbyBlockingUnits(PathingData *pd)
         Rect16 cbox = other->GetCollisionRect();
         if (cbox.left >= area.left)
         {
-            if (other == pd->always_dodge || HasToDodge(pd->self, other))
+            if (other == pd->always_dodge || bw::HasToDodge(pd->self, other))
             {
                 Contour *wall_begin = pd->right_walls;
                 Contour wall = { { cbox.left, cbox.top, uint16_t(cbox.bottom - 1)}, Pathing::right, 0x32 };
-                InsertContour(&wall, pd, &wall_begin, &wall_it);
+                bw::InsertContour(&wall, pd, &wall_begin, &wall_it);
             }
         }
         return false;
@@ -643,11 +643,11 @@ void MainUnitSearch::GetNearbyBlockingUnits(PathingData *pd)
         Rect16 cbox = other->GetCollisionRect();
         if (cbox.top >= area.top)
         {
-            if (other == pd->always_dodge || HasToDodge(pd->self, other))
+            if (other == pd->always_dodge || bw::HasToDodge(pd->self, other))
             {
                 Contour *wall_begin = pd->bottom_walls;
                 Contour wall = { { cbox.top, cbox.left, uint16_t(cbox.right - 1)}, Pathing::bottom, 0x3d };
-                InsertContour(&wall, pd, &wall_begin, &wall_it);
+                bw::InsertContour(&wall, pd, &wall_begin, &wall_it);
             }
         }
         return false;
@@ -662,11 +662,11 @@ void MainUnitSearch::GetNearbyBlockingUnits(PathingData *pd)
         Rect16 cbox = other->GetCollisionRect();
         if (cbox.right <= area.right)
         {
-            if (other == pd->always_dodge || HasToDodge(pd->self, other))
+            if (other == pd->always_dodge || bw::HasToDodge(pd->self, other))
             {
                 Contour *wall_begin = pd->left_walls;
                 Contour wall = { { uint16_t(cbox.right - 1), cbox.top, uint16_t(cbox.bottom - 1)}, Pathing::left, 0x32 };
-                InsertContour(&wall, pd, &wall_begin, &wall_it);
+                bw::InsertContour(&wall, pd, &wall_begin, &wall_it);
             }
         }
         return false;
@@ -748,7 +748,7 @@ int MainUnitSearch::GetDodgingDirection(const Unit *self, const Unit *other)
     if (other->sprite->IsHidden())
         return -1;
 
-    int direction = GetFacingDirection(self->sprite->position.x, self->sprite->position.y, self->next_move_waypoint.x, self->next_move_waypoint.y);
+    int direction = bw::GetFacingDirection(self->sprite->position.x, self->sprite->position.y, self->next_move_waypoint.x, self->next_move_waypoint.y);
     int quarter = direction / 0x40;
     int change = (direction - self->new_direction) & 0xff;
     if (change > 0x80)
@@ -813,37 +813,37 @@ int MainUnitSearch::GetDodgingDirection(const Unit *self, const Unit *other)
     {
         case 0:
             position[1] = dodge_area.top;
-            if (DoUnitsBlock(self, actual_position) == 0)
+            if (bw::DoUnitsBlock(self, actual_position) == 0)
                 return 0;
             position[1] = dodge_area.bottom;
-            if (DoUnitsBlock(self, actual_position) == 0)
+            if (bw::DoUnitsBlock(self, actual_position) == 0)
                 return 0x80;
             return -1;
         break;
         case 1:
             position[0] = dodge_area.right;
-            if (DoUnitsBlock(self, actual_position) == 0)
+            if (bw::DoUnitsBlock(self, actual_position) == 0)
                 return 0x40;
             position[0] = dodge_area.left;
-            if (DoUnitsBlock(self, actual_position) == 0)
+            if (bw::DoUnitsBlock(self, actual_position) == 0)
                 return 0xc0;
             return -1;
         break;
         case 2:
             position[1] = dodge_area.bottom;
-            if (DoUnitsBlock(self, actual_position) == 0)
+            if (bw::DoUnitsBlock(self, actual_position) == 0)
                 return 0x80;
             position[1] = dodge_area.top;
-            if (DoUnitsBlock(self, actual_position) == 0)
+            if (bw::DoUnitsBlock(self, actual_position) == 0)
                 return 0;
             return -1;
         break;
         case 3:
             position[0] = dodge_area.left;
-            if (DoUnitsBlock(self, actual_position) == 0)
+            if (bw::DoUnitsBlock(self, actual_position) == 0)
                 return 0xc0;
             position[0] = dodge_area.right;
-            if (DoUnitsBlock(self, actual_position) == 0)
+            if (bw::DoUnitsBlock(self, actual_position) == 0)
                 return 0x40;
             return -1;
         break;
@@ -1019,7 +1019,7 @@ UnitSearchRegionCache::Entry MainUnitSearch::FindUnits_ChooseTarget(int region_i
             for (auto str_out = str_beg.get(); str_out != str_end; str_out++)
             {
                 auto i = str_out - str_beg.get();
-                *str_out = GetCurrentStrength(copy[i], ground);
+                *str_out = bw::GetCurrentStrength(copy[i], ground);
             }
             std::sort(ChooseTargetSort(copy, copy, str_beg.get()), ChooseTargetSort(copy, copy + size, str_beg.get()));
             return region_cache.FinishEntry(copy, region_id, ground, size);
@@ -1058,7 +1058,7 @@ UnitSearchRegionCache::Entry MainUnitSearch::FindUnits_ChooseTarget(int region_i
                     if (~unit->flags & UnitStatus::Hallucination || unit->GetHealth() == unit->GetMaxHealth())
                     {
                         *out++ = unit;
-                        *str_out = GetCurrentStrength(unit, ground);
+                        *str_out = bw::GetCurrentStrength(unit, ground);
                         str_out++;
                     }
                 }

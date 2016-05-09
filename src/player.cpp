@@ -129,8 +129,8 @@ void Neutralize(int player)
                 Unit *worker = unit->powerup.carrying_unit;
                 if (worker->carried_powerup_flags != 0)
                 {
-                    DeletePowerupImages(worker);
-                    if (worker->worker.powerup)
+                    bw::DeletePowerupImages(worker);
+                    if (worker->worker.powerup != nullptr)
                     {
                         worker->worker.powerup->order_flags |= 0x4;
                         worker->worker.powerup->Kill(nullptr);
@@ -152,7 +152,7 @@ void Neutralize(int player)
         {
             Unit *unit = next;
             next = unit->player_units.next;
-            NeutralizeUnit(unit);
+            bw::NeutralizeUnit(unit);
         }
         RefreshUi();
     }

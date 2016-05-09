@@ -51,10 +51,7 @@ bool Flingy::Initialize(Iscript::Context *ctx,
     if (sprite == nullptr)
         return false;
 
-    for (Image *img : sprite->first_overlay)
-    {
-        SetImageDirection256(img, direction);
-    }
+    sprite->SetDirection256(direction);
     return true;
 }
 
@@ -91,9 +88,9 @@ FlingyMoveResults Flingy::ProgressFlingy()
     FlingyMoveResults ret;
 
     *bw::current_flingy_flags = flingy_flags;
-    ChangeDirectionToMoveWaypoint(this);
-    ProgressSpeed(this);
-    UpdateIsMovingFlag(this);
+    bw::ChangeDirectionToMoveWaypoint(this);
+    bw::ProgressSpeed(this);
+    bw::UpdateIsMovingFlag(this);
     ProgressMove(&ret);
 
     *bw::previous_flingy_flags = flingy_flags;
@@ -131,7 +128,7 @@ void Flingy::ProgressMove(FlingyMoveResults *ret)
     }
     if (flingy_movement_type == 2) // Iscript.bin
     {
-        SetSpeed(this, 0);
+        bw::SetSpeed(this, 0);
     }
 }
 
@@ -164,7 +161,7 @@ void Flingy::ProgressFrame()
     FlingyIscriptContext(this, MainRng()).ProgressIscript();
 
     ProgressFlingy();
-    MoveFlingy(this);
+    bw::MoveFlingy(this);
 
     if (sprite->position.x >= *bw::map_width || sprite->position.y >= *bw::map_height || move_target == position)
     {
@@ -228,12 +225,9 @@ bool Flingy::Move()
     exact_position.x = *bw::new_exact_x;
     exact_position.y = *bw::new_exact_y;
     next_speed = current_speed;
-    MoveSprite(sprite.get(), position.x, position.y);
+    bw::MoveSprite(sprite.get(), position.x, position.y);
     ProgressTurning();
-    for (Image *img : sprite->first_overlay)
-    {
-        SetImageDirection256(img, facing_direction);
-    }
+    sprite->SetDirection256(facing_direction);
 
     return moved;
 }

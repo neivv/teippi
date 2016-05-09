@@ -76,22 +76,22 @@ class Flingy
             switch (cmd.opcode)
             {
                 case TurnCcWise:
-                    SetDirection(this, facing_direction - cmd.val * 8);
+                    bw::SetDirection(this, facing_direction - cmd.val * 8);
                 break;
                 case TurnCWise:
-                    SetDirection(this, facing_direction + cmd.val * 8);
+                    bw::SetDirection(this, facing_direction + cmd.val * 8);
                 break;
                 case SetFlDirect:
-                    SetDirection(this, cmd.val * 8);
+                    bw::SetDirection(this, cmd.val * 8);
                 break;
                 case TurnRand:
                     if (ctx->rng->Rand(4) == 0)
-                        SetDirection(this, facing_direction - cmd.val * 8);
+                        bw::SetDirection(this, facing_direction - cmd.val * 8);
                     else
-                        SetDirection(this, facing_direction + cmd.val * 8);
+                        bw::SetDirection(this, facing_direction + cmd.val * 8);
                 break;
                 case SetSpawnFrame:
-                    SetMoveTargetToNearbyPoint(cmd.val, this);
+                    bw::SetMoveTargetToNearbyPoint(cmd.val, this);
                 break;
                 case SetFlSpeed:
                     top_speed = cmd.val;

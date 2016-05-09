@@ -137,30 +137,30 @@ void *LoadGrp(ImageType image_id, uint32_t *images_dat_grp, Tbl *images_tbl, Grp
     }
     char filename[260];
     snprintf(filename, sizeof filename, "unit\\%s", images_tbl->GetTblString(grp));
-    void *file = OpenGrpFile(filename);
-    uint32_t size = SFileGetFileSize(file, nullptr);
+    void *file = bw::OpenGrpFile(filename);
+    uint32_t size = storm::SFileGetFileSize(file, nullptr);
     if (size == 0xffffffff)
-        FileError(file, GetLastError());
+        bw::FileError(file, GetLastError());
     if (size == 0)
-        ErrorMessageBox(ERROR_NO_MORE_FILES, filename); // Huh?
-    void *data = SMemAlloc(size, __FILE__, __LINE__, 0);
+        bw::ErrorMessageBox(ERROR_NO_MORE_FILES, filename); // Huh?
+    void *data = storm::SMemAlloc(size, __FILE__, __LINE__, 0);
     if (!is_decoded)
     {
         overlapped[4] = CreateEvent(NULL, TRUE, FALSE, NULL);
-        ReadFile_Overlapped(overlapped, size, data, file);
+        bw::ReadFile_Overlapped(overlapped, size, data, file);
         *out_file = file;
         return data;
     }
     else
     {
-        ReadFile_Overlapped(nullptr, size, data, file);
+        bw::ReadFile_Overlapped(nullptr, size, data, file);
         int image_size = GetDecodedImageSize(data, grp_padding_size);
-        void *decoded = SMemAlloc(image_size, __FILE__, __LINE__, 0);
+        void *decoded = storm::SMemAlloc(image_size, __FILE__, __LINE__, 0);
         bool success = DecodeGrp(data, decoded, grp_padding_size);
         if (!success)
             FatalError("%s appears to be corrupt. Was it created with RetroGRP?", filename);
-        SFileCloseFile(file);
-        SMemFree(data, __FILE__, __LINE__, 0);
+        storm::SFileCloseFile(file);
+        storm::SMemFree(data, __FILE__, __LINE__, 0);
         return decoded;
     }
 }
@@ -173,23 +173,23 @@ void LoadBlendPalettes(const char *tileset)
         char buf[260];
         snprintf(buf, sizeof buf, "tileset\\%s\\%s.pcx", tileset, palette->name);
         uint32_t size;
-        void *pcx = ReadMpqFile(buf, 0, 0, __FILE__, __LINE__, 0, &size);
+        void *pcx = bw::ReadMpqFile(buf, 0, 0, __FILE__, __LINE__, 0, &size);
         uint32_t x, y;
-        SBmpDecodeImage(2, pcx, size, 0, nullptr, 0, &x, &y, 0);
+        storm::SBmpDecodeImage(2, pcx, size, 0, nullptr, 0, &x, &y, 0);
         Assert(x == 256);
         int decoded_size = (y + 1) * 256;
-        uint8_t *decoded = (uint8_t *)SMemAlloc(decoded_size, __FILE__, __LINE__, 0);
+        uint8_t *decoded = (uint8_t *)storm::SMemAlloc(decoded_size, __FILE__, __LINE__, 0);
         // Full transparency, not done by bw, but needed with decoded grps
         for (int i = 0; i < 256; i++)
         {
             decoded[i] = i;
         }
-        if (SBmpDecodeImage(2, pcx, size, 0, decoded + 256, decoded_size - 256, nullptr, nullptr, 0) == 0)
+        if (storm::SBmpDecodeImage(2, pcx, size, 0, decoded + 256, decoded_size - 256, nullptr, nullptr, 0) == 0)
         {
             // Dunno about GetLastError
-            ErrorMessageBox(GetLastError(), buf);
+            bw::ErrorMessageBox(GetLastError(), buf);
         }
-        SMemFree(pcx, __FILE__, __LINE__, 0);
+        storm::SMemFree(pcx, __FILE__, __LINE__, 0);
         palette->data = decoded;
     }
 }
@@ -199,7 +199,7 @@ void InitCursorMarker()
     Sprite *cursor_marker = lone_sprites->AllocateLone(SpriteId::CursorMarker, Point(0, 0), 0);
     *bw::cursor_marker = cursor_marker;
     cursor_marker->flags |= 0x20;
-    SetVisibility(cursor_marker, 0);
+    bw::SetVisibility(cursor_marker, 0);
 }
 
 static int GenerateStrength(UnitType unit_id, bool air)
@@ -229,7 +229,8 @@ static int GenerateStrength(UnitType unit_id, bool air)
             if (weapon == WeaponId::None)
                 return 1;
             // Fixes ai hangs when using zero damage weapons as main weapon
-            return std::max(2, (int)FinetuneBaseStrength(unit_id, CalculateBaseStrength(weapon, unit_id)));
+            int strength = bw::FinetuneBaseStrength(unit_id, bw::CalculateBaseStrength(weapon, unit_id));
+            return std::max(2, strength);
     }
 }
 
@@ -262,47 +263,47 @@ int InitGame()
     {
         std::fill(msg.begin(), msg.end(), 0);
     }
-    InitText();
-    InitAi();
-    InitTerrain();
-    InitImages();
-    InitSprites();
+    bw::InitText();
+    bw::InitAi();
+    bw::InitTerrain();
+    bw::InitImages();
+    bw::InitSprites();
     InitCursorMarker();
-    InitFlingies();
+    bw::InitFlingies();
     InitBullets();
     // Unlike most other init functions, this does not load any .dat files
     //InitOrders();
-    InitColorCycling();
-    UpdateColorPaletteIndices(bw::current_palette_rgba.raw_pointer(), bw::FindClosestIndex.raw_pointer());
-    InitTransparency();
+    bw::InitColorCycling();
+    bw::UpdateColorPaletteIndices(bw::current_palette_rgba.raw_pointer(), bw::FindClosestIndex.raw_pointer());
+    bw::InitTransparency();
     if (!*bw::loaded_save)
-        InitScoreSupply(); // TODO: Breaks team game replays on single
-    InitPylonSystem();
-    LoadMiscDat();
-    InitUnitSystem();
+        bw::InitScoreSupply(); // TODO: Breaks team game replays on single
+    bw::InitPylonSystem();
+    bw::LoadMiscDat();
+    bw::InitUnitSystem();
     GenerateStrengthTable();
-    InitSpriteVisionSync();
+    bw::InitSpriteVisionSync();
     if (*bw::loaded_save)
         return 1;
 
-    if (LoadChk() != 0)
+    if (bw::LoadChk() != 0)
     {
         // No IsTeamGame(), otherwise team game replays can't be watched in single player
         if (*bw::team_game)
-            CreateTeamGameStartingUnits();
+            bw::CreateTeamGameStartingUnits();
         else
-            CreateStartingUnits();
-        InitScreenPositions();
-        InitTerrainAi();
+            bw::CreateStartingUnits();
+        bw::InitScreenPositions();
+        bw::InitTerrainAi();
         return 1;
     }
     else
     {
         if (!*bw::error_happened && !*bw::nooks_and_crannies_error)
         {
-            Storm_LeaveGame(3);
+            bw::Storm_LeaveGame(3);
             *bw::error_happened = 1;
-            BwError(nullptr, 0, nullptr, 0x61);
+            bw::BwError(nullptr, 0, nullptr, 0x61);
             // Guess this doesn't make sense here?
             // State 3 == ingame
             if (*bw::scmain_state == 3)
@@ -312,7 +313,7 @@ int InitGame()
                 if (!IsReplay())
                     bw::replay_header->replay_end_frame = *bw::frame_count;
             }
-            CloseBnet();
+            bw::CloseBnet();
         }
         return 0;
     }

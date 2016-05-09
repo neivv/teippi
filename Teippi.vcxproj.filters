@@ -111,6 +111,9 @@
     <ClCompile Include="src\nuke.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="src\offsets_funcs.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
     <ClCompile Include="src\order.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
@@ -351,11 +354,17 @@
     <ClInclude Include="src\offsets.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="src\offsets_funcs.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
     <ClInclude Include="src\offsets_hooks.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="src\order.h">
       <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\patch\func.h">
+      <Filter>Headers\patch</Filter>
     </ClInclude>
     <ClInclude Include="src\patch\hook.h">
       <Filter>Headers\patch</Filter>
@@ -364,6 +373,9 @@
       <Filter>Headers\patch</Filter>
     </ClInclude>
     <ClInclude Include="src\patch\patchmanager.h">
+      <Filter>Headers\patch</Filter>
+    </ClInclude>
+    <ClInclude Include="src\patch\write_asm.h">
       <Filter>Headers\patch</Filter>
     </ClInclude>
     <ClInclude Include="src\patch\x86.h">
@@ -462,6 +474,9 @@
     <ClInclude Include="src\yms.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="src\patch\func.hpp">
+      <Filter>Sources\patch</Filter>
+    </ClInclude>
     <ClInclude Include="src\possearch.hpp">
       <Filter>Sources</Filter>
     </ClInclude>
@@ -471,15 +486,6 @@
     <ClInclude Include="src\unitsearch_cache.hpp">
       <Filter>Sources</Filter>
     </ClInclude>
-    <Text Include="src\func\nuottei.txt">
-      <Filter>Sources\func</Filter>
-    </Text>
-    <None Include="src\func\functonuot.py">
-      <Filter>Sources\func</Filter>
-    </None>
-    <None Include="src\func\genfuncs.py">
-      <Filter>Sources\func</Filter>
-    </None>
     <None Include="wscript" />
   </ItemGroup>
 </Project>

@@ -20,35 +20,35 @@ const uint32_t OldReplayMagic = 0x53526572;
 static bool WriteReplay(File *replay)
 {
     uint32_t magic = ReplayMagic;
-    if (WriteCompressed(replay, &magic, 4) == 0)
+    if (bw::WriteCompressed(&magic, 4, replay) == 0)
         return false;
-    if (WriteCompressed(replay, bw::replay_header.raw_pointer(), sizeof(ReplayHeader)) == 0)
+    if (bw::WriteCompressed(bw::replay_header.raw_pointer(), sizeof(ReplayHeader), replay) == 0)
         return false;
     // For team game replays
-    if (WriteCompressed(replay, bw::save_races.raw_pointer(), Limits::Players) == 0)
+    if (bw::WriteCompressed(bw::save_races.raw_pointer(), Limits::Players, replay) == 0)
         return false;
-    if (WriteCompressed(replay, bw::team_game_main_player.raw_pointer(), Limits::Teams) == 0)
+    if (bw::WriteCompressed(bw::team_game_main_player.raw_pointer(), Limits::Teams, replay) == 0)
         return false;
-    if (WriteReplayData(*bw::replay_data, replay) == 0)
+    if (bw::WriteReplayData(*bw::replay_data, replay) == 0)
         return false;
     uint32_t size;
-    void *chk = ReadChk(&size, &bw::map_path[0]);
+    void *chk = bw::ReadChk(&size, &bw::map_path[0]);
     if (!chk)
         return false;
-    if (WriteCompressed(replay, &size, 4) == 0)
+    if (bw::WriteCompressed(&size, 4, replay) == 0)
     {
-        SMemFree(chk, __FILE__, __LINE__, 0);
+        storm::SMemFree(chk, __FILE__, __LINE__, 0);
         return false;
     }
-    bool success = WriteCompressed(replay, chk, size) != 0;
-    SMemFree(chk, __FILE__, __LINE__, 0);
+    bool success = bw::WriteCompressed(chk, size, replay) != 0;
+    storm::SMemFree(chk, __FILE__, __LINE__, 0);
     return success;
 }
 
 void SaveReplay(const char *name, bool overwrite)
 {
     char path[260];
-    GetReplayPath(name, path, sizeof path);
+    bw::GetReplayPath(name, path, sizeof path);
     if (overwrite)
     {
         auto result = DeleteFileA(path);
@@ -71,7 +71,7 @@ void SaveReplay(const char *name, bool overwrite)
 bool LoadReplayData(File *filu, uint32_t *error)
 {
     uint32_t magic;
-    if (!ReadCompressed(filu, &magic, 4))
+    if (!bw::ReadCompressed(&magic, 4, filu))
         return false;
     if (magic == OldReplayMagic)
     {
@@ -80,11 +80,11 @@ bool LoadReplayData(File *filu, uint32_t *error)
     }
     else if (magic != ReplayMagic)
         return false;
-    if (!ReadCompressed(filu, bw::replay_header.raw_pointer(), sizeof(ReplayHeader)))
+    if (!bw::ReadCompressed(bw::replay_header.raw_pointer(), sizeof(ReplayHeader), filu))
         return false;
-    if (!ReadCompressed(filu, bw::save_races.raw_pointer(), Limits::Players))
+    if (!bw::ReadCompressed(bw::save_races.raw_pointer(), Limits::Players, filu))
         return false;
-    if (!ReadCompressed(filu, bw::team_game_main_player.raw_pointer(), Limits::Teams))
+    if (!bw::ReadCompressed(bw::team_game_main_player.raw_pointer(), Limits::Teams, filu))
         return false;
     if (bw::replay_header->unk46 == 0)
         return false;
@@ -92,18 +92,18 @@ bool LoadReplayData(File *filu, uint32_t *error)
     if (*error && !*bw::is_bw)
         return false;
     *bw::campaign_mission = bw::replay_header->campaign_mission;
-    AllocateReplayCommands();
-    if (!LoadReplayCommands(filu))
+    bw::AllocateReplayCommands();
+    if (!bw::LoadReplayCommands(filu))
         return false;
-    if (!ReadCompressed(filu, bw::scenario_chk_length.raw_pointer(), 4))
+    if (!bw::ReadCompressed(bw::scenario_chk_length.raw_pointer(), 4, filu))
         return false;
     if (*bw::scenario_chk)
-        SMemFree(*bw::scenario_chk, __FILE__, __LINE__, 0);
+        storm::SMemFree(*bw::scenario_chk, __FILE__, __LINE__, 0);
 
-    *bw::scenario_chk = SMemAlloc(*bw::scenario_chk_length, __FILE__, __LINE__, 0);
-    if (!ReadCompressed(filu, *bw::scenario_chk, *bw::scenario_chk_length))
+    *bw::scenario_chk = storm::SMemAlloc(*bw::scenario_chk_length, __FILE__, __LINE__, 0);
+    if (!bw::ReadCompressed(*bw::scenario_chk, *bw::scenario_chk_length, filu))
     {
-        SMemFree(*bw::scenario_chk, __FILE__, __LINE__, 0);
+        storm::SMemFree(*bw::scenario_chk, __FILE__, __LINE__, 0);
         return false;
     }
     return true;
@@ -131,24 +131,33 @@ void LoadReplayMapDirEntry(MapDirEntry *mde)
         return;
     mde->fully_loaded = 1;
     mde->unk25c = 1;
-    snprintf(mde->title, sizeof mde->title, "%s", GetGluAllString(GluAll::ReplayTitle));
+    snprintf(mde->title, sizeof mde->title, "%s", bw::GetGluAllString(GluAll::ReplayTitle));
 
     uint32_t error;
     if (!LoadReplayData(mde->full_path, &error))
     {
         if (error == 1)
-            snprintf(mde->description, sizeof mde->description, "%s", GetGluAllString(GluAll::MapRequiresBw));
+        {
+            snprintf(mde->description, sizeof mde->description, "%s",
+                     bw::GetGluAllString(GluAll::MapRequiresBw));
+        }
         else if (error == 2)
-            snprintf(mde->description, sizeof mde->description, "%s", "This replay has been recorded without mods and cannot be watched");
+        {
+            snprintf(mde->description, sizeof mde->description, "%s",
+                     "This replay has been recorded without mods and cannot be watched");
+        }
         else
-            snprintf(mde->description, sizeof mde->description, "%s", GetGluAllString(GluAll::InvalidScenarioDesc));
+        {
+            snprintf(mde->description, sizeof mde->description, "%s",
+                     bw::GetGluAllString(GluAll::InvalidScenarioDesc));
+        }
         return;
     }
 
     Player players[Limits::Players];
     mde->computer_players = 0;
     mde->human_players = 0;
-    ReadStruct245(&mde->game_data, players);
+    bw::ReadStruct245(&mde->game_data, players);
     for (Player &player : players)
     {
         if (player.type == 1)
@@ -165,30 +174,38 @@ void LoadReplayMapDirEntry(MapDirEntry *mde)
     uint8_t tmp[0x28];
     bool success;
     if (mde->campaign_mission)
-        success = PreloadMap(bw::campaign_map_names[*bw::campaign_mission], tmp, 1);
+        success = bw::PreloadMap(bw::campaign_map_names[*bw::campaign_mission], tmp, 1);
     else
-        success = PreloadMap(mde->full_path, tmp, 0);
+        success = bw::PreloadMap(mde->full_path, tmp, 0);
 
     if (!success)
     {
         if (tmp[0x18] <= 0x3b)
-            snprintf(mde->description, sizeof mde->description, "%s", GetGluAllString(GluAll::InvalidScenarioDesc));
+        {
+            snprintf(mde->description, sizeof mde->description, "%s",
+                     bw::GetGluAllString(GluAll::InvalidScenarioDesc));
+        }
         else
         {
-            snprintf(mde->description, sizeof mde->description, "%s", GetGluAllString(GluAll::MapRequiresBw));
+            snprintf(mde->description, sizeof mde->description, "%s",
+                     bw::GetGluAllString(GluAll::MapRequiresBw));
             mde->unk25c = 2;
         }
         return;
     }
-    snprintf(mde->description, sizeof mde->description, GetGluAllString(GluAll::ReplayDescFormat), mde->game_data.map_title);
+    snprintf(mde->description, sizeof mde->description, bw::GetGluAllString(GluAll::ReplayDescFormat), mde->game_data.map_title);
     strncat(mde->description, "\n\n", sizeof mde->description - strlen(mde->description));
     snprintf(mde->name, sizeof mde->name, "%s", mde->filename);
-    snprintf(mde->x478_as_number, sizeof mde->x478_as_number, GetGluAllString(GluAll::MapDirEntryUnk478Format), mde->unk478);
-    snprintf(mde->map_dimension_string, sizeof mde->map_dimension_string, GetGluAllString(GluAll::MapDimensionFormat), mde->map_width_tiles,
-            mde->map_height_tiles);
-    snprintf(mde->computer_players_string, sizeof mde->computer_players_string, GetGluAllString(GluAll::ComputerPlayersFormat), mde->computer_players);
-    snprintf(mde->human_players_string, sizeof mde->human_players_string, GetGluAllString(GluAll::HumanPlayersFormat), mde->human_players);
-    snprintf(mde->tileset_string, sizeof mde->tileset_string, "%s", GetGluAllString(GluAll::Badlands + mde->tileset));
+    snprintf(mde->x478_as_number, sizeof mde->x478_as_number,
+             bw::GetGluAllString(GluAll::MapDirEntryUnk478Format), mde->unk478);
+    snprintf(mde->map_dimension_string, sizeof mde->map_dimension_string,
+             bw::GetGluAllString(GluAll::MapDimensionFormat), mde->map_width_tiles, mde->map_height_tiles);
+    snprintf(mde->computer_players_string, sizeof mde->computer_players_string,
+             bw::GetGluAllString(GluAll::ComputerPlayersFormat), mde->computer_players);
+    snprintf(mde->human_players_string, sizeof mde->human_players_string,
+             bw::GetGluAllString(GluAll::HumanPlayersFormat), mde->human_players);
+    snprintf(mde->tileset_string, sizeof mde->tileset_string, "%s",
+             bw::GetGluAllString(GluAll::Badlands + mde->tileset));
     mde->unk25c = 0;
 }
 
@@ -255,7 +272,7 @@ struct ReplayCommands
     template <class... Args>
     void Warn(Args &&... args)
     {
-        ChangeReplaySpeed(*bw::game_speed, *bw::replay_speed_multiplier, 1);
+        bw::ChangeReplaySpeed(*bw::game_speed, *bw::replay_speed_multiplier, 1);
         Warning(std::forward<Args>(args)...);
     }
 
@@ -270,8 +287,8 @@ void ProgressReplay()
         return;
     if (*bw::frame_count >= bw::replay_header->replay_end_frame)
     {
-        ChangeReplaySpeed(*bw::game_speed, *bw::replay_speed_multiplier, 1);
-        Victory();
+        bw::ChangeReplaySpeed(*bw::game_speed, *bw::replay_speed_multiplier, 1);
+        bw::Victory();
         return;
     }
     ReplayCommands cmds(*bw::replay_data, *bw::frame_count);

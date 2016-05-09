@@ -187,13 +187,13 @@ Unit *Unit::RawAlloc()
 
 Unit *Unit::AllocateAndInit(uint8_t player, int unused_seed, uint16_t x, uint16_t y, uint16_t unit_id)
 {
-    if (!DoesFitHere(unit_id, x, y))
+    if (!bw::DoesFitHere(unit_id, x, y))
     {
         *bw::error_message = 0;
         return nullptr;
     }
     Unit *unit = new Unit;
-    auto success = InitializeUnitBase(unit, unit_id, x, y, player);
+    auto success = bw::InitializeUnitBase(unit, unit_id, x, y, player);
     if (!success)
     {
         *bw::error_message = NetworkString::UnableToCreateUnit;
@@ -290,7 +290,7 @@ void Unit::TransportedDeath()
 
     if (related != nullptr) // Can happen when irra kills in transport
     {
-        MoveUnit(this, sprite->position.x, sprite->position.y); // Weeeell
+        bw::MoveUnit(this, sprite->position.x, sprite->position.y); // Weeeell
 
         if (this == related->first_loaded)
         {
@@ -386,7 +386,7 @@ void Unit::RemoveOverlayFromSelf(ImageType first_id, int id_amount)
 
 void Unit::AddSpellOverlay(ImageType small_overlay_id)
 {
-    AddOverlayHighest(GetTurret()->sprite.get(), small_overlay_id.Raw() + Type().OverlaySize(), 0, 0, 0);
+    bw::AddOverlayHighest(GetTurret()->sprite.get(), small_overlay_id.Raw() + Type().OverlaySize(), 0, 0, 0);
 }
 
 // Some ai orders use UpdateAttackTarget, which uses unitsearch region cache, so they are progressed later
@@ -395,7 +395,7 @@ void Unit::ProgressOrder_Late(ProgressUnitResults *results)
     STATIC_PERF_CLOCK(Unit_ProgressOrder_Late);
     switch (order)
     {
-#define Case(s) case OrderId::s : Order_ ## s(this); break
+#define Case(s) case OrderId::s : bw::Order_ ## s(this); break
         Case(TurretAttack);
         Case(TurretGuard);
     }
@@ -460,25 +460,25 @@ void Unit::ProgressOrder_Hidden(ProgressUnitResults *results)
                 IssueOrderTargetingNothing(OrderId::Nothing);
             return;
         case OrderId::HarvestGas:
-            Order_HarvestGas(this);
+            bw::Order_HarvestGas(this);
             return;
         case OrderId::NukeLaunch:
             Order_NukeLaunch(results);
             return;
         case OrderId::InfestMine4:
-            Order_InfestMine4(this);
+            bw::Order_InfestMine4(this);
             return;
         case OrderId::ResetCollision1:
-            Order_ResetCollision1(this);
+            bw::Order_ResetCollision1(this);
             return;
         case OrderId::ResetCollision2:
-            Order_ResetCollision2(this);
+            bw::Order_ResetCollision2(this);
             return;
         case OrderId::UnusedPowerup:
-            Order_UnusedPowerup(this);
+            bw::Order_UnusedPowerup(this);
             return;
         case OrderId::PowerupIdle:
-            Order_PowerupIdle(this);
+            bw::Order_PowerupIdle(this);
             return;
     }
     if (order_wait--) // Ya postfix
@@ -489,16 +489,16 @@ void Unit::ProgressOrder_Hidden(ProgressUnitResults *results)
     {
         case OrderId::ComputerAi:
             if (flags & UnitStatus::InBuilding)
-                Order_BunkerGuard(this);
+                bw::Order_BunkerGuard(this);
         break;
         case OrderId::BunkerGuard:
-            Order_BunkerGuard(this);
+            bw::Order_BunkerGuard(this);
         break;
         case OrderId::Pickup4:
-            Order_Pickup4(this);
+            bw::Order_Pickup4(this);
         break;
         case OrderId::RescuePassive:
-            Order_RescuePassive(this);
+            bw::Order_RescuePassive(this);
         break;
     }
 }
@@ -512,7 +512,7 @@ void Unit::ProgressOrder(ProgressUnitResults *results)
             Order_ProtossBuildSelf(results);
             return;
         case OrderId::WarpIn:
-            Order_WarpIn(this);
+            bw::Order_WarpIn(this);
             return;
         case OrderId::Die:
             Order_Die(results);
@@ -523,12 +523,12 @@ void Unit::ProgressOrder(ProgressUnitResults *results)
     }
     if (IsDisabled())
     {
-        Ai_FocusUnit(this);
+        bw::Ai_FocusUnit(this);
         return;
     }
     if (~flags & UnitStatus::Reacts && flags & UnitStatus::UnderDweb)
-        Ai_FocusUnit(this);
-#define Case(s) case OrderId::s : Order_ ## s(this); break
+        bw::Ai_FocusUnit(this);
+#define Case(s) case OrderId::s : bw::Order_ ## s(this); break
     switch (OrderType().Raw())
     {
         Case(InitArbiter);
@@ -584,7 +584,7 @@ void Unit::ProgressOrder(ProgressUnitResults *results)
         return;
 
     order_wait = OrderWait;
-    Ai_FocusUnit2(this);
+    bw::Ai_FocusUnit2(this);
     ai_spell_flags = 0;
     switch (order)
     {
@@ -650,7 +650,7 @@ void Unit::ProgressOrder(ProgressUnitResults *results)
         case OrderId::SuicideHoldPosition:
             if (order_state == 0)
             {
-                StopMoving(this);
+                bw::StopMoving(this);
                 unk_move_waypoint = move_target;
                 order_state = 1;
             }
@@ -663,15 +663,15 @@ void Unit::ProgressOrder(ProgressUnitResults *results)
         break;
         case OrderId::Harvest:
         case OrderId::MoveToGas:
-            Order_MoveToHarvest(this);
+            bw::Order_MoveToHarvest(this);
         break;
         case OrderId::ReturnGas:
         case OrderId::ReturnMinerals:
-            Order_ReturnResource(this);
+            bw::Order_ReturnResource(this);
         break;
         case OrderId::Move:
         case OrderId::ReaverCarrierMove:
-            Order_Move(this);
+            bw::Order_Move(this);
         break;
         case OrderId::MoveUnload:
             Order_MoveUnload();
@@ -698,7 +698,7 @@ void Unit::ProgressOrder(ProgressUnitResults *results)
         case OrderId::DisruptionWeb:
         case OrderId::OpticalFlare:
         case OrderId::Maelstrom:
-            Order_Spell(this);
+            bw::Order_Spell(this);
         break;
         case OrderId::AttackObscured:
         case OrderId::InfestObscured:
@@ -707,7 +707,7 @@ void Unit::ProgressOrder(ProgressUnitResults *results)
         case OrderId::ReaverAttackObscured:
         case OrderId::HarvestObscured:
         case OrderId::YamatoGunObscured:
-            Order_Obscured(this);
+            bw::Order_Obscured(this);
         break;
         case OrderId::Feedback:
             Order_Feedback(results);
@@ -716,12 +716,12 @@ void Unit::ProgressOrder(ProgressUnitResults *results)
         case OrderId::Carrier:
         case OrderId::CarrierFight:
         case OrderId::CarrierHoldPosition:
-            Order_Carrier(this);
+            bw::Order_Carrier(this);
         break;
         case OrderId::Reaver:
         case OrderId::ReaverFight:
         case OrderId::ReaverHoldPosition:
-            Order_Reaver(this);
+            bw::Order_Reaver(this);
         break;
         case OrderId::Hallucination:
             Order_Hallucination(results);
@@ -766,7 +766,7 @@ void Unit::ProgressSecondaryOrder(ProgressUnitResults *results)
     }
     if (IsDisabled())
         return;
-#define Case(s) case OrderId::s : Order_ ## s(this); break
+#define Case(s) case OrderId::s : bw::Order_ ## s(this); break
     switch (SecondaryOrderType().Raw())
     {
         Case(BuildAddon);
@@ -821,9 +821,9 @@ void Unit::ProgressTimers(ProgressUnitResults *results)
     {
         if (Type().Flags() & UnitFlags::Regenerate && hitpoints > 0 && hitpoints != Type().HitPoints())
         {
-            SetHp(this, hitpoints + 4);
+            bw::SetHp(this, hitpoints + 4);
         }
-        ProgressEnergyRegen(this);
+        bw::ProgressEnergyRegen(this);
         if (move_target_update_timer)
             move_target_update_timer--;
         if (death_timer)
@@ -853,7 +853,7 @@ void Unit::ProgressFrame(ProgressUnitResults *results)
     if (!Type().IsSubunit() && !sprite->IsHidden())
     {
         if (player < Limits::Players)
-            DrawTransmissionSelectionCircle(sprite.get(), bw::self_alliance_colors[player]);
+            bw::DrawTransmissionSelectionCircle(sprite.get(), bw::self_alliance_colors[player]);
     }
     ProgressTimers(results);
     //debug_log->Log("Order %x\n", order);
@@ -898,7 +898,7 @@ void Unit::ProgressActiveUnitFrame()
     if (flyers)
         MovementState_Flyer();
     else
-        ProgressUnitMovement(this);
+        bw::ProgressUnitMovement(this);
     if (!flyers && movement_state == MovementState::Flyer)
     {
         allocated.Change(first_movementstate_flyer);
@@ -906,19 +906,19 @@ void Unit::ProgressActiveUnitFrame()
     }
 
     if (*bw::reveal_unit_area || (flyers && *bw::vision_updated))
-        RevealSightArea(this);
+        bw::RevealSightArea(this);
     if (HasSubunit() && flags & UnitStatus::Completed)
     {
         int rotation = movement_direction - old_direction;
         if (rotation < 0)
             rotation += 0x100;
 
-        ProgressSubunitDirection(subunit, rotation);
+        bw::ProgressSubunitDirection(subunit, rotation);
         Point32 lo = LoFile::GetOverlay(sprite->main_image->Type(), Overlay::Special)
             .GetValues(sprite->main_image, 0);
         subunit->exact_position = exact_position;
         subunit->position = Point(exact_position.x >> 8, exact_position.y >> 8);
-        MoveSprite(subunit->sprite.get(), subunit->position.x, subunit->position.y);
+        bw::MoveSprite(subunit->sprite.get(), subunit->position.x, subunit->position.y);
         Image *subunit_img = subunit->sprite->main_image;
         if (subunit_img->x_off != lo.x || subunit_img->y_off != lo.y)
         {
@@ -955,10 +955,10 @@ void Unit::ProgressFrame_Hidden(ProgressUnitResults *results)
         subunit->ProgressFrame_Hidden(results);
         *bw::active_iscript_unit = this;
     }
-    ProgressUnitMovement(this); // Huh?
+    bw::ProgressUnitMovement(this); // Huh?
     ProgressTimers(results);
     ProgressOrder_Hidden(results);
-    ProgressSecondaryOrder_Hidden(this);
+    bw::ProgressSecondaryOrder_Hidden(this);
     if (sprite != nullptr)
     {
         ProgressIscript("ProgressFrame_Late", results);
@@ -984,7 +984,7 @@ bool Unit::ProgressFrame_Dying(ProgressUnitResults *results)
         if (*bw::dying_unit_creep_disappearance_count == 0)
         {
             *bw::dying_unit_creep_disappearance_count = 3;
-            if (UpdateCreepDisappearance_Unit(this) == false)
+            if (bw::UpdateCreepDisappearance_Unit(this) == false)
                 return false;
         }
         else
@@ -1017,7 +1017,7 @@ void Unit::ProgressFrames_Invisible()
             unit->invisible_list.next = nullptr;
             unit->invisible_list.prev = nullptr;
             unit->flags &= ~UnitStatus::FreeInvisibility;
-            EndInvisibility(unit, Sound::Decloak);
+            bw::EndInvisibility(unit, Sound::Decloak);
             refresh = true;
         }
         else
@@ -1033,7 +1033,7 @@ void Unit::ProgressFrames_Invisible()
             }
             if (~unit->flags & UnitStatus::BeginInvisibility)
             {
-                BeginInvisibility(unit, Sound::Cloak);
+                bw::BeginInvisibility(unit, Sound::Cloak);
                 refresh = true;
             }
         }
@@ -1053,7 +1053,7 @@ void Unit::UpdatePoweredStates()
         if (bw::players[unit->player].type == 3)
             continue;
 
-        if (IsPowered(unit->unit_id, unit->sprite->position.x, unit->sprite->position.y, unit->player))
+        if (bw::IsPowered(unit->unit_id, unit->sprite->position.x, unit->sprite->position.y, unit->player))
         {
             if (unit->flags & UnitStatus::Disabled)
             {
@@ -1125,9 +1125,12 @@ ProgressUnitResults Unit::ProgressFrames()
         if (!deleted && unit->sprite)
         {
             if (vision_updated && IsHumanPlayer(unit->player))
-                ShowArea(1, bw::visions[unit->player], unit->sprite->position.x, unit->sprite->position.y, unit->IsFlying());
+            {
+                auto pos = unit->sprite->position;
+                bw::ShowArea(1, bw::visions[unit->player], pos.x, pos.y, unit->IsFlying());
+            }
 
-            UpdateVisibility(unit);
+            bw::UpdateVisibility(unit);
         }
     }
     auto pre_time = klokki.GetTime();
@@ -1150,18 +1153,18 @@ ProgressUnitResults Unit::ProgressFrames()
     {
         for (Unit *unit : *bw::first_revealer)
         {
-            RevealSightArea(unit);
+            bw::RevealSightArea(unit);
         }
     }
     for (Unit *unit : *bw::first_active_unit)
     {
-        UpdateVisibility(unit);
+        bw::UpdateVisibility(unit);
         if (unit->IsInvisible())
         {
             unit->invisibility_effects = 0;
             if (unit->secondary_order_wait == 0)
             {
-                UpdateDetectionStatus(unit);
+                bw::UpdateDetectionStatus(unit);
                 unit->secondary_order_wait = 30;
             }
             else
@@ -1485,7 +1488,7 @@ bool Unit::IsMovingAwayFrom(const Unit *other) const
 {
     if (~flingy_flags & 0x2)
         return false;
-    switch (GetOthersLocation(this, other))
+    switch (bw::GetOthersLocation(this, other))
     {
         case Pathing::top:
             return movement_direction > 0x40 && movement_direction < 0xc0;
@@ -1751,7 +1754,7 @@ void Unit::LoadUnit(Unit *unit)
     else
         first_loaded = unit;
 
-    PlaySound(Sound::LoadUnit_Zerg + Type().Race(), this, 1, 0);
+    bw::PlaySound(Sound::LoadUnit_Zerg + Type().Race(), this, 1, 0);
     if (unit->Type() == UnitId::SCV && unit->ai != nullptr)
     {
         if (((Ai::WorkerAi *)unit->ai)->town->building_scv == unit)
@@ -1759,7 +1762,7 @@ void Unit::LoadUnit(Unit *unit)
     }
     unit->related = this;
     unit->flags |= UnitStatus::InTransport;
-    HideUnit(unit);
+    bw::HideUnit(unit);
     unit->SetIscriptAnimation(Iscript::Animation::Idle, true, "LoadUnit", nullptr);
     RefreshUi();
 
@@ -1774,7 +1777,7 @@ void Unit::LoadUnit(Unit *unit)
         if (unit->HasSubunit())
         {
             Unit *subunit = unit->subunit;
-            MoveUnit(subunit, sprite->position.x, sprite->position.y);
+            bw::MoveUnit(subunit, sprite->position.x, sprite->position.y);
 
             subunit->flags &= ~UnitStatus::Reacts;
             subunit->flags |= UnitStatus::InBuilding;
@@ -1784,7 +1787,7 @@ void Unit::LoadUnit(Unit *unit)
 
         }
         else
-            MoveUnit(unit, sprite->position.x, sprite->position.y);
+            bw::MoveUnit(unit, sprite->position.x, sprite->position.y);
     }
 }
 
@@ -1816,13 +1819,13 @@ bool Unit::UnloadUnit(Unit *unit)
         return false;
 
     uint16_t position[2];
-    if (!GetUnloadPosition(position, this, unit))
+    if (!bw::GetUnloadPosition(position, this, unit))
         return false;
 
     order_timer = 0xf;
-    MoveUnit(unit, position[0], position[1]);
+    bw::MoveUnit(unit, position[0], position[1]);
     if (unit->subunit)
-        MoveUnit(unit->subunit, position[0], position[1]);
+        bw::MoveUnit(unit->subunit, position[0], position[1]);
     unit->IscriptToIdle();
 
     Unit *prev = nullptr, *cur = first_loaded;
@@ -1837,8 +1840,8 @@ bool Unit::UnloadUnit(Unit *unit)
         first_loaded = unit->next_loaded;
     unit->next_loaded = 0;
 
-    PlaySound(Sound::UnloadUnit_Zerg + Type().Race(), this, 1, 0);
-    ShowUnit(unit);
+    bw::PlaySound(Sound::UnloadUnit_Zerg + Type().Race(), this, 1, 0);
+    bw::ShowUnit(unit);
     unit->flags &= ~(UnitStatus::InTransport | UnitStatus::InBuilding);
     unit->related = nullptr;
     unit->DeleteMovement();
@@ -1920,7 +1923,7 @@ void Unit::Order_Unload()
     {
         if (ai && !building)
         {
-            Ai_UnloadFailure(this);
+            bw::Ai_UnloadFailure(this);
             return;
         }
     }
@@ -1945,12 +1948,15 @@ void Unit::Order_MoveUnload()
         unk_move_waypoint = order_target_pos;
         if (ai && distance <= 0xca000)
         {
-            if (GetTerrainHeight(sprite->position.x, sprite->position.y) != GetTerrainHeight(order_target_pos.x, order_target_pos.y))
+            if (bw::GetTerrainHeight(sprite->position.x, sprite->position.y) !=
+                    bw::GetTerrainHeight(order_target_pos.x, order_target_pos.y))
+            {
                 return;
-            if (!Ai_AreOnConnectedRegions(this, order_target_pos.x, order_target_pos.y))
+            }
+            if (!bw::Ai_AreOnConnectedRegions(this, order_target_pos.x, order_target_pos.y))
                 return;
 
-            bool unk = IsPointInArea(this, 0x200, order_target_pos.x, order_target_pos.y);
+            bool unk = bw::IsPointInArea(this, 0x200, order_target_pos.x, order_target_pos.y);
             for (Unit *unit = first_loaded; unit; unit = unit->next_loaded)
             {
                 if (unit->Type() == UnitId::Reaver && !unk)
@@ -1958,7 +1964,7 @@ void Unit::Order_MoveUnload()
                 if (unit->Type().IsWorker())
                     return;
                 uint16_t pos[2];
-                if (!GetUnloadPosition(pos, this, unit))
+                if (!bw::GetUnloadPosition(pos, this, unit))
                     return;
             }
             PrependOrderTargetingNothing(OrderId::Unload);
@@ -2078,7 +2084,7 @@ void Unit::ReactToHit(Unit *attacker)
     if (flags & UnitStatus::Burrowed && !irradiate_timer && Type() != UnitId::Lurker)
     {
         if (Type().Flags() & UnitFlags::Burrowable) // Huh?
-            Unburrow(this);
+            bw::Unburrow(this);
     }
     else if (!Type().IsBuilding() && (!CanAttackUnit(attacker) || Type().IsWorker()))
     {
@@ -2092,9 +2098,9 @@ void Unit::ReactToHit(Unit *attacker)
             self = subunit;
         if (self->OrderType().Fleeable() && self->flags & UnitStatus::Reacts && self->IsAtHome())
         {
-            if (GetBaseMissChance(self) != 0xff) // Not under dark swarm
+            if (bw::GetBaseMissChance(self) != 0xff) // Not under dark swarm
             {
-                uint32_t flee_pos = PrepareFlee(self, attacker);
+                uint32_t flee_pos = bw::PrepareFlee(self, attacker);
                 IssueOrderTargetingGround(OrderId::Move, Point(flee_pos & 0xffff, flee_pos >> 16));
             }
         }
@@ -2246,7 +2252,7 @@ void Unit::Kill(ProgressUnitResults *results)
             Puwh_Dying(this, attacker, nearby_helping_units.load(std::memory_order_relaxed), results);
         }
     }
-    DropPowerup(this);
+    bw::DropPowerup(this);
     while (order_queue_begin != nullptr)
     {
         DeleteOrder(order_queue_begin);
@@ -2447,20 +2453,20 @@ void Unit::BuildingDeath(ProgressUnitResults *results)
         currently_building->CancelConstruction(results);
     }
     if (building.addon)
-        DetachAddon(this);
+        bw::DetachAddon(this);
     if (TechType(building.tech) != TechId::None)
-        CancelTech(this);
+        bw::CancelTech(this);
     if (UpgradeType(building.upgrade) != UpgradeId::None)
-        CancelUpgrade(this);
+        bw::CancelUpgrade(this);
     if (build_queue[current_build_slot] >= UnitId::CommandCenter.Raw())
         CancelTrain(results);
     if (*bw::is_placing_building)
-        EndAddonPlacement();
+        bw::EndAddonPlacement();
     if (Type().Race() == Race::Zerg)
     {
         if (IsMorphingBuilding())
             flags |= UnitStatus::Completed;
-        if (UpdateCreepDisappearance_Unit(this) == false)
+        if (bw::UpdateCreepDisappearance_Unit(this) == false)
             flags |= UnitStatus::HasDisappearingCreep;
     }
 }
@@ -2492,7 +2498,7 @@ bool Unit::RemoveSubunitOrGasContainer()
         player_units.Remove(bw::first_player_unit.index_overflowing(player));
         player_units.next = nullptr;
         player_units.prev = nullptr;
-        ModifyUnitCounters(this, -1);
+        bw::ModifyUnitCounters(this, -1);
         subunit = nullptr;
         return true;
     }
@@ -2501,27 +2507,27 @@ bool Unit::RemoveSubunitOrGasContainer()
     switch (Type().Raw())
     {
         case Extractor:
-            RemoveCreepAtUnit(sprite->position.x, sprite->position.y, Type().Raw(), (void *)&ret_false_s3);
+            bw::RemoveCreepAtUnit(sprite->position.x, sprite->position.y, Type().Raw(), (void *)&ret_false_s3);
             // No break
         case Refinery:
         case Assimilator:
             if (flags & UnitStatus::Completed)
-                ModifyUnitCounters2(this, -1, 0);
+                bw::ModifyUnitCounters2(this, -1, 0);
             flags &= ~UnitStatus::Completed;
             resource.first_awaiting_worker = nullptr;
-            TransformUnit(this, VespeneGeyser);
+            bw::TransformUnit(this, VespeneGeyser);
             order = Type().HumanIdleOrder();
             order_state = 0;
             order_target_pos = Point(0, 0);
             target = nullptr;
             order_fow_unit = None;
             hitpoints = Type().HitPoints();
-            GiveUnit(this, NeutralPlayer, 0);
-            GiveSprite(this, NeutralPlayer);
+            bw::GiveUnit(this, NeutralPlayer, 0);
+            bw::GiveSprite(this, NeutralPlayer);
             flags |= UnitStatus::Completed;
-            ModifyUnitCounters2(this, 1, 1);
+            bw::ModifyUnitCounters2(this, 1, 1);
             if (*bw::is_placing_building)
-                RedrawGasBuildingPlacement(this);
+                bw::RedrawGasBuildingPlacement(this);
             return true;
         break;
         break;
@@ -2536,7 +2542,7 @@ void Unit::Die(ProgressUnitResults *results)
         *bw::ignore_unit_flag80_clear_subcount = 1;
     KillChildren(results);
     TransportDeath(results);
-    RemoveReferences(this, 1);
+    bw::RemoveReferences(this, 1);
     // Hak fix
     for (Unit *unit : first_allocated_unit)
     {
@@ -2549,23 +2555,23 @@ void Unit::Die(ProgressUnitResults *results)
     if (RemoveSubunitOrGasContainer())
         return;
 
-    StopMoving(this);
+    bw::StopMoving(this);
     if (!sprite->IsHidden())
-        RemoveFromMap(this);
+        bw::RemoveFromMap(this);
 
     if (!Type().IsBuilding())
     {
         invisibility_effects = 0;
-        RemoveFromCloakedUnits(this);
+        bw::RemoveFromCloakedUnits(this);
         if (flags & UnitStatus::BeginInvisibility)
         {
-            EndInvisibility(this, Sound::Decloak);
+            bw::EndInvisibility(this, Sound::Decloak);
         }
     }
     if (flags & UnitStatus::Building)
         BuildingDeath(results);
     if ((Type().Flags() & UnitFlags::FlyingBuilding) && (building.is_landing != 0))
-        ClearBuildingTileFlag(this, order_target_pos.x, order_target_pos.y);
+        bw::ClearBuildingTileFlag(this, order_target_pos.x, order_target_pos.y);
 
     DeletePath();
     if (currently_building)
@@ -2575,20 +2581,20 @@ void Unit::Die(ProgressUnitResults *results)
         currently_building = nullptr;
     }
     IssueSecondaryOrder(OrderId::Nothing);
-    DropPowerup(this);
-    RemoveFromSelections(this);
-    RemoveFromClientSelection3(this);
-    RemoveSelectionCircle(sprite.get());
-    ModifyUnitCounters(this, -1);
+    bw::DropPowerup(this);
+    bw::RemoveFromSelections(this);
+    bw::RemoveFromClientSelection3(this);
+    bw::RemoveSelectionCircle(sprite.get());
+    bw::ModifyUnitCounters(this, -1);
     if (flags & UnitStatus::Completed)
-        ModifyUnitCounters2(this, -1, 0);
+        bw::ModifyUnitCounters2(this, -1, 0);
 
     if ((*bw::is_placing_building) && !IsReplay() && (*bw::local_player_id == player))
     {
-        if (!CanPlaceBuilding(*bw::primary_selected, *bw::placement_unit_id, *bw::placement_order))
+        if (!bw::CanPlaceBuilding(*bw::primary_selected, *bw::placement_unit_id, *bw::placement_order))
         {
-            MarkPlacementBoxAreaDirty();
-            EndBuildingPlacement();
+            bw::MarkPlacementBoxAreaDirty();
+            bw::EndBuildingPlacement();
         }
     }
     RemoveFromLists();
@@ -2636,7 +2642,7 @@ void Unit::Order_Die(ProgressUnitResults *results)
 {
     Assert(sprite->first_overlay != nullptr);
     if (order_flags & 0x4) // Remove death
-        HideUnit(this);
+        bw::HideUnit(this);
     if (subunit != nullptr)
     {
         TransferMainImage(sprite.get(), subunit->sprite.get());
@@ -2660,11 +2666,11 @@ void Unit::Order_Die(ProgressUnitResults *results)
         }
         else
         {
-            PlaySound(Sound::HallucinationDeath, this, 1, 0);
+            bw::PlaySound(Sound::HallucinationDeath, this, 1, 0);
             Sprite *death = lone_sprites->AllocateLone(SpriteId::HallucinationDeath, sprite->position, player);
             death->elevation = sprite->elevation + 1;
-            SetVisibility(death, sprite->visibility_mask);
-            HideUnit(this);
+            bw::SetVisibility(death, sprite->visibility_mask);
+            bw::HideUnit(this);
             Remove(results);
         }
     }
@@ -2692,22 +2698,22 @@ void Unit::CancelConstruction(ProgressUnitResults *results)
             return;
         }
         else
-            RefundFourthOfCost(player, unit_id);
+            bw::RefundFourthOfCost(player, unit_id);
     }
     else
     {
         int constructed_id = unit_id;
         if (Type().IsEgg())
             constructed_id = build_queue[current_build_slot];
-        RefundFullCost(constructed_id, player);
+        bw::RefundFullCost(constructed_id, player);
     }
     if (Type().EggCancelUnit() != UnitId::None)
     {
-        TransformUnit(this, Type().EggCancelUnit().Raw());
+        bw::TransformUnit(this, Type().EggCancelUnit().Raw());
         build_queue[current_build_slot] = UnitId::None.Raw();
         remaining_build_time = 0;
         int old_image = Type().EggCancelUnit().Flingy().Sprite().Image().Raw();
-        ReplaceSprite(old_image, 0, sprite.get());
+        bw::ReplaceSprite(old_image, 0, sprite.get());
         order_signal &= ~0x4;
         SetIscriptAnimation(Iscript::Animation::Special2, true, "CancelConstruction", results);
         IssueOrderTargetingNothing(OrderId::Birth);
@@ -2731,21 +2737,21 @@ void Unit::CancelZergBuilding(ProgressUnitResults *results)
 {
     if (~flags & UnitStatus::Completed && IsMorphingBuilding())
     {
-        CancelBuildingMorph(this);
+        bw::CancelBuildingMorph(this);
     }
     else
     {
-        RefundFourthOfCost(player, unit_id);
+        bw::RefundFourthOfCost(player, unit_id);
         bw::building_count[player]--;
         bw::men_score[player] += UnitId::Drone.BuildScore();
         if (Type() == UnitId::Extractor)
         {
-            Unit *drone = CreateUnit(UnitId::Drone, sprite->position.x, sprite->position.y, player);
-            FinishUnit_Pre(drone);
-            FinishUnit(drone);
+            Unit *drone = bw::CreateUnit(UnitId::Drone, sprite->position.x, sprite->position.y, player);
+            bw::FinishUnit_Pre(drone);
+            bw::FinishUnit(drone);
             // Bw bug, uses uninitialized(?) value because extractor is separately created
             // So it gets set to set max hp anyways
-            //SetHp(drone, previous_hp * 256);
+            //bw::SetHp(drone, previous_hp * 256);
             Kill(results);
         }
         else
@@ -2754,8 +2760,8 @@ void Unit::CancelZergBuilding(ProgressUnitResults *results)
             Sprite *spawn = lone_sprites->AllocateLone(SpriteId::ZergBuildingSpawn_Small, sprite->position, player);
             spawn->elevation = sprite->elevation + 1;
             spawn->UpdateVisibilityPoint();
-            PlaySound(Sound::ZergBuildingCancel, this, 1, 0);
-            TransformUnit(this, UnitId::Drone);
+            bw::PlaySound(Sound::ZergBuildingCancel, this, 1, 0);
+            bw::TransformUnit(this, UnitId::Drone);
             if (bw::players[player].type == 1 && ai)
             {
                 Ai::BuildingAi *bldgai = (Ai::BuildingAi *)ai;
@@ -2763,19 +2769,19 @@ void Unit::CancelZergBuilding(ProgressUnitResults *results)
                 bldgai->list.Remove(town->first_building);
                 Ai::AddUnitAi(this, town);
             }
-            FinishUnit_Pre(this);
-            FinishUnit(this);
+            bw::FinishUnit_Pre(this);
+            bw::FinishUnit(this);
             Image *lowest = sprite->last_overlay;
             if (lowest->drawfunc == Image::Shadow && lowest->y_off != 7)
             {
                 lowest->y_off = 7;
                 lowest->flags |= 0x1;
             }
-            PrepareDrawSprite(sprite.get());
+            bw::PrepareDrawSprite(sprite.get());
             IssueOrderTargetingNothing(OrderId::ResetCollision1);
             AppendOrderTargetingNothing(Type().ReturnToIdleOrder());
-            SetHp(this, prev_hp);
-            UpdateCreepDisappearance(old_id, sprite->position.x, sprite->position.y, 0);
+            bw::SetHp(this, prev_hp);
+            bw::UpdateCreepDisappearance(old_id, sprite->position.x, sprite->position.y, 0);
         }
     }
 }
@@ -2801,7 +2807,7 @@ bool Unit::IsUnreachable(const Unit *other) const
     Pathing::Region *other_region = (*bw::pathing)->regions + other_id;
     if (own_region->group != other_region->group)
         return true;
-    return AreConnected(player, own_id, other_id) == false;
+    return bw::AreConnected(player, own_id, other_id) == false;
 }
 
 // Some of the logic is duped in EnemyUnitCache :/
@@ -2937,18 +2943,18 @@ Unit *Unit::GetAutoTarget() const
     {
         if (~other->sprite->visibility_mask & (1 << player))
             return;
-        if ((min_range && IsInArea(this, min_range, other)) || !IsInArea(this, max_range, other))
+        if ((min_range && bw::IsInArea(this, min_range, other)) || !bw::IsInArea(this, max_range, other))
             return;
         const Unit *turret = GetTurret();
         if (~turret->flags & UnitStatus::FullAutoAttack)
         {
             auto &pos = other->sprite->position;
-            if (!CheckFiringAngle(turret, turret->Type().GroundWeapon().Raw(), pos.x, pos.y))
+            if (!bw::CheckFiringAngle(turret, turret->Type().GroundWeapon().Raw(), pos.x, pos.y))
                 return;
         }
         if (Ai_ShouldStopChasing(other))
             return;
-        int threat_level = GetThreatLevel(this, other);
+        int threat_level = bw::GetThreatLevel(this, other);
         if (possible_target_count[threat_level] != 0x10)
             possible_targets[threat_level * 0x10 + possible_target_count[threat_level]++] = other;
         if (possible_target_count[0] == 0x10)
@@ -3016,7 +3022,7 @@ tuple<int, Unit *> Unit::ChooseTarget_Player(bool check_alliance, Array<Unit *> 
         int strength = 0;
         if (Type() == UnitId::Wraith)
         {
-            strength = GetCurrentStrength(unit, ground);
+            strength = bw::GetCurrentStrength(unit, ground);
             if (strength + 1000 < ret_strength)
                 return make_tuple(strength, unit);
             if (unit->flags & UnitStatus::Reacts && unit->CanDetect())
@@ -3038,7 +3044,7 @@ tuple<int, Unit *> Unit::ChooseTarget_Player(bool check_alliance, Array<Unit *> 
                 auto sprite_pos_32 = Point32(unit->sprite->position) * 256 + Point32(128, 128);
                 if (((Distance(sprite_pos_32, exact_position)) & 0xFFFFFF00) > 0xc000)
                     continue;
-                if (!IsPointInArea(this, 0xc0, guard->home.x, guard->home.y))
+                if (!bw::IsPointInArea(this, 0xc0, guard->home.x, guard->home.y))
                     continue;
             }
         }
@@ -3046,7 +3052,7 @@ tuple<int, Unit *> Unit::ChooseTarget_Player(bool check_alliance, Array<Unit *> 
         {
             if (unit->GetRegion() != region_id)
             {
-                if (!IsInArea(this, 0x120, unit))
+                if (!bw::IsInArea(this, 0x120, unit))
                     continue;
             }
         }
@@ -3156,7 +3162,7 @@ bool Unit::WillBeInAreaAtStop(const Unit *other, int range) const
         else
             range += GetHaltDistance() / 256;
     }
-    return IsInArea(this, range, other);
+    return bw::IsInArea(this, range, other);
 }
 
 // Returns always false for reavers/carriers, but that's how bw works
@@ -3183,7 +3189,7 @@ bool Unit::IsInAttackRange(const Unit *other) const
         return false;
 
     int min_range = weapon.MinRange();
-    if (min_range && IsInArea(this, min_range, other))
+    if (min_range && bw::IsInArea(this, min_range, other))
         return false;
 
     return WillBeInAreaAtStop(other, GetWeaponRange(!other->IsFlying()));
@@ -3239,7 +3245,7 @@ bool Unit::IsThreat(const Unit *other) const
     }
     if (other->CanAttackUnit(this))
     {
-        return !IsOutOfRange(other, this);
+        return !bw::IsOutOfRange(other, this);
     }
     else if (other->Type() == UnitId::Bunker && other->first_loaded)
     {
@@ -3345,11 +3351,11 @@ int Unit::Order_AttackMove_ReactToAttack(class OrderType order)
             }
             else
             {
-                StopMoving(this);
+                bw::StopMoving(this);
                 PrependOrder(order, target, order_target_pos, UnitId::None);
                 PrependOrderTargetingUnit(Type().AttackUnitOrder(), previous_attacker);
                 previous_attacker = nullptr;
-                DoNextQueuedOrderIfAble(this);
+                bw::DoNextQueuedOrderIfAble(this);
                 AllowSwitchingTarget();
                 return 0;
             }
@@ -3373,10 +3379,10 @@ void Unit::Order_AttackMove_TryPickTarget(class OrderType order)
         Unit *auto_target = GetAutoTarget();
         if (auto_target)
         {
-            StopMoving(this);
+            bw::StopMoving(this);
             PrependOrder(order, target, order_target_pos, UnitId::None);
             PrependOrderTargetingUnit(Type().AttackUnitOrder(), auto_target);
-            DoNextQueuedOrderIfAble(this);
+            bw::DoNextQueuedOrderIfAble(this);
             AllowSwitchingTarget();
         }
     }
@@ -3387,13 +3393,13 @@ bool Unit::ChangeMovementTargetToUnit(Unit *new_target)
     Point new_target_pos = new_target->sprite->position;
     if (new_target == move_target_unit)
     {
-        if (move_target == new_target_pos || IsPointAtUnitBorder(this, new_target, move_target.AsDword()))
+        if (move_target == new_target_pos || bw::IsPointAtUnitBorder(this, new_target, move_target.AsDword()))
         {
             flags &= ~UnitStatus::MovePosUpdated;
             return true;
         }
     }
-    if (ai && OrderType() != OrderId::Pickup4 && Ai_PrepareMovingTo(this, new_target_pos.x, new_target_pos.y))
+    if (ai && OrderType() != OrderId::Pickup4 && bw::Ai_PrepareMovingTo(this, new_target_pos.x, new_target_pos.y))
         return false;
     if (path)
         path->flags |= 0x1;
@@ -3418,13 +3424,13 @@ bool Unit::ChangeMovementTarget(const Point &pos)
 {
     if (pos == move_target)
         return true;
-    if (ai && Ai_PrepareMovingTo(this, pos.x, pos.y))
+    if (ai && bw::Ai_PrepareMovingTo(this, pos.x, pos.y))
         return false;
     if (path)
         path->flags |= 0x1;
 
     Point clipped_pos = pos;
-    ClipPointInBoundsForUnit(unit_id, (uint16_t *)&clipped_pos);
+    bw::ClipPointInBoundsForUnit(unit_id, (uint16_t *)&clipped_pos);
     if (clipped_pos != move_target)
     {
         move_target = clipped_pos;
@@ -3660,25 +3666,25 @@ void Unit::Order_SapUnit(ProgressUnitResults *results)
                 // Fall through
             case 1:
             {
-                if (IsInArea(this, 4, target) || IsStandingStill() == 2)
+                if (bw::IsInArea(this, 4, target) || IsStandingStill() == 2)
                 {
-                    StopMoving(this);
+                    bw::StopMoving(this);
                     int radius = WeaponId::Suicide.OuterSplash();
-                    if (!IsInArea(this, radius, target))
+                    if (!bw::IsInArea(this, radius, target))
                     {
                         // What???
                         OrderDone();
                         return;
                     }
                 }
-                else if (IsInArea(this, 0x100, target) && target->flingy_flags & 2)
+                else if (bw::IsInArea(this, 0x100, target) && target->flingy_flags & 2)
                 {
-                    MoveToCollide(this, target);
+                    bw::MoveToCollide(this, target);
                     return;
                 }
                 else
                 {
-                    MoveTowards(this, target);
+                    bw::MoveTowards(this, target);
                     return;
                 }
                 target = this;
@@ -3764,7 +3770,7 @@ void Unit::PickNewAttackTargetIfNeeded()
             picked_target = nullptr;
         else
         {
-            picked_threat_level = GetThreatLevel(this, target);
+            picked_threat_level = bw::GetThreatLevel(this, target);
             if (picked_threat_level == 0)
             {
                 if (IsInAttackRange(target))
@@ -3779,7 +3785,7 @@ void Unit::PickNewAttackTargetIfNeeded()
             previous_attacker = nullptr;
         else
         {
-            int threat_level = GetThreatLevel(this, previous_attacker);
+            int threat_level = bw::GetThreatLevel(this, previous_attacker);
             if (threat_level == 0 && !IsInAttackRange(previous_attacker))
                 threat_level = 1;
             if (threat_level < picked_threat_level)
@@ -3800,7 +3806,7 @@ void Unit::PickNewAttackTargetIfNeeded()
         Unit *auto_target = GetAutoTarget();
         if (auto_target != nullptr)
         {
-            int threat_level = GetThreatLevel(this, auto_target);
+            int threat_level = bw::GetThreatLevel(this, auto_target);
             if (threat_level < picked_threat_level)
                 picked_target = auto_target;
         }
@@ -3837,7 +3843,7 @@ void Unit::Order_AttackUnit(ProgressUnitResults *results)
     {
         if (target == nullptr || flags & UnitStatus::CanSwitchTarget)
         {
-            StopMoving(this);
+            bw::StopMoving(this);
         }
         else if (ai == nullptr)
         {
@@ -3852,7 +3858,7 @@ void Unit::Order_AttackUnit(ProgressUnitResults *results)
         switch (order_state)
         {
             case 0:
-                if (IsOutOfRange(this, target))
+                if (bw::IsOutOfRange(this, target))
                 {
                     if (!ChangeMovementTargetToUnit(target))
                         return;
@@ -3868,7 +3874,7 @@ void Unit::Order_AttackUnit(ProgressUnitResults *results)
                 // State == 1 if out of range, 2 if in range
                 order_state += 1;
                 if (ai != nullptr)
-                    Ai_StimIfNeeded(this);
+                    bw::Ai_StimIfNeeded(this);
                 DoAttack(results, Iscript::Animation::GndAttkRpt);
             break;
             // Have multiple states to prevent units from getting stuck, kind of messy
@@ -3877,10 +3883,10 @@ void Unit::Order_AttackUnit(ProgressUnitResults *results)
             {
                 int old_state = order_state;
                 order_state = 3;
-                if (IsOutOfRange(this, target))
+                if (bw::IsOutOfRange(this, target))
                 {
                     if (old_state == 2) {
-                        StopMoving(this);
+                        bw::StopMoving(this);
                     }
                     WeaponType weapon = Type().GroundWeapon();
                     bool melee = Type() == UnitId::Scourge ||
@@ -3893,23 +3899,23 @@ void Unit::Order_AttackUnit(ProgressUnitResults *results)
                             if (IsStandingStill() != 2)
                             {
                                 if (melee)
-                                    MoveForMeleeRange(this, target);
+                                    bw::MoveForMeleeRange(this, target);
                                 else
-                                    MoveTowards(this, target);
+                                    bw::MoveTowards(this, target);
                                 return;
                             }
                         }
-                        StopMoving(this);
+                        bw::StopMoving(this);
                         unk_move_waypoint = move_target;
                         OrderDone();
                     }
                     else
                     {
-                        if (Ai_IsUnreachable(this, target) || IsStandingStill() == 2)
+                        if (bw::Ai_IsUnreachable(this, target) || IsStandingStill() == 2)
                         {
                             if (!Ai::UpdateAttackTarget(this, false, true, false))
                             {
-                                StopMoving(this);
+                                bw::StopMoving(this);
                                 unk_move_waypoint = move_target;
                                 OrderDone();
                             }
@@ -3917,9 +3923,9 @@ void Unit::Order_AttackUnit(ProgressUnitResults *results)
                         else
                         {
                             if (melee)
-                                MoveForMeleeRange(this, target);
+                                bw::MoveForMeleeRange(this, target);
                             else
-                                MoveTowards(this, target);
+                                bw::MoveTowards(this, target);
                         }
                     }
                     return;
@@ -3927,11 +3933,11 @@ void Unit::Order_AttackUnit(ProgressUnitResults *results)
                 else
                 {
                     if (Type() == UnitId::Scourge)
-                        MoveForMeleeRange(this, target);
+                        bw::MoveForMeleeRange(this, target);
                     else
-                        StopMoving(this);
+                        bw::StopMoving(this);
                     if (ai != nullptr)
-                        Ai_StimIfNeeded(this);
+                        bw::Ai_StimIfNeeded(this);
                     DoAttack(results, Iscript::Animation::GndAttkRpt);
                 }
             }
@@ -3961,7 +3967,7 @@ void Unit::DoAttack_Main(WeaponType weapon, int iscript_anim, bool air, Progress
         order_wait = std::min(order_wait, cooldown);
         return;
     }
-    if (!IsReadyToAttack(this, weapon))
+    if (!bw::IsReadyToAttack(this, weapon))
         return;
     flingy_flags |= 0x8;
     cooldown = GetCooldown(weapon) + MainRng()->Rand(3) - 1;
@@ -3984,7 +3990,7 @@ void Unit::AttackMelee(int sound_amt, uint16_t *sounds, ProgressUnitResults *res
         }
     }
     int sound = sounds[MainRng()->Rand(sound_amt)];
-    PlaySoundAtPos(sound, sprite->position.AsDword(), 1, 0);
+    bw::PlaySoundAtPos(sound, sprite->position.AsDword(), 1, 0);
 }
 
 void Unit::Order_DroneMutate(ProgressUnitResults *results)
@@ -3998,24 +4004,24 @@ void Unit::Order_DroneMutate(ProgressUnitResults *results)
         {
             bw::player_build_minecost[player] = building.MineralCost();
             bw::player_build_gascost[player] = building.GasCost();
-            if (CheckSupplyForBuilding(player, building.Raw(), 1) != 0)
+            if (bw::CheckSupplyForBuilding(player, building.Raw(), 1) != 0)
             {
                 if (bw::minerals[player] < bw::player_build_minecost[player])
-                    ShowInfoMessage(String::NotEnoughMinerals, Sound::NotEnoughMinerals + *bw::player_race, player);
+                    bw::ShowInfoMessage(String::NotEnoughMinerals, Sound::NotEnoughMinerals + *bw::player_race, player);
                 else if (bw::gas[player] < bw::player_build_gascost[player])
-                    ShowInfoMessage(String::NotEnoughGas, Sound::NotEnoughGas + *bw::player_race, player);
+                    bw::ShowInfoMessage(String::NotEnoughGas, Sound::NotEnoughGas + *bw::player_race, player);
                 else // All checks succeeded
                 {
-                    ReduceBuildResources(player);
+                    bw::ReduceBuildResources(player);
                     Unit *powerup = worker.powerup;
                     if (powerup)
-                        DropPowerup(this);
+                        bw::DropPowerup(this);
                     if (building.Raw() == UnitId::Extractor)
                         MutateExtractor(results);
                     else
-                        MutateBuilding(this, building.Raw());
+                        bw::MutateBuilding(this, building.Raw());
                     if (powerup)
-                        MoveUnit(powerup, powerup->powerup.origin_point.x, powerup->powerup.origin_point.y);
+                        bw::MoveUnit(powerup, powerup->powerup.origin_point.x, powerup->powerup.origin_point.y);
                     return;
                 }
             }
@@ -4024,21 +4030,21 @@ void Unit::Order_DroneMutate(ProgressUnitResults *results)
     // Any kind of error happened
     if (sprite->last_overlay->drawfunc == Image::Shadow)
         sprite->last_overlay->SetOffset(sprite->last_overlay->x_off, 7);
-    PrepareDrawSprite(sprite.get()); // ?
+    bw::PrepareDrawSprite(sprite.get()); // ?
     PrependOrderTargetingNothing(OrderId::ResetCollision1);
     DoNextQueuedOrder();
 }
 
 void Unit::MutateExtractor(ProgressUnitResults *results)
 {
-    Unit *extractor = BeginGasBuilding(UnitId::Extractor, this);
+    Unit *extractor = bw::BeginGasBuilding(UnitId::Extractor, this);
     if (extractor)
     {
-        InheritAi(this, extractor);
+        bw::InheritAi(this, extractor);
         order_flags |= 0x4; // Remove death
         Kill(results);
-        StartZergBuilding(extractor);
-        AddOverlayBelowMain(extractor->sprite.get(), ImageId::VespeneGeyserUnderlay, 0, 0, 0);
+        bw::StartZergBuilding(extractor);
+        bw::AddOverlayBelowMain(extractor->sprite.get(), ImageId::VespeneGeyserUnderlay, 0, 0, 0);
     }
     else
     {
@@ -4057,12 +4063,12 @@ void Unit::Order_HarvestMinerals(ProgressUnitResults *results)
 {
     if (target != nullptr && target->Type().IsMineralField())
     {
-        AddResetHarvestCollisionOrder(this);
+        bw::AddResetHarvestCollisionOrder(this);
         switch (order_state)
         {
             case 0:
             {
-                if (!IsFacingMoveTarget((Flingy *)this))
+                if (!bw::IsFacingMoveTarget(AsFlingy()))
                     return;
 
                 auto x = bw::circle[facing_direction][0] * 20 / 256;
@@ -4082,7 +4088,7 @@ void Unit::Order_HarvestMinerals(ProgressUnitResults *results)
             {
                 SetIscriptAnimation(Iscript::Animation::GndAttkToIdle, true, "Order_HarvestMinerals", results);
                 AcquireResource(target, results);
-                FinishedMining(target, this);
+                bw::FinishedMining(target, this);
                 DeleteSpecificOrder(OrderId::Harvest3);
                 if (carried_powerup_flags)
                     IssueOrderTargetingNothing(OrderId::ReturnMinerals);
@@ -4098,12 +4104,12 @@ void Unit::Order_HarvestMinerals(ProgressUnitResults *results)
         {
             worker.is_carrying = 0;
             Unit *previous_harvested = harvester.previous_harvested;
-            if (previous_harvested)
+            if (previous_harvested != nullptr)
             {
                 harvester.previous_harvested = nullptr;
                 previous_harvested->resource.awaiting_workers--;
-                if (LetNextUnitMine(previous_harvested) != 0)
-                    BeginHarvest(this, previous_harvested);
+                if (bw::LetNextUnitMine(previous_harvested) != 0)
+                    bw::BeginHarvest(this, previous_harvested);
             }
         }
         DeleteSpecificOrder(OrderId::Harvest3);
@@ -4156,12 +4162,12 @@ void Unit::AcquireResource(Unit *resource, ProgressUnitResults *results)
         return;
     if (carried_powerup_flags & 0x3)
     {
-        DeletePowerupImages(this);
+        bw::DeletePowerupImages(this);
         carried_powerup_flags = 0;
     }
-    if (Ai_CanMineExtra(this))
+    if (bw::Ai_CanMineExtra(this))
         amount++;
-    CreateResourceOverlay(amount, resource->Type().IsMineralField(), this, image);
+    bw::CreateResourceOverlay(amount, resource->Type().IsMineralField(), this, image);
 }
 
 int Unit::MineResource(ProgressUnitResults *results)
@@ -4183,9 +4189,9 @@ int Unit::MineResource(ProgressUnitResults *results)
     {
         resource.resource_amount -= 8;
         if (Type().IsMineralField())
-            UpdateMineralAmountAnimation(this);
+            bw::UpdateMineralAmountAnimation(this);
         else if (resource.resource_amount < 8)
-            ShowInfoMessage(String::GeyserDepleted, Sound::GeyserDepleted, player);
+            bw::ShowInfoMessage(String::GeyserDepleted, Sound::GeyserDepleted, player);
         return 8;
     }
 }
@@ -4195,12 +4201,12 @@ void Unit::Order_WarpingArchon(int merge_distance, int close_distance, int resul
 {
     if (!target || target->player != player || target->order != order || target->target != this)
     {
-        StopMoving(this);
+        bw::StopMoving(this);
         unk_move_waypoint = move_target;
         OrderDone();
         return;
     }
-    if (flags & UnitStatus::Collides && IsInArea(this, current_speed * 2 / 256, target))
+    if (flags & UnitStatus::Collides && bw::IsInArea(this, current_speed * 2 / 256, target))
     {
         flags &= ~UnitStatus::Collides;
         PrependOrderTargetingNothing(OrderId::ResetCollision1);
@@ -4210,7 +4216,7 @@ void Unit::Order_WarpingArchon(int merge_distance, int close_distance, int resul
     {
         if (order_state != 0 && IsStandingStill() == 2)
         {
-            StopMoving(this);
+            bw::StopMoving(this);
             unk_move_waypoint = move_target;
             OrderDone();
         }
@@ -4233,11 +4239,11 @@ void Unit::Order_WarpingArchon(int merge_distance, int close_distance, int resul
     }
     else
     {
-        MergeArchonStats(this, target);
+        bw::MergeArchonStats(this, target);
         bool was_permamently_cloaked = Type().Flags() & UnitFlags::PermamentlyCloaked;
-        TransformUnit(this, result_unit);
+        bw::TransformUnit(this, result_unit);
         if (was_permamently_cloaked)
-            EndInvisibility(this, Sound::Decloak);
+            bw::EndInvisibility(this, Sound::Decloak);
 
         sprite->flags &= ~SpriteFlags::Nobrkcodestart;
         SetIscriptAnimation(Iscript::Animation::Special1, true, "Order_WarpingArchon", results);
@@ -4277,14 +4283,14 @@ void Unit::Order_SpiderMine(ProgressUnitResults *results)
             order_signal &= ~0x4;
             if (~flags & UnitStatus::Hallucination)
             {
-                Burrow_Generic(this);
-                InstantCloak(this);
+                bw::Burrow_Generic(this);
+                bw::InstantCloak(this);
             }
             order_state = 3;
             // Fall through
         case 3:
         {
-            Unit *victim = SpiderMine_FindTarget(this);
+            Unit *victim = bw::SpiderMine_FindTarget(this);
             if (!victim)
                 return;
             target = victim;
@@ -4303,25 +4309,25 @@ void Unit::Order_SpiderMine(ProgressUnitResults *results)
                 order_state = 1;
             else
             {
-                MoveToCollide(this, target);
+                bw::MoveToCollide(this, target);
                 order_state = 5;
             }
         break;
         case 5:
-            Unburrow_Generic(this);
-            if (!target || !IsInArea(this, 0x240, target))
+            bw::Unburrow_Generic(this);
+            if (!target || !bw::IsInArea(this, 0x240, target))
             {
-                StopMoving(this);
+                bw::StopMoving(this);
                 order_state = 1;
                 return;
             }
 
-            MoveToCollide(this, target);
-            if (!IsInArea(this, 30, target))
+            bw::MoveToCollide(this, target);
+            if (!bw::IsInArea(this, 30, target))
             {
                 if (IsStandingStill() == 2)
                 {
-                    StopMoving(this);
+                    bw::StopMoving(this);
                     order_state = 1;
                 }
                 return;
@@ -4387,11 +4393,11 @@ void Unit::Order_Scarab(ProgressUnitResults *results)
         }
         else
         {
-            if (IsInArea(this, 0x100, target) && target->flingy_flags & 0x2)
-                MoveToCollide(this, target);
+            if (bw::IsInArea(this, 0x100, target) && target->flingy_flags & 0x2)
+                bw::MoveToCollide(this, target);
             else
-                MoveTowards(this, target);
-            if (IsInArea(this, Type().GroundWeapon().InnerSplash() / 2, target))
+                bw::MoveTowards(this, target);
+            if (bw::IsInArea(this, Type().GroundWeapon().InnerSplash() / 2, target))
             {
                 order_target_pos = sprite->position;
                 SetIscriptAnimation(Iscript::Animation::Special1, true, "Order_Scarab", results);
@@ -4411,7 +4417,7 @@ void Unit::Order_Scarab(ProgressUnitResults *results)
 
 void Unit::Order_Larva(ProgressUnitResults *results)
 {
-    if (related && !IsInArea(this, 10, related))
+    if (related && !bw::IsInArea(this, 10, related))
     {
         ChangeMovementTargetToUnit(related);
         unk_move_waypoint = related->sprite->position;
@@ -4442,13 +4448,13 @@ void Unit::Order_Larva(ProgressUnitResults *results)
         return;
     if (~(*bw::map_tile_flags)[new_pos.y / 32 * *bw::map_width_tiles + new_pos.x / 32] & 0x00400000)
         return;
-    if (!IsGoodLarvaPosition(this, new_pos.x, new_pos.y))
+    if (!bw::IsGoodLarvaPosition(this, new_pos.x, new_pos.y))
     {
-        if (IsGoodLarvaPosition(this, sprite->position.x, sprite->position.y))
+        if (bw::IsGoodLarvaPosition(this, sprite->position.x, sprite->position.y))
             return;
         uint32_t default_x;
         uint32_t default_y;
-        GetDefaultLarvaPosition(this, &default_x, &default_y);
+        bw::GetDefaultLarvaPosition(this, &default_x, &default_y);
         new_pos = Point(default_x, default_y);
     }
     ChangeMovementTarget(new_pos);
@@ -4468,8 +4474,8 @@ void Unit::Order_ComputerAi(ProgressUnitResults *results)
     }
     else if (Type() == UnitId::Medic)
     {
-        if (Ai_IsMilitaryAtRegionWithoutState0(this))
-            Ai_ReturnToNearestBaseForced(this);
+        if (bw::Ai_IsMilitaryAtRegionWithoutState0(this))
+            bw::Ai_ReturnToNearestBaseForced(this);
         else
             IssueOrderTargetingNothing(OrderId::Medic);
         return;
@@ -4479,7 +4485,7 @@ void Unit::Order_ComputerAi(ProgressUnitResults *results)
         IssueOrderTargetingNothing(Type().AiIdleOrder());
         return;
     }
-    if (Ai_UnitSpecific(this))
+    if (bw::Ai_UnitSpecific(this))
         return;
     switch (ai->type)
     {
@@ -4487,26 +4493,28 @@ void Unit::Order_ComputerAi(ProgressUnitResults *results)
             IssueOrderTargetingNothing(Type().AiIdleOrder());
         break;
         case 2:
-            Ai_WorkerAi(this);
+            bw::Ai_WorkerAi(this);
         break;
         case 3:
-            if (Ai_TryProgressSpendingQueue(this))
+            if (bw::Ai_TryProgressSpendingQueue(this))
                 order_timer = 45;
             else
                 order_timer = 3;
         break;
         case 4:
-            Ai_Military(this);
+            bw::Ai_Military(this);
             order_timer = 3;
         break;
     }
-    if (Type().Race() == Race::Terran && Type().Flags() & UnitFlags::Mechanical && !Ai_IsInAttack(this, false))
+    if (Type().Race() == Race::Terran &&
+            Type().Flags() & UnitFlags::Mechanical &&
+            !bw::Ai_IsInAttack(this, false))
     {
         if (GetMaxHitPoints() != (hitpoints + 255) / 256 && flags & UnitStatus::Reacts)
         {
            if (!plague_timer && !irradiate_timer && !Type().IsWorker())
            {
-               Unit *scv = Ai_FindNearestRepairer(this);
+               Unit *scv = bw::Ai_FindNearestRepairer(this);
                if (scv)
                    IssueOrderTargetingUnit(OrderId::Follow, scv);
                return;
@@ -4514,9 +4522,9 @@ void Unit::Order_ComputerAi(ProgressUnitResults *results)
         }
     }
     if (Type() == UnitId::SiegeTankTankMode)
-        Ai_SiegeTank(this);
+        bw::Ai_SiegeTank(this);
     else if (flags & UnitFlags::Burrowable)
-        Ai_Burrower(this);
+        bw::Ai_Burrower(this);
 }
 
 void Unit::Order_Interceptor(ProgressUnitResults *results)
@@ -4526,7 +4534,7 @@ void Unit::Order_Interceptor(ProgressUnitResults *results)
         IssueOrderTargetingNothing(OrderId::InterceptorReturn);
         return;
     }
-    if (Interceptor_Attack(this) == 0)
+    if (bw::Interceptor_Attack(this) == 0)
         return;
     switch (order_state)
     {
@@ -4536,8 +4544,8 @@ void Unit::Order_Interceptor(ProgressUnitResults *results)
                 Kill(results);
                 return;
             }
-            PlaySound(Sound::InterceptorLaunch, this, 1, 0);
-            Interceptor_Move(this, 3, order_target_pos.AsDword());
+            bw::PlaySound(Sound::InterceptorLaunch, this, 1, 0);
+            bw::Interceptor_Move(this, 3, order_target_pos.AsDword());
             order_timer = 15;
             order_state = 1;
             // Fall through
@@ -4556,7 +4564,7 @@ void Unit::Order_Interceptor(ProgressUnitResults *results)
                 }
                 if (WillBeInAreaAtStop(target, 50))
                 {
-                    Interceptor_Move(this, 1, order_target_pos.AsDword());
+                    bw::Interceptor_Move(this, 1, order_target_pos.AsDword());
                     order_state = 4;
                     return;
                 }
@@ -4565,15 +4573,15 @@ void Unit::Order_Interceptor(ProgressUnitResults *results)
             unk_move_waypoint = order_target_pos;
         break;
         case 4:
-            if (!IsPointInArea(this, 50, move_target.x, move_target.y))
+            if (!bw::IsPointInArea(this, 50, move_target.x, move_target.y))
                 return;
-            Interceptor_Move(this, 2, order_target_pos.AsDword());
+            bw::Interceptor_Move(this, 2, order_target_pos.AsDword());
             order_state = 5;
         break;
         case 5:
-            if (!IsPointInArea(this, 50, move_target.x, move_target.y))
+            if (!bw::IsPointInArea(this, 50, move_target.x, move_target.y))
                 return;
-            Interceptor_Move(this, 2, order_target_pos.AsDword());
+            bw::Interceptor_Move(this, 2, order_target_pos.AsDword());
             order_state = 3;
         break;
     }
@@ -4600,7 +4608,7 @@ void Unit::Order_InterceptorReturn(ProgressUnitResults *results)
     }
     if (parent_distance < 0xa)
     {
-        LoadFighter(interceptor.parent, this);
+        bw::LoadFighter(interceptor.parent, this);
         IssueOrderTargetingNothing(OrderId::Nothing);
         RefreshUi();
     }
@@ -4617,7 +4625,7 @@ bool Unit::AttackAtPoint(ProgressUnitResults *results)
         return false;
     PickNewAttackTargetIfNeeded();
     // PickNewAttackTargetIfNeeded may remove target if it cannot be attacked
-    if (target == nullptr || !CanSeeTarget(this))
+    if (target == nullptr || !bw::CanSeeTarget(this))
         return false;
     if (!CanAttackUnit(target, true))
         return false;
@@ -4648,7 +4656,7 @@ bool Unit::AttackAtPoint(ProgressUnitResults *results)
     int min_range = weapon.MinRange();
     if ((min_range && min_range > dist) || GetWeaponRange(ground) < dist)
         return false;
-    int target_dir = GetFacingDirection(sprite->position.x, sprite->position.y, order_target_pos.x, order_target_pos.y);
+    int target_dir = bw::GetFacingDirection(sprite->position.x, sprite->position.y, order_target_pos.x, order_target_pos.y);
     int angle_diff = target_dir - facing_direction;
     if (angle_diff < 0)
         angle_diff += 256;
@@ -4683,7 +4691,7 @@ void Unit::Order_HoldPosition(ProgressUnitResults *results)
     switch (order_state)
     {
         case 0:
-            StopMoving(this);
+            bw::StopMoving(this);
             unk_move_waypoint = move_target;
             AllowSwitchingTarget();
             order_state = 1;
@@ -4694,7 +4702,7 @@ void Unit::Order_HoldPosition(ProgressUnitResults *results)
                 if (order_timer == 0)
                 {
                     order_timer = 15;
-                    target = PickReachableTarget(this);
+                    target = bw::PickReachableTarget(this);
                     if (!target)
                         order_wait = 0;
                 }
@@ -4765,7 +4773,7 @@ void Unit::StartHelperSearch()
 
 void Unit::Order_PlayerGuard()
 {
-    if (AttackRecentAttacker(this) != 0)
+    if (bw::AttackRecentAttacker(this) != 0)
         return;
     if (order_timer != 0)
         return;
@@ -4777,7 +4785,7 @@ void Unit::Order_PlayerGuard()
     {
         Unit *auto_target = GetAutoTarget();
         if (auto_target != nullptr)
-            AttackUnit(this, auto_target, true, false);
+            bw::AttackUnit(this, auto_target, true, false);
     }
 }
 
@@ -4817,14 +4825,14 @@ void Unit::Order_Land(ProgressUnitResults *results)
                                                       false);
             if (result != 0)
             {
-                ShowLandingError(this);
+                bw::ShowLandingError(this);
                 if (order_queue_begin != nullptr && order_queue_begin->Type() == OrderId::PlaceAddon)
                     DeleteOrder(order_queue_end);
                 OrderDone();
             }
             else
             {
-                SetBuildingTileFlag(this, order_target_pos.x, order_target_pos.y);
+                bw::SetBuildingTileFlag(this, order_target_pos.x, order_target_pos.y);
                 building.is_landing = 1;
                 ChangeMovementTarget(order_target_pos);
                 unk_move_waypoint = order_target_pos;
@@ -4832,13 +4840,13 @@ void Unit::Order_Land(ProgressUnitResults *results)
                     sprite->last_overlay->FreezeY();
                 flags |= UnitStatus::UninterruptableOrder;
                 flingy_top_speed = 256;
-                SetSpeed_Iscript(this, 256);
+                bw::SetSpeed_Iscript(this, 256);
                 order_state = 2;
             }
         }
         break;
         case 2:
-            if (position != unk_move_waypoint && GetFacingDirection(sprite->position.x, sprite->position.y, unk_move_waypoint.x, unk_move_waypoint.y) != movement_direction)
+            if (position != unk_move_waypoint && bw::GetFacingDirection(sprite->position.x, sprite->position.y, unk_move_waypoint.x, unk_move_waypoint.y) != movement_direction)
                 return;
             SetIscriptAnimation(Iscript::Animation::Landing, true, "Order_Land", results);
             order_state = 3;
@@ -4848,16 +4856,16 @@ void Unit::Order_Land(ProgressUnitResults *results)
             if (IsStandingStill() == 0 || ~order_signal & 0x10)
                 return;
             order_signal &= ~0x10;
-            ClearBuildingTileFlag(this, order_target_pos.x, order_target_pos.y);
-            RemoveFromMap(this);
+            bw::ClearBuildingTileFlag(this, order_target_pos.x, order_target_pos.y);
+            bw::RemoveFromMap(this);
             flags &= ~(UnitStatus::UninterruptableOrder | UnitStatus::Reacts | UnitStatus::Air);
             flags |= UnitStatus::Building;
             DeletePath();
             movement_state = 0;
             sprite->elevation = 4;
             pathing_flags |= 0x1;
-            MoveUnit(this, order_target_pos.x, order_target_pos.y);
-            FlyingBuilding_SwitchedState(this);
+            bw::MoveUnit(this, order_target_pos.x, order_target_pos.y);
+            bw::FlyingBuilding_SwitchedState(this);
             // (There was leftover code from beta which removed landed buildings from multiselection)
             if (sprite->last_overlay->drawfunc == Image::Shadow)
             {
@@ -4895,18 +4903,18 @@ void Unit::Order_Land(ProgressUnitResults *results)
                 }
             }
             // Should never do anything
-            FlyingBuilding_LiftIfStillBlocked(this);
+            bw::FlyingBuilding_LiftIfStillBlocked(this);
             ForceOrderDone();
-            Unit *addon = FindClaimableAddon(this);
+            Unit *addon = bw::FindClaimableAddon(this);
             if (addon)
-                AttachAddon(this, addon);
+                bw::AttachAddon(this, addon);
             if (*bw::is_placing_building)
             {
-                EndAddonPlacement();
-                if (!CanPlaceBuilding(*bw::primary_selected, *bw::placement_unit_id, *bw::placement_order))
+                bw::EndAddonPlacement();
+                if (!bw::CanPlaceBuilding(*bw::primary_selected, *bw::placement_unit_id, *bw::placement_order))
                 {
-                    MarkPlacementBoxAreaDirty();
-                    EndBuildingPlacement();
+                    bw::MarkPlacementBoxAreaDirty();
+                    bw::EndBuildingPlacement();
                 }
             }
             RefreshUi();
@@ -4927,7 +4935,7 @@ void Unit::Order_SiegeMode(ProgressUnitResults *results)
             }
             if (flingy_flags & 0x2)
             {
-                StopMoving(this);
+                bw::StopMoving(this);
                 unk_move_waypoint = move_target;
             }
             order_state = 1;
@@ -4936,9 +4944,9 @@ void Unit::Order_SiegeMode(ProgressUnitResults *results)
         {
             if (flingy_flags & 0x2 || subunit->flingy_flags & 0x2 || subunit->flags & UnitStatus::Nobrkcodestart)
                 return;
-            SetMoveTargetToNearbyPoint(Type().SpawnDirection(), (Flingy *)this);
+            bw::SetMoveTargetToNearbyPoint(Type().SpawnDirection(), AsFlingy());
             subunit->IssueOrderTargetingUnit(OrderId::Nothing3, this);
-            SetMoveTargetToNearbyPoint(subunit->Type().SpawnDirection(), (Flingy *)subunit);
+            bw::SetMoveTargetToNearbyPoint(subunit->Type().SpawnDirection(), subunit->AsFlingy());
             subunit->SetIscriptAnimation(Iscript::Animation::Special1, true, "Order_SiegeMode", results);
             bool killed = false;
             unit_search->ForEachUnitInArea(GetCollisionRect(), [&](Unit *other) {
@@ -4957,10 +4965,10 @@ void Unit::Order_SiegeMode(ProgressUnitResults *results)
         }
         case 2:
         {
-            if (!IsFacingMoveTarget((Flingy *)this) || !IsFacingMoveTarget((Flingy *)subunit))
+            if (!bw::IsFacingMoveTarget(AsFlingy()) || !bw::IsFacingMoveTarget(subunit->AsFlingy()))
                 return;
             int sieged = Type() == UnitId::SiegeTankTankMode ? UnitId::SiegeTank_Sieged : UnitId::EdmundDukeS;
-            TransformUnit(this, sieged);
+            bw::TransformUnit(this, sieged);
             order_state = 3;
             // No break
         }
@@ -4996,7 +5004,7 @@ void Unit::CancelTrain(ProgressUnitResults *results)
             }
             else if (!build_unit.IsBuilding())
             {
-                RefundFullCost(build_unit.Raw(), player);
+                bw::RefundFullCost(build_unit.Raw(), player);
             }
         }
     }
@@ -5020,7 +5028,7 @@ static void TransferUpgrade(UpgradeType upgrade, int from_player, int to_player)
                 if (unit->unit_id == unit_id)
                 {
                     unit->flags |= UnitStatus::SpeedUpgrade;
-                    UpdateSpeed(unit);
+                    bw::UpdateSpeed(unit);
                 }
             }
         }
@@ -5032,7 +5040,7 @@ static void TransferUpgrade(UpgradeType upgrade, int from_player, int to_player)
                 if (unit->unit_id == unit_id)
                 {
                     unit->flags |= UnitStatus::AttackSpeedUpgrade;
-                    UpdateSpeed(unit);
+                    bw::UpdateSpeed(unit);
                 }
             }
         }
@@ -5192,8 +5200,8 @@ void Unit::TransferTechsAndUpgrades(int new_player)
 void Unit::GiveTo(int new_player, ProgressUnitResults *results)
 {
     TransferTechsAndUpgrades(new_player);
-    RemoveFromSelections(this);
-    RemoveFromClientSelection3(this);
+    bw::RemoveFromSelections(this);
+    bw::RemoveFromClientSelection3(this);
     if (flags & UnitStatus::Building)
     {
         if (UnitType(build_queue[current_build_slot % 5]) < UnitId::CommandCenter)
@@ -5202,15 +5210,15 @@ void Unit::GiveTo(int new_player, ProgressUnitResults *results)
             SetIscriptAnimation(Iscript::Animation::WorkingToIdle, true, "Unit::GiveTo", results);
         }
         if (building.tech != TechId::None)
-            CancelTech(this);
+            bw::CancelTech(this);
         if (building.upgrade != UpgradeId::None)
-            CancelUpgrade(this);
+            bw::CancelUpgrade(this);
     }
     if (Type().HasHangar())
         CancelTrain(results);
-    GiveUnit(this, new_player, 1);
+    bw::GiveUnit(this, new_player, 1);
     if (IsActivePlayer(new_player))
-        GiveSprite(this, new_player);
+        bw::GiveSprite(this, new_player);
     if (IsBuildingAddon() || ~flags & UnitStatus::Completed || Type().Flags() & UnitFlags::SingleEntity)
         return;
     if (Type() == UnitId::Interceptor || Type() == UnitId::Scarab || Type() == UnitId::NuclearMissile)
@@ -5312,7 +5320,7 @@ void Unit::Order_Train(ProgressUnitResults *results)
             }
             else
             {
-                currently_building = BeginTrain(this, train_unit_id, secondary_order_state == 0);
+                currently_building = bw::BeginTrain(this, train_unit_id, secondary_order_state == 0);
                 if (currently_building == nullptr)
                 {
                     secondary_order_state = 1;
@@ -5328,16 +5336,16 @@ void Unit::Order_Train(ProgressUnitResults *results)
         case 2:
             if (currently_building != nullptr)
             {
-                int good = ProgressBuild(currently_building, GetBuildHpGain(currently_building), 1);
+                int good = bw::ProgressBuild(currently_building, bw::GetBuildHpGain(currently_building), 1);
                 if (good && ~currently_building->flags & UnitStatus::Completed)
                     return;
                 if (good)
                 {
-                    InheritAi2(this, currently_building);
+                    bw::InheritAi2(this, currently_building);
                     if (currently_building->Type() == UnitId::NuclearMissile)
-                        HideUnit(currently_building);
+                        bw::HideUnit(currently_building);
                     else
-                        RallyUnit(this, currently_building);
+                        bw::RallyUnit(this, currently_building);
                     if (ai && ai->type == 3)
                     {
                         Ai::BuildingAi *building = (Ai::BuildingAi *)ai;
@@ -5353,7 +5361,7 @@ void Unit::Order_Train(ProgressUnitResults *results)
                     if (currently_building != nullptr)
                         currently_building->CancelConstruction(results);
                     else if (!UnitType(train_unit_id).IsBuilding())
-                        RefundFullCost(train_unit_id, player);
+                        bw::RefundFullCost(train_unit_id, player);
                     int slot = current_build_slot;
                     for (int i = 0; i < 5; i++)
                     {
@@ -5386,7 +5394,7 @@ void Unit::Order_ProtossBuildSelf(ProgressUnitResults *results)
             if (remaining_build_time == 0)
             {
                 SetIscriptAnimation(Iscript::Animation::Special1, true, "Order_ProtossBuildSelf", results);
-                PlaySound(Sound::ProtossBuildingFinishing, this, 1, 0);
+                bw::PlaySound(Sound::ProtossBuildingFinishing, this, 1, 0);
                 order_state = 1;
             }
             else
@@ -5398,7 +5406,7 @@ void Unit::Order_ProtossBuildSelf(ProgressUnitResults *results)
             if (order_signal & 0x1)
             {
                 order_signal &= ~0x1;
-                ReplaceSprite(sprite->Type().Image().Raw(), 0, sprite.get());
+                bw::ReplaceSprite(sprite->Type().Image().Raw(), 0, sprite.get());
                 Image *image = sprite->main_image;
                 // Bw actually has iscript header hardcoded as 193
                 image->iscript.Initialize(*bw::iscript, ImageId::WarpTexture.IscriptHeader());
@@ -5418,7 +5426,7 @@ void Unit::Order_ProtossBuildSelf(ProgressUnitResults *results)
             {
                 order_signal &= ~0x1;
                 // Wait, why again?
-                ReplaceSprite(sprite->Type().Image().Raw(), 0, sprite.get());
+                bw::ReplaceSprite(sprite->Type().Image().Raw(), 0, sprite.get());
                 SetIscriptAnimation(Iscript::Animation::WarpIn, true, "Order_ProtossBuildSelf", results);
                 order_state = 3;
             }
@@ -5427,9 +5435,9 @@ void Unit::Order_ProtossBuildSelf(ProgressUnitResults *results)
             if (order_signal & 0x1)
             {
                 order_signal &= ~0x1;
-                FinishUnit_Pre(this);
-                FinishUnit(this);
-                CheckUnstack(this);
+                bw::FinishUnit_Pre(this);
+                bw::FinishUnit(this);
+                bw::CheckUnstack(this);
                 if (flags & UnitStatus::Disabled)
                 {
                     SetIscriptAnimation(Iscript::Animation::Disable, true, "Order_ProtossBuildSelf", results);
@@ -5447,7 +5455,7 @@ void Unit::ProgressBuildingConstruction()
     if (IsCheatActive(Cheats::Operation_Cwal))
         build_speed = 10;
     remaining_build_time = std::max((int)remaining_build_time - build_speed, 0);
-    SetHp(this, hitpoints + build_hp_gain * build_speed);
+    bw::SetHp(this, hitpoints + build_hp_gain * build_speed);
     shields = std::min(Type().Shields() * 256, shields + build_shield_gain * build_speed);
 }
 
@@ -5475,29 +5483,29 @@ Iscript::CmdResult Unit::HandleIscriptCommand(UnitIscriptContext *ctx, Image *im
         case Move:
             // Note that in some cases bw tries to predict the speed,
             // the handling for that is in a hook
-            SetSpeed_Iscript(this, CalculateSpeedChange(this, cmd.val * 256));
+            bw::SetSpeed_Iscript(this, bw::CalculateSpeedChange(this, cmd.val * 256));
         break;
         case LiftoffCondJmp:
             if (IsFlying())
                 script->pos = cmd.pos;
         break;
         case AttackWith:
-            Iscript_AttackWith(this, cmd.val);
+            bw::Iscript_AttackWith(this, cmd.val);
         break;
         case Iscript::Opcode::Attack:
             if (target == nullptr || target->IsFlying())
-                Iscript_AttackWith(this, 0);
+                bw::Iscript_AttackWith(this, 0);
             else
-                Iscript_AttackWith(this, 1);
+                bw::Iscript_AttackWith(this, 1);
         break;
         case CastSpell:
-            if (OrderType().Weapon() != WeaponId::None && !ShouldStopOrderedSpell(this))
+            if (OrderType().Weapon() != WeaponId::None && !bw::ShouldStopOrderedSpell(this))
             {
-                FireWeapon(this, OrderType().Weapon());
+                bw::FireWeapon(this, OrderType().Weapon());
             }
         break;
         case UseWeapon:
-            Iscript_UseWeapon(cmd.val, this);
+            bw::Iscript_UseWeapon(cmd.val, this);
         break;
         case GotoRepeatAttk:
             flingy_flags &= ~0x8;
@@ -5530,7 +5538,7 @@ Iscript::CmdResult Unit::HandleIscriptCommand(UnitIscriptContext *ctx, Image *im
             // Sigh... Changes the x offset
             const auto &weapons = bw::weapons_dat[20];
             *((uint8_t *)(weapons.data) + GetGroundWeapon().Raw()) = cmd.val;
-            Iscript_AttackWith(this, 1);
+            bw::Iscript_AttackWith(this, 1);
         }
         break;
         case CreateGasOverlays:
@@ -5636,7 +5644,7 @@ void Unit::TargetedOrder(class OrderType new_order, Unit *target, const Point &p
         if (highlighted_order_count > 8)
         {
             const char *string = (*bw::stat_txt_tbl)->GetTblString(String::WaypointListFull);
-            PrintInfoMessageForLocalPlayer(string, player);
+            bw::PrintInfoMessageForLocalPlayer(string, player);
             return;
         }
         InsertOrderAfter(new_order, target, pos, fow_unit, nullptr);

@@ -220,7 +220,7 @@ void Save::WriteCompressedChunk()
 {
     auto len = buf->Length();
     fwrite(&len, 1, 4, file);
-    WriteCompressed((File *)file, buf->GetData(), buf->Length());
+    bw::WriteCompressed(buf->GetData(), buf->Length(), (File *)file);
     buf->Clear();
 }
 
@@ -262,7 +262,7 @@ int Load::ReadCompressedChunk()
     buf = buf_beg;
     buf_end = buf + size;
     debug_log->Log("Reading chunk, size %x\n", size);
-    ReadCompressed(file, buf, size);
+    bw::ReadCompressed(buf, size, (File *)file);
     return size;
 }
 
@@ -284,7 +284,7 @@ void Load::ReadCompressed(void *out, int size)
 
 void Load::ReadCompressed(FILE *file, void *out, int size)
 {
-    if (!bw::funcs::ReadCompressed((File *)file, out, size))
+    if (!bw::ReadCompressed(out, size, (File *)file))
         throw ReadCompressedFail(out);
 }
 
@@ -897,7 +897,7 @@ void Save::SavePlayerAiData(int player)
     Ai::PlayerData *data;
     BeginBufWrite(&data, &(bw::player_ai[player]));
     ConvertPlayerAiData<true>(data, player);
-    WriteCompressed((File *)file, buf->GetData(), buf->Length());
+    bw::WriteCompressed(buf->GetData(), buf->Length(), (File *)file);
     buf->Clear();
 }
 
@@ -939,7 +939,7 @@ void Save::SaveAiChunk()
     fwrite(&i, 1, 4, file);
     fseek(file, 0, SEEK_END);
 
-    WriteCompressed((File *)file, bw::resource_areas.raw_pointer(), 0x2ee8);
+    bw::WriteCompressed(bw::resource_areas.raw_pointer(), 0x2ee8, (File *)file);
 }
 
 void Save::SavePathingChunk()
@@ -967,7 +967,7 @@ void Save::SavePathingChunk()
     memcpy(pos, contours->left_contours, contours->left_contour_count * sizeof(Contour));
     pos += contours->left_contour_count * sizeof(Contour);
 
-    WriteCompressed((File *)file, chunk.get(), chunk_size);
+    bw::WriteCompressed(chunk.get(), chunk_size, (File *)file);
 }
 
 void Save::SaveGame(uint32_t time)
@@ -975,17 +975,17 @@ void Save::SaveGame(uint32_t time)
     datastream buf(true, buf_defaultmax);
     Sprite::RemoveAllSelectionOverlays();
 
-    WriteReadableSaveHeader((File *)file, filename.c_str());
-    WriteSaveHeader((File *)file, time);
+    bw::WriteReadableSaveHeader((File *)file, filename.c_str());
+    bw::WriteSaveHeader(time, (File *)file);
 
     *bw::saved_elapsed_seconds = (GetTickCount() - *bw::game_start_tick) / 1000 + *bw::elapsed_time_modifier;
-    WriteCompressed((File *)file, bw::players.raw_pointer(), sizeof(Player) * Limits::Players);
+    bw::WriteCompressed(bw::players.raw_pointer(), sizeof(Player) * Limits::Players, (File *)file);
     if (!*bw::campaign_mission)
-        ReplaceWithShortPath(&bw::map_path[0], MAX_PATH);
-    WriteCompressed((File *)file, bw::minerals.raw_pointer(), 0x17700);
+        bw::ReplaceWithShortPath(&bw::map_path[0], MAX_PATH);
+    bw::WriteCompressed(bw::minerals.raw_pointer(), 0x17700, (File *)file);
     fwrite(bw::local_player_id.raw_pointer(), 1, 4, file);
     if (!*bw::campaign_mission)
-        ReplaceWithFullPath(&bw::map_path[0], MAX_PATH);
+        bw::ReplaceWithFullPath(&bw::map_path[0], MAX_PATH);
 
     bullet_to_id.reserve(bullet_system->BulletCount());
     bullet_system->MakeSaveIdMapping([this] (Bullet *bullet, uintptr_t id) {
@@ -1018,16 +1018,16 @@ void Save::SaveGame(uint32_t time)
 
     uint32_t original_tile_length = *bw::original_tile_width * *bw::original_tile_height * 2;
     fwrite(&original_tile_length, 1, 4, file);
-    WriteCompressed((File *)file, *bw::original_tiles, original_tile_length);
-    WriteCompressed((File *)file, *bw::creep_tile_borders, original_tile_length / 2);
-    SaveDisappearingCreepChunk((File *)file);
-    WriteCompressed((File *)file, *bw::map_tile_ids, Limits::MapHeight_Tiles * Limits::MapWidth_Tiles * 2);
-    WriteCompressed((File *)file, *bw::megatiles, Limits::MapHeight_Tiles * Limits::MapWidth_Tiles * 2);
-    WriteCompressed((File *)file, *bw::map_tile_flags, Limits::MapHeight_Tiles * Limits::MapWidth_Tiles * 4);
+    bw::WriteCompressed(*bw::original_tiles, original_tile_length, (File *)file);
+    bw::WriteCompressed(*bw::creep_tile_borders, original_tile_length / 2, (File *)file);
+    bw::SaveDisappearingCreepChunk((File *)file);
+    bw::WriteCompressed(*bw::map_tile_ids, Limits::MapHeight_Tiles * Limits::MapWidth_Tiles * 2, (File *)file);
+    bw::WriteCompressed(*bw::megatiles, Limits::MapHeight_Tiles * Limits::MapWidth_Tiles * 2, (File *)file);
+    bw::WriteCompressed(*bw::map_tile_flags, Limits::MapHeight_Tiles * Limits::MapWidth_Tiles * 4, (File *)file);
 
-    SaveTriggerChunk((File *)file);
+    bw::SaveTriggerChunk((File *)file);
     fwrite(bw::scenario_chk_STR_size.raw_pointer(), 1, 4, file);
-    WriteCompressed((File *)file, *bw::scenario_chk_STR, *bw::scenario_chk_STR_size);
+    bw::WriteCompressed(*bw::scenario_chk_STR, *bw::scenario_chk_STR_size, (File *)file);
 
     Unit *tmp_selections[Limits::Selection * Limits::ActivePlayers];
     Unit **tmp_selections_pos = tmp_selections;
@@ -1040,21 +1040,21 @@ void Save::SaveGame(uint32_t time)
             tmp_selections_pos += 1;
         }
     }
-    WriteCompressed((File *)file, tmp_selections, Limits::Selection * Limits::ActivePlayers * sizeof(Unit *));
+    bw::WriteCompressed(tmp_selections, Limits::Selection * Limits::ActivePlayers * sizeof(Unit *), (File *)file);
 
     SavePathingChunk();
 
     SaveAiChunk();
-    SaveDatChunk((File *)file);
+    bw::SaveDatChunk((File *)file);
     fwrite(bw::screen_x.raw_pointer(), 1, 4, file);
     fwrite(bw::screen_y.raw_pointer(), 1, 4, file);
 
-    AddSelectionOverlays();
+    bw::AddSelectionOverlays();
 }
 
 void Command_Save(const uint8_t *data)
 {
-    if (IsMultiplayer() && FirstCommandUser() != *bw::lobby_command_user)
+    if (IsMultiplayer() && bw::FirstCommandUser() != *bw::lobby_command_user)
         return;
     if (bw::game_data->got.unk_tournament)
         return;
@@ -1065,7 +1065,7 @@ void Command_Save(const uint8_t *data)
     int len = Sc_strlen(filename, 0x1c, 0x1c, false, false);
     if (len == 0) // color / control chars
         return;
-    if (!IsInvalidFilename(filename, 0, len - 1)) // wtf?
+    if (!bw::IsInvalidFilename(filename, 0, len - 1)) // wtf?
         return;
     SaveGame(filename, time);
 }
@@ -1073,9 +1073,9 @@ void Command_Save(const uint8_t *data)
 void SaveGame(const char *filename, uint32_t time)
 {
     char full_path[MAX_PATH];
-    if (GetUserFilePath(filename, full_path, MAX_PATH, 0) == 0)
+    if (bw::GetUserFilePath(filename, full_path, MAX_PATH, 0) == 0)
         return;
-    if (IsInvalidFilename(full_path, 1, MAX_PATH))
+    if (bw::IsInvalidFilename(full_path, 1, MAX_PATH))
         return;
 
     char dialog_string[MAX_PATH];
@@ -1084,7 +1084,7 @@ void SaveGame(const char *filename, uint32_t time)
     auto orig_cmd_user = *bw::command_user, orig_select_cmd_user = *bw::select_command_user;
     *bw::command_user = *bw::local_player_id;
     *bw::select_command_user = *bw::local_unique_player_id;
-    ShowWaitDialog(dialog_string);
+    bw::ShowWaitDialog(dialog_string);
     *bw::command_user = orig_cmd_user;
     *bw::select_command_user = orig_select_cmd_user;
 
@@ -1109,7 +1109,7 @@ void SaveGame(const char *filename, uint32_t time)
         save.Close();
     }
     // Here would be some error handling but meh ^_^
-    HidePopupDialog();
+    bw::HidePopupDialog();
 }
 
 // These don't leak memory, cause if they fail they should delete everything allocated
@@ -1168,11 +1168,11 @@ std::pair<int, Unit *> Unit::SaveAllocate(uint8_t *in, uint32_t size, DummyListH
     {
         // Bw does that but it should only set a flag that would be already set
         // And accessing unit search now is not safe as search indices are wrong
-        //CheckUnstack(out);
+        //bw::CheckUnstack(out);
         if (out->flags & UnitStatus::Building)
-            SetBuildingTileFlag(out, out->sprite->position.x, out->sprite->position.y);
+            bw::SetBuildingTileFlag(out, out->sprite->position.x, out->sprite->position.y);
         if (out->IsFlying())
-            IncrementAirUnitx14eValue(out);
+            bw::IncrementAirUnitx14eValue(out);
         unit_search->Add(out);
     }
     if (out->path)
@@ -1724,7 +1724,7 @@ void Load::LoadAiTowns(int player)
 
 void Load::LoadPlayerAiData(int player)
 {
-    ReadCompressed(file, &bw::player_ai[player], sizeof(Ai::PlayerData));
+    bw::ReadCompressed(&bw::player_ai[player], sizeof(Ai::PlayerData), (File *)file);
     ConvertPlayerAiData<false>(&bw::player_ai[player], player);
 }
 
@@ -1732,8 +1732,8 @@ void Load::LoadAiChunk()
 {
     uint32_t region_count;
     fread(&region_count, 4, 1, file);
-    DeleteAiRegions();
-    AllocateAiRegions(region_count);
+    bw::DeleteAiRegions();
+    bw::AllocateAiRegions(region_count);
     for (unsigned i = 0; i < Limits::ActivePlayers; i++)
     {
         if (bw::players[i].type == 1)
@@ -1771,7 +1771,7 @@ void Load::LoadAiChunk()
             prev = script;
         }
     }
-    ReadCompressed(file, bw::resource_areas.raw_pointer(), 0x2ee8);
+    bw::ReadCompressed(bw::resource_areas.raw_pointer(), 0x2ee8, (File *)file);
 }
 
 void Load::LoadPathingChunk()
@@ -1781,30 +1781,36 @@ void Load::LoadPathingChunk()
     fread(&chunk_size, 4, 1, file);
     std::unique_ptr<uint8_t[]> chunk(new uint8_t[chunk_size]);
     uint8_t *pos = chunk.get();
-    ReadCompressed(file, chunk.get(), chunk_size);
+    bw::ReadCompressed(chunk.get(), chunk_size, (File *)file);
 
-    PathingSystem *pathing = *bw::pathing = (PathingSystem *)SMemAlloc(sizeof(PathingSystem), "LoadPathingChunk", 42, 0);
+    PathingSystem *pathing = *bw::pathing =
+        (PathingSystem *)storm::SMemAlloc(sizeof(PathingSystem), "LoadPathingChunk", 42, 0);
     memcpy(pathing, pos, sizeof(PathingSystem));
     ConvertPathing<false>(pathing);
     pos += sizeof(PathingSystem);
 
-    ContourData *contours = pathing->contours = (ContourData *)SMemAlloc(sizeof(ContourData), "LoadPathingChunk", 42, 0);
+    ContourData *contours = pathing->contours =
+        (ContourData *)storm::SMemAlloc(sizeof(ContourData), "LoadPathingChunk", 42, 0);
     memcpy(pathing->contours, pos, sizeof(ContourData));
     pos += sizeof(ContourData);
 
-    contours->top_contours = (Contour *)SMemAlloc(sizeof(Contour) * contours->top_contour_count, "LoadPathingChunk", 42, 0);
+    contours->top_contours =
+        (Contour *)storm::SMemAlloc(sizeof(Contour) * contours->top_contour_count, "LoadPathingChunk", 42, 0);
     memcpy(contours->top_contours, pos, contours->top_contour_count * sizeof(Contour));
     pos += contours->top_contour_count * sizeof(Contour);
 
-    contours->right_contours = (Contour *)SMemAlloc(sizeof(Contour) * contours->right_contour_count, "LoadPathingChunk", 42, 0);
+    contours->right_contours =
+        (Contour *)storm::SMemAlloc(sizeof(Contour) * contours->right_contour_count, "LoadPathingChunk", 42, 0);
     memcpy(contours->right_contours, pos, contours->right_contour_count * sizeof(Contour));
     pos += contours->right_contour_count * sizeof(Contour);
 
-    contours->bottom_contours = (Contour *)SMemAlloc(sizeof(Contour) * contours->bottom_contour_count, "LoadPathingChunk", 42, 0);
+    contours->bottom_contours =
+        (Contour *)storm::SMemAlloc(sizeof(Contour) * contours->bottom_contour_count, "LoadPathingChunk", 42, 0);
     memcpy(contours->bottom_contours, pos, contours->bottom_contour_count * sizeof(Contour));
     pos += contours->bottom_contour_count * sizeof(Contour);
 
-    contours->left_contours = (Contour *)SMemAlloc(sizeof(Contour) * contours->left_contour_count, "LoadPathingChunk", 42, 0);
+    contours->left_contours =
+        (Contour *)storm::SMemAlloc(sizeof(Contour) * contours->left_contour_count, "LoadPathingChunk", 42, 0);
     memcpy(contours->left_contours, pos, contours->left_contour_count * sizeof(Contour));
 }
 
@@ -1853,21 +1859,21 @@ void Load::LoadGame()
 
     uint32_t original_tile_length;
     fread(&original_tile_length, 1, 4, file);
-    ReadCompressed(file, *bw::original_tiles, original_tile_length);
-    ReadCompressed(file, *bw::creep_tile_borders, original_tile_length / 2);
-    if (!LoadDisappearingCreepChunk((File *)file))
+    bw::ReadCompressed(*bw::original_tiles, original_tile_length, (File *)file);
+    bw::ReadCompressed(*bw::creep_tile_borders, original_tile_length / 2, (File *)file);
+    if (!bw::LoadDisappearingCreepChunk((File *)file))
         throw SaveException();
-    ReadCompressed(file, *bw::map_tile_ids, Limits::MapHeight_Tiles * Limits::MapWidth_Tiles * 2);
-    ReadCompressed(file, *bw::megatiles, Limits::MapHeight_Tiles * Limits::MapWidth_Tiles * 2);
-    ReadCompressed(file, *bw::map_tile_flags, Limits::MapHeight_Tiles * Limits::MapWidth_Tiles * 4);
+    bw::ReadCompressed(*bw::map_tile_ids, Limits::MapHeight_Tiles * Limits::MapWidth_Tiles * 2, (File *)file);
+    bw::ReadCompressed(*bw::megatiles, Limits::MapHeight_Tiles * Limits::MapWidth_Tiles * 2, (File *)file);
+    bw::ReadCompressed(*bw::map_tile_flags, Limits::MapHeight_Tiles * Limits::MapWidth_Tiles * 4, (File *)file);
 
-    if (!LoadTriggerChunk((File *)file))
+    if (!bw::LoadTriggerChunk((File *)file))
         throw SaveException();
     fread(bw::scenario_chk_STR_size.raw_pointer(), 1, 4, file);
-    SMemFree(*bw::scenario_chk_STR, "notasourcefile", 42, 0);
-    *bw::scenario_chk_STR = SMemAlloc(*bw::scenario_chk_STR_size, "notasourcefile", 42, 0);
-    ReadCompressed(file, *bw::scenario_chk_STR, *bw::scenario_chk_STR_size);
-    ReadCompressed(file, bw::selection_groups.raw_pointer(), Limits::Selection * Limits::ActivePlayers * sizeof(Unit *));
+    storm::SMemFree(*bw::scenario_chk_STR, "notasourcefile", 42, 0);
+    *bw::scenario_chk_STR = storm::SMemAlloc(*bw::scenario_chk_STR_size, "notasourcefile", 42, 0);
+    bw::ReadCompressed(*bw::scenario_chk_STR, *bw::scenario_chk_STR_size, (File *)file);
+    bw::ReadCompressed(bw::selection_groups.raw_pointer(), Limits::Selection * Limits::ActivePlayers * sizeof(Unit *), (File *)file);
     for (auto selection : bw::selection_groups)
     {
         for (Unit *&unit : selection)
@@ -1880,17 +1886,17 @@ void Load::LoadGame()
     unit_search->Init();
 
     LoadAiChunk();
-    if (!LoadDatChunk((File *)file, 0x3))
+    if (!bw::LoadDatChunk((File *)file, 0x3))
         throw SaveException();
     fread(bw::screen_x.raw_pointer(), 1, 4, file);
     fread(bw::screen_y.raw_pointer(), 1, 4, file);
 
-    RestorePylons();
-    AddSelectionOverlays();
+    bw::RestorePylons();
+    bw::AddSelectionOverlays();
     if (!IsMultiplayer())
         *bw::single_player_custom_game = *bw::single_player_custom_game_saved;
 
-    MoveScreen(*bw::screen_x, *bw::screen_y);
+    bw::MoveScreen(*bw::screen_x, *bw::screen_y);
     InitCursorMarker();
 }
 

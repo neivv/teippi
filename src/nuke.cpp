@@ -24,7 +24,7 @@ void Unit::Order_NukeUnit()
     }
     else
     {
-        StopMoving(this);
+        bw::StopMoving(this);
         OrderDone();
     }
 }
@@ -45,12 +45,12 @@ void Unit::Order_NukeTrack()
             return;
         if (order_queue_begin == nullptr)
             AppendOrderTargetingNothing(Type().ReturnToIdleOrder());
-        DoNextQueuedOrderIfAble(this);
+        bw::DoNextQueuedOrderIfAble(this);
         SetButtons(unit_id);
         SetIscriptAnimation(Iscript::Animation::Idle, true, "Order_NukeTrack state 6", nullptr);
         ghost.nukedot->SetIscriptAnimation_Lone(Iscript::Animation::Death, true, MainRng(), "Unit::Order_NukeTrack");
         ghost.nukedot = nullptr;
-        Ai_ReturnToNearestBaseForced(this);
+        bw::Ai_ReturnToNearestBaseForced(this);
     }
 }
 
@@ -68,10 +68,12 @@ void Unit::Order_NukeGround()
     }
     else
     {
-        StopMoving(this);
+        bw::StopMoving(this);
         if (position != unk_move_waypoint)
         {
-            int diff = facing_direction - GetFacingDirection(sprite->position.x, sprite->position.y, unk_move_waypoint.x, unk_move_waypoint.y);
+            auto pos = sprite->position;
+            int diff = facing_direction -
+                bw::GetFacingDirection(pos.x, pos.y, unk_move_waypoint.x, unk_move_waypoint.y);
             if (diff < -1 || diff > 1)
                 return;
         }
@@ -92,12 +94,12 @@ void Unit::Order_NukeGround()
         Unit *nuke = silo->silo.nuke;
         silo->silo.nuke = nullptr;
         silo->silo.has_nuke = 0;
-        PlaySound(Sound::NukeLaser, this, 1, 0);
+        bw::PlaySound(Sound::NukeLaser, this, 1, 0);
         nuke->IssueOrderTargetingGround(OrderId::NukeLaunch, order_target_pos);
         related = nuke;
         nuke->related = this;
         nuke->sprite->SetDirection32(0);
-        ShowUnit(nuke);
+        bw::ShowUnit(nuke);
         IssueOrderTargetingGround(OrderId::NukeTrack, sprite->position);
         if (!IsDisabled() || Type().IsBuilding()) // Huh?
             buttons = 0xed;
@@ -115,7 +117,7 @@ void Unit::Order_NukeLaunch(ProgressUnitResults *results)
     switch (order_state)
     {
         case 0:
-            PlaySound(Sound::NukeLaunch, this, 1, 0);
+            bw::PlaySound(Sound::NukeLaunch, this, 1, 0);
             // Wtf
             ChangeMovementTarget(Point(sprite->position.x, UnitId::NuclearMissile.DimensionBox().top));
             unk_move_waypoint = Point(sprite->position.x, UnitId::NuclearMissile.DimensionBox().top);
@@ -125,16 +127,16 @@ void Unit::Order_NukeLaunch(ProgressUnitResults *results)
         case 1:
             if (order_timer > 45 && IsStandingStill() == 0)
                 return;
-            PlaySound(Sound::Advisor_NukeLaunch + *bw::player_race, nullptr, 1, 0);
-            PrintInfoMessage((*bw::stat_txt_tbl)->GetTblString(String::NuclearLaunchDetected));
+            bw::PlaySound(Sound::Advisor_NukeLaunch + *bw::player_race, nullptr, 1, 0);
+            bw::PrintInfoMessage((*bw::stat_txt_tbl)->GetTblString(String::NuclearLaunchDetected));
             order_state = 2;
         break;
         case 2:
             if (order_timer && IsStandingStill() == 0)
                 return;
-            HideUnit(this);
+            bw::HideUnit(this);
             related->related = this;
-            StopMoving(this);
+            bw::StopMoving(this);
             order_state = 3;
         break;
         case 3:
@@ -151,16 +153,16 @@ void Unit::Order_NukeLaunch(ProgressUnitResults *results)
             Point new_pos = order_target_pos;
             new_pos.x = std::max(UnitId::NuclearMissile.DimensionBox().left, new_pos.x);
             new_pos.y = std::max((int)UnitId::NuclearMissile.DimensionBox().top, new_pos.y - 0x140);
-            MoveUnit(this, new_pos.x, new_pos.y);
-            SetDirection((Flingy *)this, 0x80);
+            bw::MoveUnit(this, new_pos.x, new_pos.y);
+            bw::SetDirection(AsFlingy(), 0x80);
             ChangeMovementTarget(order_target_pos);
             unk_move_waypoint = order_target_pos;
-            ShowUnit(this);
+            bw::ShowUnit(this);
             order_state = 5;
         }
         break;
         case 5:
-            if (!IsPointInArea(this, 10, move_target.x, move_target.y))
+            if (!bw::IsPointInArea(this, 10, move_target.x, move_target.y))
                 return;
             target = this;
             SetIscriptAnimation(Iscript::Animation::Special1, true, "Order_NukeLaunch state 5", results);

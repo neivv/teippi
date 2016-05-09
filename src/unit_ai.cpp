@@ -17,7 +17,7 @@ void Unit::Order_AiGuard()
         return;
     STATIC_PERF_CLOCK(Order_AiGuard);
     order_timer = 0xf;
-    if (Ai_CastReactionSpell(this, 0))
+    if (bw::Ai_CastReactionSpell(this, 0))
         return;
     if (UpdateAttackTarget(this, false, true, false) == true)
         return;
@@ -46,7 +46,7 @@ void Unit::Order_ComputerReturn()
 
     if (Type() == UnitId::Medic)
     {
-        Order_MedicIdle(this);
+        bw::Order_Medic(this);
         if (order != OrderId::ComputerReturn)
             return;
     }
@@ -87,12 +87,12 @@ void Unit::Ai_Cloak()
         case AlexeiStukov:
         case InfestedDuran:
         case InfestedKerrigan:
-            if (CanUseTech(TechId::PersonnelCloaking, this, player) == 1)
+            if (bw::CanUseTech(TechId::PersonnelCloaking, this, player) == 1)
                 Cloak(TechId::PersonnelCloaking);
         break;
         case Wraith:
         case TomKazansky:
-            if (CanUseTech(TechId::CloakingField, this, player) == 1)
+            if (bw::CanUseTech(TechId::CloakingField, this, player) == 1)
                 Cloak(TechId::CloakingField);
         break;
     }
@@ -115,7 +115,7 @@ bool Unit::Ai_TryReturnHome(bool dont_issue)
         return false;
     if (GetRegion() == ::GetRegion(guard->home))
         return false;
-    if (IsPointInArea(this, 0xc0, guard->home.x, guard->home.y))
+    if (bw::IsPointInArea(this, 0xc0, guard->home.x, guard->home.y))
         return false;
     if (target && IsInAttackRange(target))
         return false;

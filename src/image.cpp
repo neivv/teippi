@@ -125,7 +125,7 @@ bool Image::InitIscript(Iscript::Context *ctx)
         return false;
     }
     SetIscriptAnimation(ctx, Iscript::Animation::Init);
-    PrepareDrawImage(this);
+    bw::PrepareDrawImage(this);
     return true;
 }
 
@@ -142,7 +142,7 @@ void *Image::operator new(size_t size)
 void Image::SingleDelete()
 {
     if (~*bw::image_flags & 1)
-        MarkImageAreaForRedraw(this);
+        bw::MarkImageAreaForRedraw(this);
 
     if (list.next)
         list.next->list.prev = list.prev;
@@ -208,7 +208,7 @@ void Image::Hide()
     if (!IsHidden())
     {
         if (~*bw::image_flags & 0x1)
-            MarkImageAreaForRedraw(this);
+            bw::MarkImageAreaForRedraw(this);
         flags |= ImageFlags::Hidden;
     }
 }
@@ -293,9 +293,9 @@ Image *Image::Iscript_AddOverlay(Iscript::Context *ctx, ImageType overlay_id, in
     if (img->flags & ImageFlags::CanTurn)
     {
         if (IsFlipped())
-            SetImageDirection32(img, 32 - direction);
+            bw::SetImageDirection32(img, 32 - direction);
         else
-            SetImageDirection32(img, direction);
+            bw::SetImageDirection32(img, direction);
     }
     if (img->frame != img->frameset + img->direction)
     {
@@ -344,7 +344,7 @@ Iscript::CmdResult Image::HandleIscriptCommand(Iscript::Context *ctx, Iscript::S
             if (other != nullptr && ~other->flags & ImageFlags::UseParentLo)
             {
                 other->flags |= ImageFlags::UseParentLo;
-                SetOffsetToParentsSpecialOverlay(other);
+                bw::SetOffsetToParentsSpecialOverlay(other);
             }
         }
         break;
@@ -425,7 +425,7 @@ Iscript::CmdResult Image::HandleIscriptCommand(Iscript::Context *ctx, Iscript::S
                 sound_id = *(uint16_t *)(cmd.data + 1 + ctx->rng->Rand(cmd.data[0]) * 2);
             else // PlaySndBtwn
                 sound_id = cmd.val1() + ctx->rng->Rand(cmd.val2() - cmd.val1() + 1);
-            PlaySoundAtPos(sound_id, parent->position.AsDword(), 1, 0);
+            bw::PlaySoundAtPos(sound_id, parent->position.AsDword(), 1, 0);
         }
         break;
         case FollowMainGraphic:
@@ -474,7 +474,7 @@ Iscript::CmdResult Image::HandleIscriptCommand(Iscript::Context *ctx, Iscript::S
             int x = parent->position.x + x_off + cmd.point.x;
             int y = parent->position.y + y_off + cmd.point.y;
             // Yes, it checks if unit id 0 can fit there
-            if (DoesFitHere(UnitId::Marine, x, y))
+            if (bw::DoesFitHere(UnitId::Marine, x, y))
                 Sprite::Spawn(this, SpriteType(cmd.val), cmd.point, parent->elevation + 1);
         }
         break;
@@ -636,10 +636,10 @@ static Tbl *GetImagesTbl()
     if (tbl == nullptr)
     {
         uint32_t size;
-            Tbl *read_tbl = (Tbl *)ReadMpqFile("arr\\images.tbl", 0, 0, "storm", 0, 0, &size);
+        Tbl *read_tbl = (Tbl *)bw::ReadMpqFile("arr\\images.tbl", 0, 0, "storm", 0, 0, &size);
         Assert(read_tbl != nullptr);
         if (images_tbl.compare_exchange_strong(tbl, read_tbl, release, acquire) == false)
-            SMemFree(read_tbl, __FILE__, __LINE__, 0);
+            storm::SMemFree(read_tbl, __FILE__, __LINE__, 0);
         else
             tbl = read_tbl;
     }

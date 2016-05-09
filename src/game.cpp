@@ -36,9 +36,9 @@ static Optional<SyncData> old_sync;
 static void ProgressAi()
 {
     Ai::ProgressScripts();
-    Ai_ProgressRegions();
-    UpdateResourceAreas();
-    Ai_Unk_004A2A40();
+    bw::Ai_ProgressRegions();
+    bw::UpdateResourceAreas();
+    bw::Ai_Unk_004A2A40();
 }
 
 static void DumpUnits()
@@ -182,7 +182,7 @@ void ProgressObjects()
     perf_log->Indent(2);
 
     EnableRng(true);
-    TryUpdateCreepDisappear();
+    bw::TryUpdateCreepDisappear();
     ProgressAi();
 
     if (*bw::vision_update_count == 0)
@@ -192,8 +192,8 @@ void ProgressObjects()
     *bw::vision_update_count -= 1;
     if (*bw::vision_updated)
     {
-        ProgressCreepDisappearance();
-        UpdateFog();
+        bw::ProgressCreepDisappearance();
+        bw::UpdateFog();
     }
 
     auto pre_time = clock.GetTime();
@@ -235,7 +235,7 @@ static bool ProgressFrame()
             ProgressReplay();
 
         uint32_t unk_sync;
-        if (!ProgressTurns(&unk_sync))
+        if (!bw::ProgressTurns(&unk_sync))
         {
             SetFrameState(1);
             break;
@@ -245,7 +245,7 @@ static bool ProgressFrame()
         {
             if (*bw::replay_paused || false) // arg ecx is always 0
             {
-                Replay_RefershUiIfNeeded();
+                bw::Replay_RefershUiIfNeeded();
                 SetFrameState(2);
                 break;
             }
@@ -262,7 +262,7 @@ static bool ProgressFrame()
             *bw::image_flags |= 0x2;
             if (IsPaused())
             {
-                DrawFlashingSelectionCircles();
+                bw::DrawFlashingSelectionCircles();
             }
             else
             {
@@ -284,7 +284,7 @@ static bool ProgressFrame()
         EnableRng(false);
 
         if (IsReplay())
-            Replay_RefershUiIfNeeded();
+            bw::Replay_RefershUiIfNeeded();
 
         *bw::next_frame_tick += bw::game_speed_waits[*bw::game_speed];
         uint32_t tick = GetTickCount();
@@ -356,19 +356,19 @@ void GameEnd()
         *bw::is_ingame2 = 0;
     }
     if (IsMultiplayer() && *bw::snp_id == 0x424e4554) // BNET
-        ReportGameResult();
-    Storm_LeaveGame(0x40000001);
+        bw::ReportGameResult();
+    bw::Storm_LeaveGame(0x40000001);
     if (*bw::scmain_state == 4 && *bw::menu_screen_id == 0) // IsInMenu && ?
-        ClearNetPlayerData();
+        bw::ClearNetPlayerData();
     for (auto &color_cycle_data : bw::cycle_colors)
     {
         memset(&color_cycle_data, 0, sizeof(CycleStruct));
     }
     if (!IsMultiplayer())
-        Unpause(1);
+        bw::Unpause(1);
     if (*bw::popup_dialog)
     {
-        RemoveDialog(*bw::popup_dialog);
+        bw::RemoveDialog(*bw::popup_dialog);
         *bw::popup_dialog = 0;
         *bw::popup_dialog_active = 0;
         if (*bw::scmain_state == 3)
@@ -378,64 +378,64 @@ void GameEnd()
         }
     }
     if (*bw::has_effects_scode)
-        FreeEffectsSCodeUnk();
+        bw::FreeEffectsSCodeUnk();
     for(int i = 0; i < 3; i++)
         bw::unk_placement_box[i][0] = 0;
 
-    FreeUnkSound(&*bw::unk_sound);
+    bw::FreeUnkSound(&*bw::unk_sound);
     for (int i = 0; i < Limits::ActivePlayers; i++)
-        FreeTriggerList(&bw::triggers[i]);
+        bw::FreeTriggerList(&bw::triggers[i]);
     for (int i = 0; i < 2; i++)
     {
         if (bw::placement_boxes[i].data)
         {
-            SMemFree(bw::placement_boxes[i].data, __FILE__, __LINE__, 0);
+            storm::SMemFree(bw::placement_boxes[i].data, __FILE__, __LINE__, 0);
             bw::placement_boxes[i].data = 0;
         }
     }
     if (*bw::is_placing_building)
-        EndBuildingPlacement();
+        bw::EndBuildingPlacement();
     if (*bw::is_targeting)
-        EndTargeting();
-    ResetGameScreenEventHandlers();
-    FreeGameDialogs();
-    FreeMapData();
-    if (*bw::pathing)
+        bw::EndTargeting();
+    bw::ResetGameScreenEventHandlers();
+    bw::FreeGameDialogs();
+    bw::FreeMapData();
+    if (*bw::pathing != nullptr)
     {
         if ((*bw::pathing)->contours)
-            SMemFree((*bw::pathing)->contours, __FILE__, __LINE__, 0);
-        SMemFree(*bw::pathing, __FILE__, __LINE__, 0);
+            storm::SMemFree((*bw::pathing)->contours, __FILE__, __LINE__, 0);
+        storm::SMemFree(*bw::pathing, __FILE__, __LINE__, 0);
         *bw::pathing = 0;
     }
-    if (*bw::aiscript_bin)
+    if (*bw::aiscript_bin != nullptr)
     {
-        SMemFree(*bw::aiscript_bin, __FILE__, __LINE__, 0);
+        storm::SMemFree(*bw::aiscript_bin, __FILE__, __LINE__, 0);
         *bw::aiscript_bin = 0;
     }
-    if (*bw::bwscript_bin)
+    if (*bw::bwscript_bin != nullptr)
     {
-        SMemFree(*bw::bwscript_bin, __FILE__, __LINE__, 0);
+        storm::SMemFree(*bw::bwscript_bin, __FILE__, __LINE__, 0);
         *bw::bwscript_bin = 0;
     }
-    DeleteAiRegions();
-    DeleteDirectSound();
-    StopSounds();
-    DeleteDirectSound(); // well wtf
-    InitOrDeleteRaceSounds(0);
-    WindowPosUpdate();
-    if (*bw::pylon_power_mask)
+    bw::DeleteAiRegions();
+    bw::DeleteDirectSound();
+    bw::StopSounds();
+    bw::DeleteDirectSound(); // well wtf
+    bw::InitOrDeleteRaceSounds(0);
+    bw::WindowPosUpdate();
+    if (*bw::pylon_power_mask != nullptr)
     {
-        SMemFree(*bw::pylon_power_mask, __FILE__, __LINE__, 0);
+        storm::SMemFree(*bw::pylon_power_mask, __FILE__, __LINE__, 0);
         *bw::pylon_power_mask = 0;
     }
-    if (*bw::scenario_chk_STR)
+    if (*bw::scenario_chk_STR != nullptr)
     {
-        SMemFree(*bw::scenario_chk_STR, __FILE__, __LINE__, 0);
+        storm::SMemFree(*bw::scenario_chk_STR, __FILE__, __LINE__, 0);
         *bw::scenario_chk_STR = 0;
     }
-    if (*bw::map_mpq_handle)
+    if (*bw::map_mpq_handle != nullptr)
     {
-        SFileCloseArchive(*bw::map_mpq_handle);
+        storm::SFileCloseArchive(*bw::map_mpq_handle);
         *bw::map_mpq_handle = 0;
     }
     if (IsReplay())
@@ -443,7 +443,7 @@ void GameEnd()
         (*bw::replay_data)->unk4 = 0;
         if (*bw::playback_commands)
         {
-            SMemFree(*bw::playback_commands, __FILE__, __LINE__, 0);
+            storm::SMemFree(*bw::playback_commands, __FILE__, __LINE__, 0);
             *bw::playback_commands = 0;
         }
         *bw::is_replay = 0;
@@ -465,12 +465,12 @@ void GameEnd()
 void BriefingOk(Dialog *dlg, int leave)
 {
     dlg->val = nullptr; // No clue what this clears
-    Ctrl_LeftUp(dlg->FindChild(0xd));
+    bw::Ctrl_LeftUp(dlg->FindChild(0xd));
     if (IsMultiplayer())
         dlg->FindChild(0xfff4)->Show();
     if (leave)
     {
-        Storm_LeaveGame(3);
+        bw::Storm_LeaveGame(3);
         dlg->dialog.OnceInFrame = nullptr;
         if (*bw::briefing_state == 1)
             *bw::briefing_state = 0;
@@ -480,7 +480,7 @@ void BriefingOk(Dialog *dlg, int leave)
         char buf[5];
         buf[0] = commands::BriefingStart;
         *(uint32_t *)(buf + 1) = bw::player_objectives_string_id[*bw::local_player_id];
-        SendCommand(buf, sizeof buf);
+        bw::SendCommand(buf, sizeof buf);
         *bw::briefing_state = 2;
     }
 }
