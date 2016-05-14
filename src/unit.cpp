@@ -1547,12 +1547,12 @@ bool Unit::CanTargetSelf(class OrderType order) const
         return false;
 }
 
-bool Unit::CanUseTargetedOrder(class OrderType order) const
+bool Unit::CanUseTargetedOrder(class OrderType order_id) const
 {
-    if (flags & UnitStatus::Building && (OrderType() == OrderId::RallyPointUnit ||
-                                         OrderType() == OrderId::RallyPointTile ||
-                                         OrderType() == OrderId::RechargeShieldsBattery ||
-                                         OrderType() == OrderId::PickupBunker))
+    if (flags & UnitStatus::Building && (order_id == OrderId::RallyPointUnit ||
+                                         order_id == OrderId::RallyPointTile ||
+                                         order_id == OrderId::RechargeShieldsBattery ||
+                                         order_id == OrderId::PickupBunker))
     {
         return true;
     }

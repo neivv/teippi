@@ -634,10 +634,16 @@ struct Test_Bunker : public GameTest {
                     TestAssert(!FindUnit(UnitId::Bunker)->IsDying());
                 }
             } break; case 7: {
-                // Check that unloading doesn't break anything
+                // Check that unloading doesn't break anything,
+                // and check that bunker's load command works.
                 marine = CreateUnitForTest(UnitId::Marine, 0);
                 bunker = CreateUnitForTest(UnitId::Bunker, 0);
-                marine->IssueOrderTargetingUnit(OrderId::EnterTransport, bunker);
+                SelectUnit(bunker);
+                Test_SendTargetedOrderCommand(OrderId::PickupBunker,
+                                              marine->sprite->position,
+                                              marine,
+                                              UnitId::None,
+                                              false);
                 state++;
             } break; case 8: {
                 if (marine->flags & UnitStatus::InBuilding) {
@@ -2079,7 +2085,7 @@ struct Test_RallyPoint : public GameTest {
     void Rally() {
         old_rally = unit->rally.position;
         SelectUnit(unit);
-        Test_SendTargetedOrderCommand(OrderId::RallyPointTile, 50, 50, nullptr, UnitId::None, false);
+        Test_SendTargetedOrderCommand(OrderId::RallyPointTile, Point(50, 50), nullptr, UnitId::None, false);
         frames_remaining = 50;
     }
     void NextFrame() override {

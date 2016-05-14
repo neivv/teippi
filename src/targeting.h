@@ -18,7 +18,7 @@ void GameScreenLClickEvent_Targeting(Event *event);
 
 void DoTargetedCommand(int x, int y, Unit *target, UnitType fow_unit);
 
-void Test_SendTargetedOrderCommand(uint8_t order, int x, int y, Unit *target, UnitType fow_unit, uint8_t queued);
+void Test_SendTargetedOrderCommand(uint8_t order, const Point &pos, Unit *target, UnitType fow_unit, uint8_t queued);
 
 namespace RightClickAction
 {

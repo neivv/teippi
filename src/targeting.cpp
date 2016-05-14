@@ -367,10 +367,10 @@ void SendTargetedOrderCommand(uint8_t order, int x, int y, Unit *target, UnitTyp
     bw::SendCommand(cmd, 11);
 }
 
-void Test_SendTargetedOrderCommand(uint8_t order, int x, int y, Unit *target, UnitType fow_unit, uint8_t queued)
+void Test_SendTargetedOrderCommand(uint8_t order, const Point &pos, Unit *target, UnitType fow_unit, uint8_t queued)
 {
     if (game_tests != nullptr) {
-        SendTargetedOrderCommand(order, x, y, target, fow_unit, queued);
+        SendTargetedOrderCommand(order, pos.x, pos.y, target, fow_unit, queued);
     }
 }
 
