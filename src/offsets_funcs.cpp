@@ -96,7 +96,7 @@ void InitBwFuncs_1161(Common::PatchManager *exec_heap, uintptr_t current_base_ad
     bw::HasToDodge.Init<Edx, Eax>(exec_heap, 0x0042DF70 + diff);
     bw::InsertContour.Init<Edx, Stack, Stack, Stack>(exec_heap, 0x00421910 + diff);
     bw::PrepareFormationMovement.Init<Edi, Stack>(exec_heap, 0x0049A8C0 + diff);
-    bw::GetFacingDirection.Init<Edx, Stack, Edx, Eax>(exec_heap, 0x00495300 + diff);
+    bw::GetFacingDirection.Init<Edx, Stack, Ecx, Eax>(exec_heap, 0x00495300 + diff);
     bw::GetOthersLocation.Init<Stack, Eax>(exec_heap, 0x004F1A20 + diff);
     bw::GetEnemyAirStrength.Init<Eax, Stack>(exec_heap, 0x00431D00 + diff);
     bw::GetEnemyStrength.Init<Eax, Stack, Stack>(exec_heap, 0x004318E0 + diff);
