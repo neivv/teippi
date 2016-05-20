@@ -258,7 +258,7 @@ namespace patch_func {
         auto wrapper_size = WrapperSize<ArgLoc...>();
         uint8_t *wrapper = (uint8_t *)exec_heap->AllocExecMem(wrapper_size);
         auto result = WriteWrapper<ArgLoc...>(wrapper, wrapper_size, address);
-        Assert(result == wrapper_size);
+        if (result != wrapper_size) { Assert(result == wrapper_size); }
         wrapper_code = (Ret (*)(Args...))wrapper;
     }
 

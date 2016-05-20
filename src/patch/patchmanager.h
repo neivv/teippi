@@ -106,7 +106,7 @@ void PatchContext::Hook(const HookType &hook, typename HookType::Target target) 
     auto wrapper_length = hook.WrapperLength(false);
     uint8_t *wrapper = (uint8_t *)parent->AllocExecMem(wrapper_length + patch.length);
     auto written_length = hook.WriteConversionWrapper(target, wrapper, wrapper_length, false);
-    Assert(written_length == wrapper_length);
+    if (written_length != wrapper_length) { Assert(written_length == wrapper_length); }
     patch.previous_data = wrapper + wrapper_length;
     memcpy(patch.previous_data, address, patch.length);
     hook::WriteJump(address, 5, wrapper);
@@ -131,7 +131,7 @@ void PatchContext::Hook(const HookType &hook, typename HookType::MemberFnTarget 
     auto member_fn_addr = (typename HookType::MemberFnTarget *)(wrapper + wrapper_length + patch.length);
     memcpy(member_fn_addr, &target, member_fn_size);
     auto written_length = hook.WriteMemFnWrapper(member_fn_addr, wrapper, wrapper_length, false);
-    Assert(written_length == wrapper_length);
+    if (written_length != wrapper_length) { Assert(written_length == wrapper_length); }
     patch.previous_data = wrapper + wrapper_length;
     memcpy(patch.previous_data, address, patch.length);
     hook::WriteJump(address, 5, wrapper);
@@ -147,7 +147,7 @@ void PatchContext::CallHook(const HookType &hook, typename HookType::Target targ
     auto wrapper_length = hook.WrapperLength(true);
     uint8_t *wrapper = (uint8_t *)parent->AllocExecMem(wrapper_length + patch.length + 5);
     auto written_length = hook.WriteConversionWrapper(target, wrapper, wrapper_length, true);
-    Assert(written_length == wrapper_length);
+    if (written_length != wrapper_length) { Assert(written_length == wrapper_length); }
     patch.previous_data = wrapper + wrapper_length;
     CopyInstructions(patch.previous_data, address, patch.length);
     hook::WriteJump(address, 5, wrapper);
@@ -166,7 +166,7 @@ void PatchContext::CallHook(const HookType &hook, typename HookType::MemberFnTar
     auto member_fn_addr = (typename HookType::MemberFnTarget *)(wrapper + wrapper_length + patch.length + 5);
     memcpy(member_fn_addr, &target, member_fn_size);
     auto written_length = hook.WriteMemFnWrapper(member_fn_addr, wrapper, wrapper_length, true);
-    Assert(written_length == wrapper_length);
+    if (written_length != wrapper_length) { Assert(written_length == wrapper_length); }
     patch.previous_data = wrapper + wrapper_length;
     memcpy(patch.previous_data, address, patch.length);
     hook::WriteJump(address, 5, wrapper);
