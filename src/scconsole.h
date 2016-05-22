@@ -52,7 +52,7 @@ class ScConsole : public Common::GenericConsole
 
         bool Death(const CmdArgs &args, bool print, bool clear);
 
-        vector<int> ParseUnitId(const char *unit_str, int max_amt);
+        vector<UnitType> ParseUnitId(const char *unit_str, int max_amt);
 
         void GetTownRequests(uint32_t *out, int len, uint32_t *in);
         void DrawAiRegions(int player, Common::Surface *text_surf, const Point32 &pos);
@@ -91,7 +91,7 @@ class ScConsole : public Common::GenericConsole
         bool draw_resource_areas;
 
         // player_mask, unit_id
-        vector<tuple<uint16_t, int>> death_counters;
+        vector<tuple<uint16_t, UnitType>> death_counters;
         vector<std::string> info_lines;
         vector<Grid> grids;
 };

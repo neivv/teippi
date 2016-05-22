@@ -223,6 +223,7 @@ void InitialPatch()
     bullet_system = new BulletSystem;
     lone_sprites = new LoneSpriteSystem;
     enemy_unit_cache = new EnemyUnitCache;
+    score = new Score;
 
     previous_exception_filter = SetUnhandledExceptionFilter(&ExceptionFilter);
 }

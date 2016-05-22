@@ -1698,7 +1698,7 @@ int Unit::GetUsedSpace() const
 
 int Unit::CalculateStrength(bool ground) const
 {
-    int multiplier = bw::unit_strength[ground ? 1 : 0][unit_id];
+    uint32_t multiplier = Type().Strength(ground);
     if (Type() == UnitId::Bunker)
         multiplier *= GetUsedSpace();
     if ((~flags & UnitStatus::Hallucination) && (Type().Flags() & UnitFlags::Spellcaster))

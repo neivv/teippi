@@ -364,8 +364,6 @@ namespace bw
     const array_offset<uint8_t, 12, 0x18> tech_level_sc = 0x0058CF44;
     const array_offset<uint8_t, 12, 0x14> tech_level_bw = 0x0058F140;
 
-    const array_offset<uint32_t, 2, 0xe4> unit_strength = 0x006BB210;
-
     const offset<uint32_t> cheat_flags = 0x006D5A6C;
 
     const offset<uint8_t> image_flags = 0x006CEFB5;
@@ -415,7 +413,6 @@ namespace bw
     const offset<uint32_t> position_search_results_count = 0x006BEE6C;
     const array_offset<uint32_t, 0x4> position_search_results_offsets = 0x006BEE70;
     const offset<x32> unit_max_width = 0x006BEE68;
-    const offset<y32> unit_max_height = 0x006BB930;
 
     const offset<uint8_t> units = 0x0059CCA8; // Repurposed
     const offset<x16u> screen_pos_x_tiles = 0x0057F1D0;
@@ -440,7 +437,6 @@ namespace bw
 
     const array_offset<uint32_t, 5, 5> damage_multiplier = 0x00515B88;
 
-    const array_offset<uint32_t, 0xe4, 12> all_units_count = 0x00582324;
     const array_offset<uint32_t, 12> player_men_deaths = 0x00581E74;
     const array_offset<uint32_t, 12> player_men_kills = 0x00581EA4;
     const array_offset<uint32_t, 12> player_men_kill_score = 0x00581F04;
@@ -449,11 +445,8 @@ namespace bw
     const array_offset<uint32_t, 12> player_building_kill_score = 0x00582054;
     const array_offset<uint32_t, 12> player_factory_deaths = 0x005820E4;
     const array_offset<uint32_t, 12> player_factory_kills = 0x00582114;
-    const array_offset<uint32_t, 0xe4, 12> unit_deaths = 0x0058A364;
-    const array_offset<uint32_t, 0xe4, 12> unit_kills = 0x005878A4;
     const array_offset<uint32_t, 12> building_count = 0x00581E44;
     const array_offset<uint32_t, 12> men_score = 0x00581ED4;
-    const array_offset<uint32_t, 0xe4, 12> completed_units_count = 0x00584DE4;
 
     const array_offset<uint32_t, 0xc> zerg_supply_used = 0x00582174;
     const array_offset<uint32_t, 0xc> terran_supply_used = 0x00582204;
@@ -524,7 +517,6 @@ namespace bw
     const offset<uint32_t> snp_id = 0x0059688C;
     const offset<uint32_t> unk_sound = 0x0051A208; // Actually unk struct
     const array_offset<CycleStruct, 8> cycle_colors = 0x006CE2A0; // Also unk struct
-    const array_offset<GrpSprite *, 0x3e7> image_grps = 0x0051CED0;
     const array_offset<BlendPalette, 0x8> blend_palettes = 0x005128F8;
 
     const offset<uint32_t> scenario_chk_length = 0x006D0F20;
@@ -583,8 +575,17 @@ namespace bw
     const array_offset<DatTable, 0x8> techdata_dat = 0x005137D8;
     const array_offset<DatTable, 0x13> orders_dat = 0x00513EC8;
 
-    const array_offset<int8_t *, 0x3e7> images_dat_shield_overlay = 0x0052E5C8;
-    const array_offset<int8_t *, 6, 0x3e7> images_dat_overlays = 0x0051F2A8;
+    // These are hardcoded constants in code, which may be changed by the dat extender plugin.
+    // Read as grps are being loaded.
+    const offset<int8_t **> image_overlays = 0x004D7290;
+    const offset<int8_t **> image_shield_overlay = 0x004D7349;
+
+    // Other values touched by dat extender.
+    const offset<uint32_t *> unit_strength = 0x0043F2CB;
+    const offset<uint32_t *> completed_units_count = 0x00488EDE;
+    const offset<uint32_t *> all_units_count = 0x00488D3F;
+    const offset<uint32_t *> unit_deaths = 0x00488B68;
+    const offset<uint32_t *> unit_kills = 0x00488BE5;
 
     // Some kind of league thing? Most likely those 0xc00 bytes contain
     // other related data

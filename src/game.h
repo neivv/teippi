@@ -30,6 +30,29 @@ struct HallucinationHitData
     int direction;
 };
 
+class Score
+{
+    public:
+        Score() { Initialize(); }
+        /// Updates the array offsets.
+        void Initialize();
+
+        uint32_t CompletedUnits(UnitType unit_id, int player) const;
+        uint32_t AllUnits(UnitType unit_id, int player) const;
+        uint32_t Deaths(UnitType unit_id, int player) const;
+        uint32_t Kills(UnitType unit_id, int player) const;
+
+        void RecordDeath(Unit *unit, int attacking_player);
+
+    private:
+        uint32_t *completed_units_count;
+        uint32_t *all_units_count;
+        uint32_t *unit_deaths;
+        uint32_t *unit_kills;
+};
+
+extern Score *score;
+
 
 #pragma pack(push)
 #pragma pack(1)

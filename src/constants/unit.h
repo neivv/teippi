@@ -240,6 +240,8 @@ namespace UnitId {
     constexpr UnitType Trigger_Men(0xE6);
     constexpr UnitType Trigger_Buildings(0xE7);
     constexpr UnitType Trigger_Factories(0xE8);
+
+    constexpr UnitType FirstExtendedId(0xFA);
 }
 
 #endif

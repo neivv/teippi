@@ -114,7 +114,7 @@ void UpdateDwebStatuses()
             child->flags &= ~UnitStatus::UnderDweb;
         }
     }
-    if (bw::completed_units_count[UnitId::DisruptionWeb][NeutralPlayer])
+    if (score->CompletedUnits(UnitId::DisruptionWeb, NeutralPlayer) != 0)
     {
         for (Unit *dweb : bw::first_player_unit[NeutralPlayer])
         {
@@ -437,7 +437,7 @@ void Unit::Consume(Unit *target, vector<Unit *> *killed_units)
 {
     if (!target->IsInvincible() && bw::CanTargetSpellOnUnit(TechId::Consume, target, player))
     {
-        IncrementKillScores(target, player);
+        score->RecordDeath(target, player);
         killed_units->emplace_back(target);
         if (~flags & UnitStatus::Hallucination)
         {

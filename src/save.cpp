@@ -379,15 +379,15 @@ void Image::SaveConvert()
             }
             else
             {
-                if (grp == bw::image_grps[image_id])
+                if (grp == Type().Grp())
                     grp = (GrpSprite *)(image_id + 1);
                 else
                 {
-                    for (unsigned int i = 0; i < Limits::ImageTypes; i++)
+                    for (ImageType image_id : ImageType::All())
                     {
-                        if (grp == bw::image_grps[i])
+                        if (grp == image_id.Grp())
                         {
-                            grp = (GrpSprite *)(i + 1);
+                            grp = (GrpSprite *)(image_id.Raw() + 1);
                             break;
                         }
                     }
@@ -398,9 +398,9 @@ void Image::SaveConvert()
         }
         else
         {
-            if ((unsigned int)grp > Limits::ImageTypes)
+            if ((unsigned int)grp > ImageType::Amount())
                 throw SaveConvertFail<Image>("Image: grp", this, 0);
-            grp = bw::image_grps[(int)grp - 1];
+            grp = ImageType((unsigned int)grp - 1).Grp();
             if (IsFlipped())
                 Render = bw::image_renderfuncs[drawfunc].flipped;
             else

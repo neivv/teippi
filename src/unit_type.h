@@ -2,6 +2,7 @@
 #define UNITTYPE_H
 
 #include "types.h"
+#include "common/iter.h"
 #include "dat.h"
 
 /// Dat/other values that are constant for a single unit id
@@ -58,6 +59,21 @@ class UnitType
     public:
         UnitType();
         constexpr explicit UnitType(int unit_id) : unit_id(unit_id) { }
+
+        static uint32_t Amount() { return bw::units_dat[0].entries; }
+        class Types : public Common::Iterator<Types, UnitType> {
+            public:
+                constexpr Types(uint32_t beg, uint32_t end_pos) : pos(beg), end_pos(end_pos) { }
+
+                Optional<UnitType> next();
+
+            private:
+                uint32_t pos;
+                uint32_t end_pos;
+        };
+        static Types All() { return Types(0, Amount()); }
+
+        bool IsValid() const;
 
         FlingyType Flingy() const { return FlingyType(UintValue(0)); };
         UnitType Subunit() const { return UnitType(UintValue(1)); };
@@ -148,11 +164,17 @@ class UnitType
         UpgradeType EnergyUpgrade() const;
         UpgradeType SightUpgrade() const;
 
+        uint32_t Strength(bool ground) const;
+
         constexpr uint16_t Raw() const { return unit_id; }
         constexpr operator uint16_t() const { return Raw(); }
 
+        static void InitializeStrength();
+
     private:
         uint16_t unit_id;
+
+        static uint32_t *strength;
 
         template <class Type>
         const Type &Value(int index, int offset = 0) const {

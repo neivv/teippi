@@ -2,11 +2,32 @@
 
 #include "constants/unit.h"
 #include "constants/upgrade.h"
+#include "constants/weapon.h"
 
 using namespace UnitId;
 
+uint32_t *UnitType::strength = nullptr;
+
+Optional<UnitType> UnitType::Types::next() {
+    if (pos == UnitId::None.Raw()) {
+        pos = UnitId::FirstExtendedId;
+    }
+    if (pos >= end_pos) {
+        return Optional<UnitType>();
+    } else {
+        pos += 1;
+        return Optional<UnitType>(UnitType(pos - 1));
+    }
+}
+
 UnitType::UnitType() : unit_id(UnitId::None)
 {
+}
+
+bool UnitType::IsValid() const {
+    if (unit_id >= Amount())
+        return false;
+    return unit_id < UnitId::None.Raw() || unit_id >= UnitId::FirstExtendedId.Raw();
 }
 
 UpgradeType UnitType::ArmorUpgrade() const
@@ -208,5 +229,64 @@ UpgradeType UnitType::SightUpgrade() const
             return ApialSensors;
         default:
             return UpgradeId::None;
+    }
+}
+
+uint32_t UnitType::Strength(bool ground) const
+{
+    Assert(IsValid());
+    if (ground)
+        return strength[Amount() + unit_id];
+    else
+        return strength[unit_id];
+}
+
+static int GenerateStrength(UnitType unit_id, bool air)
+{
+    using namespace UnitId;
+    switch (unit_id.Raw())
+    {
+        case Larva:
+        case Egg:
+        case Cocoon:
+        case LurkerEgg:
+            return 0;
+        case Carrier:
+        case Gantrithor:
+            return GenerateStrength(Interceptor, air);
+        case Reaver:
+        case Warbringer:
+            return GenerateStrength(Scarab, air);
+        default:
+            if (unit_id.Subunit() != UnitId::None)
+                unit_id = unit_id.Subunit();
+            WeaponType weapon;
+            if (air)
+                weapon = unit_id.AirWeapon();
+            else
+                weapon = unit_id.GroundWeapon();
+            if (weapon == WeaponId::None)
+                return 1;
+            // Fixes ai hangs when using zero damage weapons as main weapon
+            int strength = bw::FinetuneBaseStrength(unit_id, bw::CalculateBaseStrength(weapon, unit_id));
+            return std::max(2, strength);
+    }
+}
+
+// Fixes ai hangs with some mods (See GenerateStrength comment)
+void UnitType::InitializeStrength()
+{
+    strength = *bw::unit_strength;
+    for (UnitType unit_id : UnitType::All())
+    {
+        int ground_str = GenerateStrength(unit_id, false);
+        int air_str = GenerateStrength(unit_id, true);
+        // Dunno
+        if (air_str == 1 && ground_str > air_str)
+            air_str = 0;
+        if (ground_str == 1 && air_str > ground_str)
+            ground_str = 0;
+        strength[unit_id.Raw()] = air_str;
+        strength[Amount() + unit_id.Raw()] = ground_str;
     }
 }

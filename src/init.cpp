@@ -123,14 +123,16 @@ static bool IsDecodedDrawFunc(int drawfunc)
 
 void *LoadGrp(ImageType image_id, uint32_t *images_dat_grp, Tbl *images_tbl, GrpSprite **loaded_grps, void **overlapped, void **out_file)
 {
-    uint32_t grp = image_id.Grp();
+    ImageType::UpdateGrpArray(loaded_grps, image_id);
+
+    uint32_t grp = image_id.GrpId();
     int drawfunc = image_id.DrawFunc();
     bool is_decoded = IsDecodedDrawFunc(drawfunc);
     for (int i = 0; i < image_id; i++)
     {
         ImageType other(i);
         bool other_decoded = IsDecodedDrawFunc(other.DrawFunc());
-        if (other.Grp() == grp && is_decoded == other_decoded)
+        if (other.GrpId() == grp && is_decoded == other_decoded)
         {
             return loaded_grps[i];
         }
@@ -202,55 +204,6 @@ void InitCursorMarker()
     bw::SetVisibility(cursor_marker, 0);
 }
 
-static int GenerateStrength(UnitType unit_id, bool air)
-{
-    using namespace UnitId;
-    switch (unit_id.Raw())
-    {
-        case Larva:
-        case Egg:
-        case Cocoon:
-        case LurkerEgg:
-            return 0;
-        case Carrier:
-        case Gantrithor:
-            return GenerateStrength(Interceptor, air);
-        case Reaver:
-        case Warbringer:
-            return GenerateStrength(Scarab, air);
-        default:
-            if (unit_id.Subunit() != UnitId::None)
-                unit_id = unit_id.Subunit();
-            WeaponType weapon;
-            if (air)
-                weapon = unit_id.AirWeapon();
-            else
-                weapon = unit_id.GroundWeapon();
-            if (weapon == WeaponId::None)
-                return 1;
-            // Fixes ai hangs when using zero damage weapons as main weapon
-            int strength = bw::FinetuneBaseStrength(unit_id, bw::CalculateBaseStrength(weapon, unit_id));
-            return std::max(2, strength);
-    }
-}
-
-// Fixes ai hangs with some mods (See GenerateStrength comment)
-static void GenerateStrengthTable()
-{
-    for (int i = 0; i < UnitId::None.Raw(); i++)
-    {
-        int ground_str = GenerateStrength(UnitType(i), false);
-        int air_str = GenerateStrength(UnitType(i), true);
-        // Dunno
-        if (air_str == 1 && ground_str > air_str)
-            air_str = 0;
-        bw::unit_strength[0][i] = air_str;
-        if (ground_str == 1 && air_str > ground_str)
-            ground_str = 0;
-        bw::unit_strength[1][i] = ground_str;
-    }
-}
-
 static void InitBullets()
 {
     *bw::first_active_bullet = nullptr;
@@ -281,7 +234,7 @@ int InitGame()
     bw::InitPylonSystem();
     bw::LoadMiscDat();
     bw::InitUnitSystem();
-    GenerateStrengthTable();
+    UnitType::InitializeStrength();
     bw::InitSpriteVisionSync();
     if (*bw::loaded_save)
         return 1;

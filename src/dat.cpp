@@ -8,6 +8,11 @@
 #include "strings.h"
 #include "upgrade.h"
 
+GrpSprite **ImageType::grp_array = nullptr;
+uint32_t ImageType::grp_array_size = 0;
+int8_t **ImageType::overlays = nullptr;
+int8_t **ImageType::shield_overlay = nullptr;
+
 OrderType::OrderType() : order_id(OrderId::None.Raw())
 {
 }
@@ -67,12 +72,14 @@ const char *TechType::Name() const
 
 int8_t *ImageType::ShieldOverlay() const
 {
-    return bw::images_dat_shield_overlay[image_id];
+    Assert(image_id < Amount());
+    return shield_overlay[image_id];
 }
 
 int8_t *ImageType::Overlay(int overlay_type) const
 {
-    return bw::images_dat_overlays[overlay_type][image_id];
+    Assert(image_id < Amount());
+    return overlays[overlay_type * Amount() + image_id];
 }
 
 WeaponType::WeaponType() : weapon_id(WeaponId::None.Raw())

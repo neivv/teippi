@@ -171,23 +171,23 @@ bool ScConsole::Cmd_Grid(const CmdArgs &args)
     }
 }
 
-static vector<int> FindUnitFromName(std::string name)
+static vector<UnitType> FindUnitFromName(std::string name)
 {
     std::transform(name.begin(), name.end(), name.begin(), tolower);
-    vector<int> results;
-    for (int i = 0; i < UnitId::None.Raw(); i++)
+    vector<UnitType> results;
+    for (auto unit_id : UnitType::All())
     {
-        std::string unit_name = (*bw::stat_txt_tbl)->GetTblString(i + 1);
+        std::string unit_name = (*bw::stat_txt_tbl)->GetTblString(unit_id.Raw() + 1);
         std::transform(unit_name.begin(), unit_name.end(), unit_name.begin(), tolower);
         if (unit_name.find(name) != std::string::npos)
-            results.emplace_back(i);
+            results.emplace_back(unit_id);
     }
     return results;
 }
 
-vector<int> ScConsole::ParseUnitId(const char *unit_str, int max_amt)
+vector<UnitType> ScConsole::ParseUnitId(const char *unit_str, int max_amt)
 {
-    vector<int> unit_ids;
+    vector<UnitType> unit_ids;
     char *unit_str_end;
     int unit_id = strtoul(unit_str, &unit_str_end, 16);
     if (unit_str_end[0] != 0 || (unit_id == 0 && unit_str[0] != '0'))
@@ -196,7 +196,7 @@ vector<int> ScConsole::ParseUnitId(const char *unit_str, int max_amt)
         if (unit_ids.size() > 30)
         {
             Printf("%d units match '%s'", unit_ids.size(), unit_str);
-            return vector<int>();
+            return vector<UnitType>();
         }
         else if (unit_ids.size() > max_amt)
         {
@@ -206,19 +206,21 @@ vector<int> ScConsole::ParseUnitId(const char *unit_str, int max_amt)
             bool first = true;
             for (auto cand : unit_ids)
             {
-                snprintf(buf, sizeof buf, " %s (%x)", (*bw::stat_txt_tbl)->GetTblString(cand + 1), cand);
+                snprintf(buf, sizeof buf, " %s (%x)",
+                         (*bw::stat_txt_tbl)->GetTblString(cand.Raw() + 1),
+                         cand.Raw());
                 if (!first)
                     msg.push_back(',');
                 msg += buf;
                 first = false;
             }
             Printf(msg.c_str());
-            return vector<int>();
+            return vector<UnitType>();
         }
     }
     else
     {
-        unit_ids.emplace_back(unit_id);
+        unit_ids.emplace_back(UnitType(unit_id));
     }
     if (unit_ids.empty())
         Printf("'%s' is not valid unit id or unit name", unit_str);
@@ -235,7 +237,7 @@ bool ScConsole::Spawn(const CmdArgs &args)
         Printf("spawn <unit name or hex id> [amount] [player id]");
         return false;
     }
-    vector<int> unit_ids = ParseUnitId(unit_str, 1);
+    vector<UnitType> unit_ids = ParseUnitId(unit_str, 1);
 
     if (unit_ids.empty())
     {
@@ -272,7 +274,7 @@ bool ScConsole::Death(const CmdArgs &args, bool print, bool clear)
         Printf("dc;;");
         return false;
     }
-    vector<int> unit_ids = ParseUnitId(unit_str, 10);
+    vector<UnitType> unit_ids = ParseUnitId(unit_str, 10);
 
     if (unit_ids.empty())
     {
@@ -304,7 +306,7 @@ bool ScConsole::Death(const CmdArgs &args, bool print, bool clear)
                     if (player_mask & 1 << i)
                     {
                         char buf[16];
-                        snprintf(buf, sizeof buf, "%d ", bw::unit_deaths[unit_id][i]);
+                        snprintf(buf, sizeof buf, "%d ", score->Deaths(unit_id, i));
                         msg += buf;
                     }
                 }
@@ -691,10 +693,10 @@ void ScConsole::ConstructInfoLines()
     {
         char str[32];
         int unit_count = 0;
-        for (int i = 0; i < UnitId::None.Raw(); i++)
+        for (auto unit_id : UnitType::All())
         {
-            for (int j = 0; j < Limits::Players; j++)
-                unit_count += bw::all_units_count[i][j];
+            for (int player = 0; player < Limits::Players; player++)
+                unit_count += score->AllUnits(unit_id, player);
         }
         snprintf(str, sizeof str, "Units: %d", unit_count);
         info_lines.emplace_back(str);
@@ -1033,17 +1035,17 @@ void ScConsole::DrawDeaths(uint8_t *framebuf, xuint w, yuint h)
     Point32 draw_pos = Point32(20, 50);
     for (const auto &tp : death_counters)
     {
-        int unit_id = get<1>(tp);
+        UnitType unit_id = get<1>(tp);
         int player_mask = get<0>(tp);
         char buf[64];
-        snprintf(buf, sizeof buf, "%s:", (*bw::stat_txt_tbl)->GetTblString(unit_id + 1));
+        snprintf(buf, sizeof buf, "%s:", (*bw::stat_txt_tbl)->GetTblString(unit_id.Raw() + 1));
         std::string msg(buf);
         int player = 0;
         while (player_mask)
         {
             if (player_mask & 1)
             {
-                snprintf(buf, sizeof buf, " %d", bw::unit_deaths[unit_id][player]);
+                snprintf(buf, sizeof buf, " %d", score->Deaths(unit_id, player));
                 msg += buf;
             }
             player++;

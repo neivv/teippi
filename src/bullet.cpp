@@ -64,14 +64,14 @@ static void UnitKilled(Unit *target, Unit *attacker, int attacking_player, vecto
             if (loaded->OrderType() != OrderId::Die) // Necessary?
             {
                 killed_units->emplace_back(loaded);
-                IncrementKillScores(loaded, attacking_player);
+                score->RecordDeath(loaded, attacking_player);
             }
         }
     }
     //debug_log->Log("Unit %p got killed by damage\n", target);
     target->hitpoints = 0;
     killed_units->emplace_back(target);
-    IncrementKillScores(target, attacking_player);
+    score->RecordDeath(target, attacking_player);
     if (attacker)
     {
         if (attacker->IsEnemy(target))
@@ -494,61 +494,6 @@ int GetWeaponDamage(const Unit *target, WeaponType weapon_id, int player)
 static int GetWeaponDamage(const Bullet *bullet, const Unit *target)
 {
     return GetWeaponDamage(target, bullet->Type(), bullet->player);
-}
-
-bool IsPlayerUnk(int player)
-{
-    int type = bw::players[player].type;
-    switch (type)
-    {
-        case 1:
-        case 2:
-            return bw::victory_status[player] != 0;
-        case 0xa:
-        case 0xb:
-            return true;
-        default:
-            return false;
-    }
-}
-
-void IncrementKillScores(Unit *target, int attacking_player)
-{
-    if ((target->flags & UnitStatus::Hallucination) || target->Type().IsSubunit())
-        return;
-
-    int target_player = target->player;
-    int group = target->Type().GroupFlags();
-    if (group & 0x8)
-    {
-        bw::player_men_deaths[target_player]++;
-    }
-    else if (group & 0x10)
-    {
-        bw::player_building_deaths[target_player]++;
-        if (group & 0x20)
-            bw::player_factory_deaths[target_player]++;
-    }
-    bw::unit_deaths[target->unit_id][target_player]++;
-    if (target_player != attacking_player && IsActivePlayer(attacking_player) && !IsPlayerUnk(attacking_player))
-    {
-        if ((~group & 0x8) && (target->Type() != UnitId::Larva) && (target->Type() != UnitId::Egg))
-        {
-            if (group & 0x10)
-            {
-                bw::player_building_kills[attacking_player]++;
-                bw::player_building_kill_score[attacking_player] += target->Type().KillScore();
-                if (group & 0x20)
-                    bw::player_factory_kills[attacking_player]++;
-            }
-        }
-        else
-        {
-            bw::player_men_kills[attacking_player]++;
-            bw::player_men_kill_score[attacking_player] += target->Type().KillScore();
-        }
-        bw::unit_kills[target->unit_id][attacking_player]++;
-    }
 }
 
 // Before UnitWasHit did this but now it only constructs a list and extracts it later here,
@@ -1091,7 +1036,7 @@ void Bullet::AcidSporeHit() const
 
 void Bullet::SpawnBroodlingHit(vector<Unit *> *killed_units) const
 {
-    IncrementKillScores(target, player);
+    score->RecordDeath(target, player);
     killed_units->emplace_back(target);
     parent->IncrementKills();
 }

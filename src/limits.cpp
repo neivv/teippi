@@ -438,7 +438,11 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->Hook(bw::CreateBunkerShootOverlay, CreateBunkerShootOverlay);
 
     patch->Hook(bw::AllocateUnit, &Unit::AllocateAndInit);
-    patch->CallHook(bw::InitUnitSystem_Hook, []{ Unit::DeleteAll(); });
+    patch->CallHook(bw::InitUnitSystem_Hook, []{
+        Unit::DeleteAll();
+        // Hack to do it here but oh well.
+        score->Initialize();
+    });
     patch->Hook(bw::InitSpriteSystem, Sprite::InitSpriteSystem);
 
     patch->Hook(bw::CreateBullet,

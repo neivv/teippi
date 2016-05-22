@@ -88,7 +88,7 @@ Image::Image(Sprite *parent, ImageType image_id, int x, int y) :
 {
     list.prev = nullptr;
     list.next = nullptr;
-    grp = bw::image_grps[image_id];
+    grp = image_id.Grp();
     flags = 0;
     frameset = 0;
     frame = 0;
@@ -645,10 +645,11 @@ static Tbl *GetImagesTbl()
     }
     return tbl;
 }
+
 std::string Image::DebugStr() const
 {
     Tbl *tbl = GetImagesTbl();
-    int grp_id = Type().Grp();
+    int grp_id = Type().GrpId();
     char buf[128];
     snprintf(buf, sizeof buf / sizeof(buf[0]), "%x [unit\\%s]", image_id, tbl->GetTblString(grp_id));
     return buf;
@@ -825,9 +826,9 @@ void DrawCloaked_Flipped(int x, int y, GrpFrameHeader *frame_header, Rect32 *rec
     });
 }
 
-static GrpFrameHeader *GetGrpFrameHeader(int image_id, int frame)
+static GrpFrameHeader *GetGrpFrameHeader(ImageType image_id, int frame)
 {
-    GrpSprite *sprite = bw::image_grps[image_id];
+    GrpSprite *sprite = image_id.Grp();
     return (GrpFrameHeader *)(((uint8_t *)sprite) + 6 + frame * sizeof(GrpFrameHeader));
 }
 

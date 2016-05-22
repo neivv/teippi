@@ -30,6 +30,7 @@ bool all_visions = false;
 bool unitframes_in_progress = false;
 
 GameTests *game_tests = nullptr;
+Score *score = nullptr;
 
 static Optional<SyncData> old_sync;
 
@@ -482,5 +483,105 @@ void BriefingOk(Dialog *dlg, int leave)
         *(uint32_t *)(buf + 1) = bw::player_objectives_string_id[*bw::local_player_id];
         bw::SendCommand(buf, sizeof buf);
         *bw::briefing_state = 2;
+    }
+}
+
+void Score::Initialize()
+{
+    completed_units_count = *bw::completed_units_count;
+    all_units_count = *bw::all_units_count;
+    unit_deaths = *bw::unit_deaths;
+    unit_kills = *bw::unit_kills;
+}
+
+uint32_t Score::CompletedUnits(UnitType unit_id, int player) const
+{
+    Assert(unit_id.IsValid());
+    if (player >= Limits::Players)
+        return 0;
+    return completed_units_count[unit_id.Raw() * Limits::Players + player];
+}
+
+uint32_t Score::AllUnits(UnitType unit_id, int player) const
+{
+    Assert(unit_id.IsValid());
+    if (player >= Limits::Players)
+        return 0;
+    return all_units_count[unit_id.Raw() * Limits::Players + player];
+}
+
+uint32_t Score::Deaths(UnitType unit_id, int player) const
+{
+    Assert(unit_id.IsValid());
+    if (player >= Limits::Players)
+        return 0;
+    return unit_deaths[unit_id.Raw() * Limits::Players + player];
+}
+
+uint32_t Score::Kills(UnitType unit_id, int player) const
+{
+    Assert(unit_id.IsValid());
+    if (player >= Limits::Players)
+        return 0;
+    return unit_kills[unit_id.Raw() * Limits::Players + player];
+}
+
+static bool IsPlayerUnk(int player)
+{
+    int type = bw::players[player].type;
+    switch (type)
+    {
+        case 1:
+        case 2:
+            return bw::victory_status[player] != 0;
+        case 0xa:
+        case 0xb:
+            return true;
+        default:
+            return false;
+    }
+}
+
+void Score::RecordDeath(Unit *target, int attacking_player)
+{
+    if ((target->flags & UnitStatus::Hallucination) || target->Type().IsSubunit())
+        return;
+
+    Assert(target->Type().IsValid());
+
+    int target_player = target->player;
+    if (attacking_player >= Limits::Players || target_player >= Limits::Players)
+        return;
+
+    int group = target->Type().GroupFlags();
+    if (group & 0x8)
+    {
+        bw::player_men_deaths[target_player]++;
+    }
+    else if (group & 0x10)
+    {
+        bw::player_building_deaths[target_player]++;
+        if (group & 0x20)
+            bw::player_factory_deaths[target_player]++;
+    }
+    unit_deaths[target->unit_id * Limits::Players + target_player] += 1;
+    if (target_player != attacking_player && IsActivePlayer(attacking_player) && !IsPlayerUnk(attacking_player))
+    {
+        if ((~group & 0x8) && (target->Type() != UnitId::Larva) && (target->Type() != UnitId::Egg))
+        {
+            if (group & 0x10)
+            {
+                bw::player_building_kills[attacking_player]++;
+                bw::player_building_kill_score[attacking_player] += target->Type().KillScore();
+                if (group & 0x20)
+                    bw::player_factory_kills[attacking_player]++;
+            }
+        }
+        else
+        {
+            bw::player_men_kills[attacking_player]++;
+            bw::player_men_kill_score[attacking_player] += target->Type().KillScore();
+        }
+        unit_kills[target->unit_id * Limits::Players + attacking_player] += 1;
     }
 }

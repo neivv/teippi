@@ -4,6 +4,7 @@
 #include "types.h"
 
 #include "common/assert.h"
+#include "common/iter.h"
 #include "offsets.h"
 
 #pragma pack(push, 1)
@@ -109,7 +110,28 @@ class ImageType
     public:
         constexpr explicit ImageType(int image_id) : image_id(image_id) { }
 
-        uint32_t Grp() const { return UintValue(0); }
+        static uint32_t Amount() { return grp_array_size; }
+
+        class Types : public Common::Iterator<Types, ImageType> {
+            public:
+                constexpr Types(uint32_t beg, uint32_t end_pos) : pos(beg), end_pos(end_pos) { }
+
+                Optional<ImageType> next() {
+                    if (pos == end_pos) {
+                        return Optional<ImageType>();
+                    } else {
+                        pos += 1;
+                        return Optional<ImageType>(ImageType(pos - 1));
+                    }
+                }
+
+            private:
+                uint32_t pos;
+                uint32_t end_pos;
+        };
+        static Types All() { return Types(0, Amount()); }
+
+        uint32_t GrpId() const { return UintValue(0); }
         bool IsTurningGraphic() const { return Value<uint8_t>(1) & 0x1; }
         bool Clickable() const { return Value<uint8_t>(2) & 0x1; }
         bool UseFullIscript() const { return Value<uint8_t>(3) & 0x1; }
@@ -122,11 +144,39 @@ class ImageType
         int8_t *ShieldOverlay() const;
         int8_t *Overlay(int overlay_type) const;
 
+        GrpSprite *Grp() const {
+            Assert(image_id < grp_array_size);
+            return grp_array[image_id];
+        }
+
         constexpr uint16_t Raw() const { return image_id; }
         constexpr operator uint16_t() const { return Raw(); }
 
+        /// Sets grp array or guarantees that it hasn't changed in a way we can't handle.
+        static void UpdateGrpArray(GrpSprite **array, ImageType image_id) {
+            if (image_id.Raw() == 0) {
+                grp_array = array;
+                InitOverlayArrayPointers();
+            } else {
+                Assert(grp_array == array);
+            }
+            if (image_id.Raw() + 1 > grp_array_size) {
+                grp_array_size = image_id.Raw() + 1;
+            }
+        }
+
     private:
+        static GrpSprite **grp_array;
+        static uint32_t grp_array_size;
+        static int8_t **overlays;
+        static int8_t **shield_overlay;
+
         uint16_t image_id;
+
+        static void InitOverlayArrayPointers() {
+            overlays = *bw::image_overlays;
+            shield_overlay = *bw::image_shield_overlay;
+        }
 
         template <class Type>
         const Type &Value(int index, int offset = 0) const {

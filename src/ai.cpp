@@ -975,9 +975,9 @@ static bool IsAtBuildLimit(int player, UnitType unit_id)
         return false;
     if (limit == 255)
         return true;
-    int count = bw::all_units_count[unit_id.Raw()][player];
+    int count = score->AllUnits(unit_id, player);
     if (unit_id == UnitId::SiegeTankTankMode)
-        count += bw::all_units_count[UnitId::SiegeTank_Sieged.Raw()][player];
+        count += score->AllUnits(UnitId::SiegeTank_Sieged, player);
     return count >= limit;
 }
 
