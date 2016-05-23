@@ -258,6 +258,7 @@ namespace bw
     const Stdcall<void(Eax<Sprite *>)> MakeDetected = 0x00497ED0;
 
     const Stdcall<void(Sprite *)> AddDamageOverlay = 0x004993C0;
+    const Stdcall<void(Unit *)> PlaySelectionSound = 0x0048F910;
 }
 
 

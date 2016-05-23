@@ -444,6 +444,7 @@ class Unit
         static Unit *FindById(uint32_t id);
 
         bool IsOnBurningHealth() const;
+        bool IsOnYellowHealth() const;
         int GetMaxShields() const;
         int GetShields() const;
         int GetMaxHealth() const;

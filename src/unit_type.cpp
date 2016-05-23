@@ -35,6 +35,20 @@ UpgradeType UnitType::ArmorUpgrade() const
     return UpgradeType(UintValue(25));
 }
 
+uint32_t UnitType::AnnoyedSound() const
+{
+    if (unit_id > UnitId::CommandCenter)
+        return 0;
+    return UintValue(32);
+}
+
+uint32_t UnitType::AnnoyedSoundCount() const
+{
+    if (unit_id > UnitId::CommandCenter)
+        return 0;
+    return UintValue(33) - AnnoyedSound() + 1;
+}
+
 bool UnitType::IsGoliath() const
 {
     return *this == Goliath || *this == AlanSchezar;
@@ -148,6 +162,11 @@ int UnitType::OverlaySize() const
         return 2;
     else
         return 0;
+}
+
+bool UnitType::HasNeutralSounds() const
+{
+    return IsMineralField() || unit_id == VespeneGeyser || IsCritter();
 }
 
 bool UnitType::MatchesTriggerUnitId(UnitType trig_unit_id) const

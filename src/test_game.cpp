@@ -20,6 +20,7 @@
 #include "offsets.h"
 #include "order.h"
 #include "player.h"
+#include "selection.h"
 #include "targeting.h"
 #include "tech.h"
 #include "text.h"
@@ -41,15 +42,22 @@ static void SelectUnit(Unit *unit) {
     int player = *bw::local_unique_player_id;
     bw::selection_groups[player][0] = unit;
     bw::selection_groups[player][1] = nullptr;
+    bw::client_selection_group3[0] = unit;
     bw::client_selection_group2[0] = unit;
     bw::client_selection_group[0] = unit;
     *bw::primary_selected = unit;
     for (int i = 1; i < Limits::Selection; i++) {
         bw::client_selection_group2[i] = nullptr;
+        bw::client_selection_group3[i] = nullptr;
         bw::client_selection_group[i] = nullptr;
     }
     *bw::client_selection_changed = 1;
     RefreshUi();
+}
+
+static void SendCommand_CreateHotkeyGroup(uint8_t group) {
+    uint8_t buf[] = { commands::Hotkey, 0, group };
+    bw::SendCommand(buf, sizeof buf);
 }
 
 static void CommandToBuild(Unit *builder, UnitType building, const Point &pos, OrderType order) {
@@ -2147,8 +2155,31 @@ struct Test_Extractor : public GameTest {
                     TestAssert(FindUnit(UnitId::VespeneGeyser) == nullptr);
                     TestAssert(FindUnit(UnitId::Extractor) != nullptr);
                     TestAssert(bw::minerals[0] == 37);
-                    SelectUnit(FindUnit(UnitId::Extractor));
                     Pass();
+                }
+            }
+        }
+    }
+};
+
+struct Test_CritterExplosion : public GameTest {
+    void Init() override {
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                Unit *critter = CreateUnitForTestAt(UnitId::Kakaru, 0, Point(100, 100));
+                SelectUnit(critter);
+                SendCommand_CreateHotkeyGroup(1);
+                state++;
+            } break; case 1: {
+                if (UnitCount() == 0) {
+                    Pass();
+                } else {
+                    SelectHotkeyGroup(1);
+                    *bw::selection_sound_cooldown = 0;
+                    bw::ToggleSound();
+                    bw::ToggleSound();
                 }
             }
         }
@@ -2199,6 +2230,7 @@ GameTests::GameTests()
     AddTest("Pathing small gap w/ flingy movement", new Test_PathingFlingyGap);
     AddTest("Rally point", new Test_RallyPoint);
     AddTest("Morph extractor", new Test_Extractor);
+    AddTest("Critter explosion", new Test_CritterExplosion);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)

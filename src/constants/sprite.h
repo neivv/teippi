@@ -11,6 +11,7 @@ namespace SpriteId
     constexpr SpriteType Probe(0xc2);
     constexpr SpriteType NukeDot(0xe7);
     constexpr SpriteType SCV(0xef);
+    constexpr SpriteType NukeHit(0x10b);
     constexpr SpriteType CursorMarker(0x13e);
     constexpr SpriteType LandingDust1(0x143);
     constexpr SpriteType StasisField(0x169);

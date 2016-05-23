@@ -150,6 +150,9 @@
     <ClCompile Include="src\selection.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="src\sound.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
     <ClCompile Include="src\sprite.cpp">
       <Filter>Sources</Filter>
     </ClCompile>

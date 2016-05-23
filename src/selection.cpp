@@ -3,6 +3,7 @@
 #include "commands.h"
 #include "dialog.h"
 #include "resolution.h"
+#include "sound.h"
 #include "sprite.h"
 #include "targeting.h"
 #include "text.h"
@@ -354,7 +355,7 @@ void SelectHotkeyGroup(uint8_t group_id)
         if (bw::IsHigherRank(valid_units[i], highest_rank))
             highest_rank = valid_units[i];
     }
-    bw::PlaySelectionSound(highest_rank);
+    PlaySelectionSound(highest_rank);
     *bw::client_selection_changed = 1;
     *bw::force_portrait_refresh = 1;
     *bw::force_button_refresh = 1;

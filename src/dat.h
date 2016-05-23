@@ -75,6 +75,25 @@ class OrderType
         }
 };
 
+class SoundType
+{
+    public:
+        constexpr explicit SoundType(int sound_id) : sound_id(sound_id) { }
+
+        int16_t PortraitTimeModifier() const { return Value<int16_t>(3); }
+
+        constexpr uint16_t Raw() const { return sound_id; }
+        constexpr operator uint16_t() const { return Raw(); }
+
+    private:
+        uint16_t sound_id;
+
+        template <class Type>
+        const Type &Value(int index, int offset = 0) const {
+            return Dat::Value<Type>(&bw::sfxdata_dat[index], sound_id, offset);
+        }
+};
+
 class TechType
 {
     public:

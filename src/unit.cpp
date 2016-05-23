@@ -1328,6 +1328,14 @@ bool Unit::IsOnBurningHealth() const
     return (hp * 100 / max_hp) <= 33;
 }
 
+bool Unit::IsOnYellowHealth() const
+{
+    int max_hp = GetMaxHealth();
+    int hp = (hitpoints + 0xff) >> 8;
+    int percentage = (hp * 100 / max_hp);
+    return percentage < 66 && percentage > 33;
+}
+
 int Unit::GetWeaponRange(bool ground) const
 {
     using namespace UnitId;

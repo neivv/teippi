@@ -4,7 +4,8 @@
 namespace Sound
 {
     const int ZergBuildingCancel = 0x4;
-
+    const int Button = 0xf;
+    const int SmallBuildingFire = 0x12;
     const int GeyserDepleted = 0x14;
 
     const int LoadUnit_Zerg = 0x28;
@@ -15,6 +16,7 @@ namespace Sound
     const int UnloadUnit_Protoss = 0x2d;
 
     const int NukeLaunch = 0x54;
+    const int PowerDown_Zerg = 0x72;
     const int Advisor_NukeLaunch = 0x7f;
 
     const int Error_Zerg = 0x8a;
@@ -34,6 +36,8 @@ namespace Sound
     const int Decloak = 0x112;
 
     const int Irradiate = 0x15f;
+
+    const int LargeBuildingFire = 0x193;
 
     const int ProtossBuildingFinishing = 0x211;
 

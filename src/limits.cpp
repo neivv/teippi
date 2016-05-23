@@ -23,6 +23,7 @@
 #include "rng.h"
 #include "save.h"
 #include "selection.h"
+#include "sound.h"
 #include "sprite.h"
 #include "targeting.h"
 #include "tech.h"
@@ -652,4 +653,6 @@ void RemoveLimits(Common::PatchContext *patch)
         [](Unit *a, int b, int c, int d, uint16_t e, int f, int g, int h, int i) {
         return UpdateBuildingPlacementState(a, b, c, d, UnitType(e), f, g, h, i);
     });
+
+    patch->Hook(bw::PlaySelectionSound, PlaySelectionSound);
 }

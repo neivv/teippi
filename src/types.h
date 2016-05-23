@@ -119,6 +119,7 @@ struct MapDl;
 struct Event;
 struct CycleStruct;
 struct DatTable;
+struct SoundData;
 
 // Trigger-related callback param structures
 struct KillUnitArgs;

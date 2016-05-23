@@ -566,6 +566,10 @@ namespace bw
     const array_offset<char, 13, 218> chat_messages = 0x00640B60;
     const array_offset<uint8_t, 12> starting_player_types = 0x0057F1B4;
 
+    const offset<uint32_t> previous_unit_sound = 0x006D5BE0;
+    const offset<uint32_t> quiet_sounds = 0x0064086C;
+    const offset<uint32_t> selection_sound_cooldown = 0x0064087C;
+
     const array_offset<DatTable, 0x35> units_dat = 0x00513C30;
     const array_offset<DatTable, 0x17> weapons_dat = 0x00513868;
     const array_offset<DatTable, 0x7> flingy_dat = 0x00515A38;
@@ -573,6 +577,7 @@ namespace bw
     const array_offset<DatTable, 0xb> images_dat = 0x00514010;
     const array_offset<DatTable, 0xb> upgrades_dat = 0x005136E0;
     const array_offset<DatTable, 0x8> techdata_dat = 0x005137D8;
+    const array_offset<DatTable, 0x5> sfxdata_dat = 0x00515498;
     const array_offset<DatTable, 0x13> orders_dat = 0x00513EC8;
 
     // These are hardcoded constants in code, which may be changed by the dat extender plugin.
@@ -586,6 +591,8 @@ namespace bw
     const offset<uint32_t *> all_units_count = 0x00488D3F;
     const offset<uint32_t *> unit_deaths = 0x00488B68;
     const offset<uint32_t *> unit_kills = 0x00488BE5;
+
+    const offset<SoundData *> sound_data = 0x004BB8E8;
 
     // Some kind of league thing? Most likely those 0xc00 bytes contain
     // other related data

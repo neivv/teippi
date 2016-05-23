@@ -97,6 +97,10 @@ class UnitType
         uint8_t ArmorType() const { return UintValue(26); }
         uint8_t Armor() const { return UintValue(27); }
         uint8_t RightClickAction() const { return UintValue(28); }
+        uint32_t WhatSound() const { return UintValue(30); }
+        uint32_t WhatSoundCount() const { return UintValue(31) - WhatSound() + 1; }
+        uint32_t AnnoyedSound() const;
+        uint32_t AnnoyedSoundCount() const;
         uint16_t MineralCost() const { return UintValue(40); }
         uint16_t GasCost() const { return UintValue(41); }
         uint16_t BuildTime() const { return UintValue(42); }
@@ -159,6 +163,8 @@ class UnitType
 
         bool IsMineralField() const;
         bool IsGasBuilding() const;
+        /// If an unit belonging to neutral player plays a sound when selected
+        bool HasNeutralSounds() const;
         bool MatchesTriggerUnitId(UnitType trig_unit_id) const;
 
         UpgradeType EnergyUpgrade() const;

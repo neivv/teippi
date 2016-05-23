@@ -47,7 +47,6 @@ void InitBwFuncs_1161(Common::PatchManager *exec_heap, uintptr_t current_base_ad
     bw::IsTooClose.Init<Eax, Esi>(exec_heap, 0x004764D0 + diff);
     bw::IsPowered.Init<Eax, Stack, Stack, Stack>(exec_heap, 0x004936B0 + diff);
 
-    bw::PlaySelectionSound.Init<Stack>(exec_heap, 0x0048F910 + diff);
     bw::GetFormationMovementTarget.Init<Stack, Stack>(exec_heap, 0x0049A500 + diff);
     bw::ShowRClickErrorIfNeeded.Init<Stack>(exec_heap, 0x00455A00 + diff);
     bw::NeedsMoreEnergy.Init<Stack, Stack>(exec_heap, 0x00491480 + diff);
@@ -137,6 +136,8 @@ void InitBwFuncs_1161(Common::PatchManager *exec_heap, uintptr_t current_base_ad
     bw::ShowErrorMessage.Init<Eax, Ecx, Edx>(exec_heap, 0x0048EF30 + diff);
     bw::PrintInfoMessage.Init<Eax>(exec_heap, 0x0048CCB0 + diff);
     bw::PrintInfoMessageForLocalPlayer.Init<Eax, Ecx>(exec_heap, 0x0048CF00 + diff);
+    bw::ToggleSound.Init<>(exec_heap, 0x004BC110 + diff);
+    bw::TalkingPortrait.Init<Eax, Edi, Stack, Stack>(exec_heap, 0x0045EFE0 + diff);
 
     bw::Distance.Init<Ecx, Stack, Edx, Stack>(exec_heap, 0x0040C360 + diff);
     bw::IsPointInArea.Init<Ecx, Stack, Stack, Eax>(exec_heap, 0x00401240 + diff);
@@ -691,7 +692,6 @@ namespace bw {
     Func<bool(const Unit *, const Unit *)> IsTooClose;
     Func<bool(int, x32, y32, int)> IsPowered;
 
-    Func<void(Unit *)> PlaySelectionSound;
     Func<void(Unit *, MovementGroup *)> GetFormationMovementTarget;
     Func<int(Unit *)> ShowRClickErrorIfNeeded;
     Func<int(Unit *, int)> NeedsMoreEnergy;
@@ -774,13 +774,15 @@ namespace bw {
     Func<bool(File *, int)> LoadDatChunk;
     Func<void()> RestorePylons;
 
-    Func<void(int, Unit *, int, int)> PlaySound;
+    Func<int(int, Unit *, int, int)> PlaySound;
     Func<void(int, uint32_t, int, int)> PlaySoundAtPos;
     Func<void(const char *, int, int)> PrintText;
     Func<void(int, int, int)> ShowInfoMessage;
     Func<void(const char *, int, Unit *)> ShowErrorMessage;
     Func<void(const char *)> PrintInfoMessage;
     Func<void(const char *, int)> PrintInfoMessageForLocalPlayer;
+    Func<void()> ToggleSound;
+    Func<void(Unit *, int, int, int)> TalkingPortrait;
 
     Func<int(x32, y32, x32, y32)> Distance;
     Func<bool(const Unit *, int, x32, y32)> IsPointInArea;

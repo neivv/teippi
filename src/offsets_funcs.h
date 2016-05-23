@@ -43,7 +43,6 @@ namespace bw {
     extern Func<bool(const Unit *, const Unit *)> IsTooClose;
     extern Func<bool(int, x32, y32, int)> IsPowered;
 
-    extern Func<void(Unit *)> PlaySelectionSound;
     extern Func<void(Unit *, MovementGroup *)> GetFormationMovementTarget;
     extern Func<int(Unit *)> ShowRClickErrorIfNeeded;
     extern Func<int(Unit *, int)> NeedsMoreEnergy;
@@ -126,13 +125,15 @@ namespace bw {
     extern Func<bool(File *, int)> LoadDatChunk;
     extern Func<void()> RestorePylons;
 
-    extern Func<void(int, Unit *, int, int)> PlaySound;
+    extern Func<int(int, Unit *, int, int)> PlaySound;
     extern Func<void(int, uint32_t, int, int)> PlaySoundAtPos;
     extern Func<void(const char *, int, int)> PrintText;
     extern Func<void(int, int, int)> ShowInfoMessage;
     extern Func<void(const char *, int, Unit *)> ShowErrorMessage;
     extern Func<void(const char *)> PrintInfoMessage;
     extern Func<void(const char *, int)> PrintInfoMessageForLocalPlayer;
+    extern Func<void()> ToggleSound;
+    extern Func<void(Unit *, int, int, int)> TalkingPortrait;
 
     extern Func<int(x32, y32, x32, y32)> Distance;
     extern Func<bool(const Unit *, int, x32, y32)> IsPointInArea;

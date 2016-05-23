@@ -51,6 +51,7 @@
     <ClCompile Include="src\scconsole.cpp" />
     <ClCompile Include="src\scthread.cpp" />
     <ClCompile Include="src\selection.cpp" />
+    <ClCompile Include="src\sound.cpp" />
     <ClCompile Include="src\sprite.cpp" />
     <ClCompile Include="src\strings.cpp" />
     <ClCompile Include="src\targeting.cpp" />
