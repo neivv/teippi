@@ -621,7 +621,8 @@ class Unit
 
         bool CanBeAttacked() const;
         bool CanAttackUnit(const Unit *other, bool check_detection = true) const;
-        bool CanAttackUnit_Fast(const Unit *other, bool check_detection) const;
+        /// Micro-optimization :|
+        bool CanAttackUnit_ChooseTarget(const Unit *other, bool check_detection) const;
         bool IsThreat(const Unit *other) const;
 
         uint32_t GetHaltDistance() const;

@@ -187,8 +187,6 @@ def build(bld):
     if debug:
         src += debug_src
 
-    includes += [bld.bldnode.find_dir('src')]
-
     if msvc:
         def_file = ['msvc.def'] # Why doesn't msvc allow @4 prefix on stdcall ???
     else:

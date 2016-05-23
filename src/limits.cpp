@@ -1,35 +1,35 @@
 #include "limits.h"
 
 #include "patch/patchmanager.h"
+#include "ai.h"
+#include "building.h"
+#include "bullet.h"
+#include "bunker.h"
+#include "commands.h"
+#include "dialog.h"
+#include "draw.h"
+#include "flingy.h"
+#include "game.h"
+#include "init.h"
+#include "image.h"
+#include "iscript.h"
+#include "log.h"
 #include "offsets_hooks.h"
 #include "offsets.h"
-#include "image.h"
-#include "sprite.h"
-#include "unit.h"
-#include "bullet.h"
-#include "triggers.h"
-#include "dialog.h"
-#include "commands.h"
 #include "order.h"
-#include "unitsearch.h"
-#include "bunker.h"
-#include "tech.h"
-#include "ai.h"
-#include "log.h"
-#include "game.h"
-#include "iscript.h"
-#include "save.h"
 #include "pathing.h"
-#include "selection.h"
-#include "replay.h"
-#include "warn.h"
-#include "rng.h"
-#include "flingy.h"
-#include "init.h"
-#include "targeting.h"
 #include "player.h"
-#include "draw.h"
-#include "building.h"
+#include "replay.h"
+#include "rng.h"
+#include "save.h"
+#include "selection.h"
+#include "sprite.h"
+#include "targeting.h"
+#include "tech.h"
+#include "triggers.h"
+#include "unitsearch.h"
+#include "warn.h"
+#include "unit.h"
 
 Common::PatchManager *patch_mgr;
 
@@ -399,7 +399,7 @@ void RemoveLimits(Common::PatchContext *patch)
     patch->Hook(bw::GameFunc, ProgressFrames);
 
     patch->Hook(bw::CreateOrder, [](uint8_t order, uint32_t pos, Unit *target, uint16_t fow) {
-        return Order::Allocate(OrderType(order), Point(pos & 0xffff, pos >> 16), target, UnitType(fow));
+        return new Order(OrderType(order), Point(pos & 0xffff, pos >> 16), target, UnitType(fow));
     });
     patch->Hook(bw::DeleteOrder, DeleteOrder_Hook);
     patch->Hook(bw::DeleteSpecificOrder, [](Unit *unit, uint8_t order) {

@@ -15,6 +15,28 @@ struct DatTable {
 };
 #pragma pack(pop)
 
+namespace Dat {
+    template <class Type>
+    const Type &Value(const DatTable *dat, int entry, int offset = 0) {
+        Assert(dat->entries > entry + offset);
+        return *((const Type *)dat->data + entry + offset);
+    }
+
+    inline uint32_t UintValue(const DatTable *dat, int entry, int offset = 0) {
+        switch (dat->entry_size) {
+            case 1:
+                return Value<uint8_t>(dat, entry, offset);
+            case 2:
+                return Value<uint16_t>(dat, entry, offset);
+            case 4:
+                return Value<uint32_t>(dat, entry, offset);
+            default:
+                Assert(false);
+                return 0;
+        }
+    }
+}
+
 class OrderType
 {
     public:
@@ -45,24 +67,11 @@ class OrderType
 
         template <class Type>
         const Type &Value(int index, int offset = 0) const {
-            const auto &dat = bw::orders_dat[index];
-            Assert(dat.entries > order_id + offset);
-            return *((Type *)dat.data + order_id + offset);
+            return Dat::Value<Type>(&bw::orders_dat[index], order_id, offset);
         }
 
         uint32_t UintValue(int index, int offset = 0) const {
-            const auto &dat = bw::orders_dat[index];
-            switch (dat.entry_size) {
-                case 1:
-                    return Value<uint8_t>(index, offset);
-                case 2:
-                    return Value<uint16_t>(index, offset);
-                case 4:
-                    return Value<uint32_t>(index, offset);
-                default:
-                    Assert(false);
-                    return 0;
-            }
+            return Dat::UintValue(&bw::orders_dat[index], order_id, offset);
         }
 };
 
@@ -84,24 +93,11 @@ class TechType
 
         template <class Type>
         const Type &Value(int index, int offset = 0) const {
-            const auto &dat = bw::techdata_dat[index];
-            Assert(dat.entries > tech_id + offset);
-            return *((Type *)dat.data + tech_id + offset);
+            return Dat::Value<Type>(&bw::techdata_dat[index], tech_id, offset);
         }
 
         uint32_t UintValue(int index, int offset = 0) const {
-            const auto &dat = bw::techdata_dat[index];
-            switch (dat.entry_size) {
-                case 1:
-                    return Value<uint8_t>(index, offset);
-                case 2:
-                    return Value<uint16_t>(index, offset);
-                case 4:
-                    return Value<uint32_t>(index, offset);
-                default:
-                    Assert(false);
-                    return 0;
-            }
+            return Dat::UintValue(&bw::techdata_dat[index], tech_id, offset);
         }
 };
 
@@ -180,24 +176,11 @@ class ImageType
 
         template <class Type>
         const Type &Value(int index, int offset = 0) const {
-            const auto &dat = bw::images_dat[index];
-            Assert(dat.entries > image_id + offset);
-            return *((Type *)dat.data + image_id + offset);
+            return Dat::Value<Type>(&bw::images_dat[index], image_id, offset);
         }
 
         uint32_t UintValue(int index, int offset = 0) const {
-            const auto &dat = bw::images_dat[index];
-            switch (dat.entry_size) {
-                case 1:
-                    return Value<uint8_t>(index, offset);
-                case 2:
-                    return Value<uint16_t>(index, offset);
-                case 4:
-                    return Value<uint32_t>(index, offset);
-                default:
-                    Assert(false);
-                    return 0;
-            }
+            return Dat::UintValue(&bw::images_dat[index], image_id, offset);
         }
 };
 
@@ -217,24 +200,11 @@ class SpriteType
 
         template <class Type>
         const Type &Value(int index, int offset = 0) const {
-            const auto &dat = bw::sprites_dat[index];
-            Assert(dat.entries > sprite_id + offset);
-            return *((Type *)dat.data + sprite_id + offset);
+            return Dat::Value<Type>(&bw::sprites_dat[index], sprite_id, offset);
         }
 
         uint32_t UintValue(int index, int offset = 0) const {
-            const auto &dat = bw::sprites_dat[index];
-            switch (dat.entry_size) {
-                case 1:
-                    return Value<uint8_t>(index, offset);
-                case 2:
-                    return Value<uint16_t>(index, offset);
-                case 4:
-                    return Value<uint32_t>(index, offset);
-                default:
-                    Assert(false);
-                    return 0;
-            }
+            return Dat::UintValue(&bw::sprites_dat[index], sprite_id, offset);
         }
 };
 
@@ -257,24 +227,11 @@ class FlingyType
 
         template <class Type>
         const Type &Value(int index, int offset = 0) const {
-            const auto &dat = bw::flingy_dat[index];
-            Assert(dat.entries > flingy_id + offset);
-            return *((Type *)dat.data + flingy_id + offset);
+            return Dat::Value<Type>(&bw::flingy_dat[index], flingy_id, offset);
         }
 
         uint32_t UintValue(int index, int offset = 0) const {
-            const auto &dat = bw::flingy_dat[index];
-            switch (dat.entry_size) {
-                case 1:
-                    return Value<uint8_t>(index, offset);
-                case 2:
-                    return Value<uint16_t>(index, offset);
-                case 4:
-                    return Value<uint32_t>(index, offset);
-                default:
-                    Assert(false);
-                    return 0;
-            }
+            return Dat::UintValue(&bw::flingy_dat[index], flingy_id, offset);
         }
 };
 
@@ -314,24 +271,11 @@ class WeaponType
 
         template <class Type>
         const Type &Value(int index, int offset = 0) const {
-            const auto &dat = bw::weapons_dat[index];
-            Assert(dat.entries > weapon_id + offset);
-            return *((Type *)dat.data + weapon_id + offset);
+            return Dat::Value<Type>(&bw::weapons_dat[index], weapon_id, offset);
         }
 
         uint32_t UintValue(int index, int offset = 0) const {
-            const auto &dat = bw::weapons_dat[index];
-            switch (dat.entry_size) {
-                case 1:
-                    return Value<uint8_t>(index, offset);
-                case 2:
-                    return Value<uint16_t>(index, offset);
-                case 4:
-                    return Value<uint32_t>(index, offset);
-                default:
-                    Assert(false);
-                    return 0;
-            }
+            return Dat::UintValue(&bw::weapons_dat[index], weapon_id, offset);
         }
 };
 

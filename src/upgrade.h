@@ -26,24 +26,11 @@ class UpgradeType
         const DatTable &GetDat(int index) const;
         template <class Type>
         const Type &Value(int index, int offset = 0) const {
-            const auto &dat = GetDat(index);
-            Assert(dat.entries > upgrade_id + offset);
-            return *((Type *)dat.data + upgrade_id + offset);
+            return Dat::Value<Type>(&GetDat(index), upgrade_id, offset);
         }
 
         uint32_t UintValue(int index, int offset = 0) const {
-            const auto &dat = GetDat(index);
-            switch (dat.entry_size) {
-                case 1:
-                    return Value<uint8_t>(index, offset);
-                case 2:
-                    return Value<uint16_t>(index, offset);
-                case 4:
-                    return Value<uint32_t>(index, offset);
-                default:
-                    Assert(false);
-                    return 0;
-            }
+            return Dat::UintValue(&GetDat(index), upgrade_id, offset);
         }
 };
 

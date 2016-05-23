@@ -342,16 +342,8 @@ void Unit::SpawnBroodlings(const Point &pos_)
 
 void EmpShockwave(Unit *attacker, const Point &position)
 {
-    Rect16 area(position, WeaponId::EmpShockwave.InnerSplash());
     // Dunno why bw does area checks here but not with other spells
-    if (area.top > area.bottom)
-        area.top = 0;
-    else if (area.bottom > *bw::map_height)
-        area.bottom = *bw::map_height;
-    if (area.left > area.right)
-        area.left = 0;
-    else if (area.right > *bw::map_width)
-        area.right = *bw::map_width;
+    Rect16 area = Rect16(position, WeaponId::EmpShockwave.InnerSplash()).Clipped(MapBounds());
 
     unit_search->ForEachUnitInArea(area, [attacker](Unit *unit)
     {

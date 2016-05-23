@@ -2861,7 +2861,7 @@ bool Unit::CanBeAttacked() const
     return true;
 }
 
-bool Unit::CanAttackUnit_Fast(const Unit *enemy, bool check_detection) const
+bool Unit::CanAttackUnit_ChooseTarget(const Unit *enemy, bool check_detection) const
 {
     using namespace UnitId;
 
@@ -3031,7 +3031,7 @@ tuple<int, Unit *> Unit::ChooseTarget_Player(bool check_alliance, Array<Unit *> 
                 continue;
         }
 
-        if (!CanAttackUnit_Fast(unit, true))
+        if (!CanAttackUnit_ChooseTarget(unit, true))
             continue;
 
         if (!IsFlying() && !IsInAttackRange(unit) && flags & UnitStatus::Unk80)
@@ -5700,7 +5700,7 @@ void Unit::PrependOrder(class OrderType order, Unit *target, const Point &pos, U
 
 void Unit::InsertOrderAfter(class OrderType order_id, Unit *target, const Point &pos, UnitType fow_unit, Order *insert_after)
 {
-    Order *new_order = Order::Allocate(order_id, pos, target, fow_unit);
+    Order *new_order = new Order(order_id, pos, target, fow_unit);
     if (order_id.Highlight() != 0xffff)
         highlighted_order_count += 1;
 
@@ -5735,7 +5735,7 @@ void Unit::InsertOrderBefore(class OrderType order_id, Unit *target, const Point
     if (ai != nullptr && highlighted_order_count > 8)
         return;
 
-    Order *new_order = Order::Allocate(order_id, pos, target, fow_unit);
+    Order *new_order = new Order(order_id, pos, target, fow_unit);
     if (order_id.Highlight() != 0xffff)
         highlighted_order_count += 1;
 

@@ -10,6 +10,14 @@ class Rng
         {
             seed = seed * 0x15A4E35 + 1;
             uint32_t ret = (seed >> 0x10) & 0x7fff;
+            if (vals > 0x8000)
+            {
+                ret |= Rand(0x8000) << 15;
+                if (vals > 0x40000000)
+                {
+                    ret |= Rand(0x4) << 30;
+                }
+            }
             return ret % vals;
         }
 

@@ -54,7 +54,7 @@ static bool IsActive(int player)
 
 int ActivePlayerIterator::NextActivePlayer(int beg)
 {
-    if (*bw::team_game && *bw::is_multiplayer)
+    if (IsTeamGame())
     {
         for (int i = beg + 1; i < 4; i++)
         {

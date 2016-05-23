@@ -1,14 +1,14 @@
 #include "selection.h"
 
+#include "commands.h"
+#include "dialog.h"
+#include "resolution.h"
+#include "sprite.h"
+#include "targeting.h"
 #include "text.h"
 #include "unit.h"
-#include "sprite.h"
-#include "resolution.h"
-#include "dialog.h"
-#include "targeting.h"
-#include "commands.h"
-#include "yms.h"
 #include "warn.h"
+#include "yms.h"
 
 #include <string.h>
 #include "console/windows_wrap.h"

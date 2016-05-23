@@ -969,12 +969,7 @@ void Bullet::Splash(ProgressBulletBufs *bufs, bool hit_own_units)
     else if (air_splash && rand_fulldmg_pos != units_beg)
     {
         int count = rand_fulldmg_pos - units_beg;
-        Unit *fulldmg;
-        if (count < 0x8000)
-            fulldmg = units_beg[Rand(0x3a) % count];
-        else
-            fulldmg = units_beg[(Rand(0x3a) | Rand(0x3a) << 0xf) % count];
-
+        Unit *fulldmg = units_beg[MainRng()->Rand(count)];
         int damage = GetWeaponDamage(this, fulldmg);
         HitUnit(fulldmg, damage, bufs);
     }

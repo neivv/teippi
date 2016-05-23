@@ -6,23 +6,12 @@
 
 DummyListHead<Order, Order::offset_of_allocated> first_allocated_order;
 
-Order::Order()
+Order::Order(OrderType order_id, const Point &position, Unit *target, UnitType fow_unit_id) :
+    order_id(order_id.Raw()), fow_unit(fow_unit_id.Raw()), position(position), target(target)
 {
     allocated.Add(first_allocated_order);
-}
-
-Order *Order::Allocate(OrderType order_id, const Point &position, Unit *target, UnitType fow_unit_id)
-{
-    Order *order;
-    order = new Order;
-    order->list.prev = nullptr;
-    order->list.next = nullptr;
-    order->order_id = order_id.Raw();
-    order->position = position;
-    order->target = target;
-    order->fow_unit = fow_unit_id.Raw();
-
-    return order;
+    list.prev = nullptr;
+    list.next = nullptr;
 }
 
 void Order::SingleDelete()

@@ -178,24 +178,11 @@ class UnitType
 
         template <class Type>
         const Type &Value(int index, int offset = 0) const {
-            const auto &dat = bw::units_dat[index];
-            Assert(dat.entries > unit_id + offset);
-            return *((Type *)dat.data + unit_id + offset);
+            return Dat::Value<Type>(&bw::units_dat[index], unit_id, offset);
         }
 
         uint32_t UintValue(int index, int offset = 0) const {
-            const auto &dat = bw::units_dat[index];
-            switch (dat.entry_size) {
-                case 1:
-                    return Value<uint8_t>(index, offset);
-                case 2:
-                    return Value<uint16_t>(index, offset);
-                case 4:
-                    return Value<uint32_t>(index, offset);
-                default:
-                    Assert(false);
-                    return 0;
-            }
+            return Dat::UintValue(&bw::units_dat[index], unit_id, offset);
         }
 };
 #endif /* UNITTYPE_H */

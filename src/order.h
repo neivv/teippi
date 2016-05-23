@@ -17,11 +17,10 @@ class Order
         Point position;
         Unit *target;
 
-        Order();
+        Order(OrderType order_id, const Point &position, Unit *target, UnitType fow_unit_id);
         static Order *RawAlloc() { return new Order(true); }
         ~Order() {}
 
-        static Order *Allocate(OrderType order, const Point &position, Unit *target, UnitType fow_unit_id);
         void SingleDelete();
 
         static void DeleteAll();
