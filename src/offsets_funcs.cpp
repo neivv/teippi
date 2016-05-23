@@ -443,7 +443,7 @@ void InitBwFuncs_1161(Common::PatchManager *exec_heap, uintptr_t current_base_ad
     bw::Order_RechargeShieldsBattery.Init<Eax>(exec_heap, 0x00493990 + diff);
     bw::Order_AiAttackMove.Init<Eax>(exec_heap, 0x00478DE0 + diff);
     bw::Order_AttackFixedRange.Init<Eax>(exec_heap, 0x00477D00 + diff);
-    bw::Order_LiftOff.Init<Eax>(exec_heap, 0x004649B0 + diff);
+    bw::Order_LiftOff.Init<Esi>(exec_heap, 0x004649B0 + diff);
     bw::Order_TerranBuildSelf.Init<Eax>(exec_heap, 0x00467760 + diff);
     bw::Order_ZergBuildSelf.Init<Eax>(exec_heap, 0x0045D500 + diff);
     bw::Order_ConstructingBuilding.Init<Eax>(exec_heap, 0x00467A70 + diff);
