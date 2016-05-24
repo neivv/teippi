@@ -60,10 +60,29 @@ static void SendCommand_CreateHotkeyGroup(uint8_t group) {
     bw::SendCommand(buf, sizeof buf);
 }
 
-static void CommandToBuild(Unit *builder, UnitType building, const Point &pos, OrderType order) {
-    SelectUnit(builder);
-    uint16_t x_tile = (pos.x - building.PlacementBox().width / 2) / 32;
-    uint16_t y_tile = (pos.y - building.PlacementBox().height / 2) / 32;
+static void SendCommand_Select(std::initializer_list<Unit *> units) {
+    Unit *arr[12];
+    int pos = 0;
+    for (auto unit : units) {
+        arr[pos] = unit;
+        pos += 1;
+    }
+    bw::UpdateSelectionOverlays(arr, pos);
+    SendChangeSelectionCommand(pos, arr);
+    *bw::client_selection_changed = 1;
+}
+
+static void SendCommand_Select(Unit *unit) {
+    SendCommand_Select({ unit });
+}
+
+static void SendCommand_PlaceBuilding(Unit *unit,
+                                      UnitType building,
+                                      int x_tile,
+                                      int y_tile,
+                                      OrderType order) {
+
+    SelectUnit(unit);
     uint16_t building_id = building.Raw();
     uint8_t cmd[8];
     cmd[0] = commands::Build;
@@ -72,6 +91,31 @@ static void CommandToBuild(Unit *builder, UnitType building, const Point &pos, O
     memcpy(cmd + 4, &y_tile, 2);
     memcpy(cmd + 6, &building_id, 2);
     bw::SendCommand(cmd, sizeof cmd);
+}
+
+static void CommandToBuild(Unit *builder, UnitType building, const Point &pos, OrderType order) {
+    uint16_t x_tile = (pos.x - building.PlacementBox().width / 2) / 32;
+    uint16_t y_tile = (pos.y - building.PlacementBox().height / 2) / 32;
+    SendCommand_PlaceBuilding(builder, building, x_tile, y_tile, order);
+}
+
+static void SendCommand_Liftoff(Unit *unit) {
+    SendCommand_Select(unit);
+    uint8_t cmd[] = { commands::Lift, 0, 0, 0, 0 };
+    bw::SendCommand(cmd, sizeof cmd);
+}
+
+static void SendCommand_Land(Unit *unit, int x_tile, int y_tile) {
+    SendCommand_PlaceBuilding(unit, unit->Type(), x_tile, y_tile, OrderId::Land);
+}
+
+static void SendCommand_BuildAddon(Unit *unit, UnitType addon, int x_tile, int y_tile) {
+    SendCommand_PlaceBuilding(unit, addon, x_tile, y_tile, OrderId::PlaceAddon);
+}
+
+static void SendCommand_RightClick(Unit *unit, const Point &pos, bool queued) {
+    SendCommand_Select(unit);
+    SendRightClickCommand(nullptr, pos.x, pos.y, UnitId::None, queued);
 }
 
 static void ClearTriggers() {
@@ -2227,6 +2271,92 @@ struct Test_BuildingLandDeath : public GameTest {
     }
 };
 
+struct Test_BuildingLandQueuing : public GameTest {
+    Unit *building;
+    void Init() override {
+        bw::minerals[0] = 50;
+        bw::gas[0] = 50;
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                building = CreateUnitForTestAt(UnitId::CommandCenter, 0, Point(0x60, 0x50));
+                SendCommand_Liftoff(building);
+                state++;
+            } break; case 1: {
+                if (building->order != OrderId::LiftOff && ~building->flags & UnitStatus::Building) {
+                    SendCommand_Land(building, 5, 5);
+                    SendCommand_RightClick(building, Point(200, 200), true);
+                    state++;
+                }
+            } break; case 2: {
+                if (building->order == OrderId::Land) {
+                    CreateUnitForTestAt(UnitId::Marine, 0, Point(5 * 32, 5 * 32));
+                    state++;
+                }
+            } break; case 3: {
+                if (building->order == OrderId::Move) {
+                    state++;
+                }
+            } break; case 4: {
+                if (building->order != OrderId::Move) {
+                    TestAssert(building->sprite->position == Point(200, 200));
+                    ClearUnits();
+                    state++;
+                }
+            } break; case 5: {
+                building = CreateUnitForTestAt(UnitId::CommandCenter, 0, Point(0x60, 0x50));
+                CreateUnitForTestAt(UnitId::Academy, 0, Point(0x160, 0x50));
+                SendCommand_Liftoff(building);
+                state++;
+            } break; case 6: {
+                if (building->order != OrderId::LiftOff && ~building->flags & UnitStatus::Building) {
+                    SendCommand_BuildAddon(building, UnitId::ComsatStation, 9, 6);
+                    SendCommand_RightClick(building, Point(200, 200), true);
+                    state++;
+                }
+            } break; case 7: {
+                if (building->order == OrderId::Land) {
+                    // Queuing a order before the land order is issued causes it to be lost.
+                    // (Maybe should just change the behaviour here?)
+                    TestAssert(building->order_queue_begin != nullptr);
+                    TestAssert(building->order_queue_begin->Type() == OrderId::PlaceAddon);
+                    TestAssert(building->order_queue_end == building->order_queue_begin);
+                    ClearUnits();
+                    state++;
+                }
+            } break; case 8: {
+                building = CreateUnitForTestAt(UnitId::CommandCenter, 0, Point(0x60, 0x50));
+                CreateUnitForTestAt(UnitId::Academy, 0, Point(0x160, 0x50));
+                SendCommand_Liftoff(building);
+                state++;
+            } break; case 9: {
+                if (building->order != OrderId::LiftOff && ~building->flags & UnitStatus::Building) {
+                    SendCommand_BuildAddon(building, UnitId::ComsatStation, 9, 6);
+                    state++;
+                }
+            } break; case 10: {
+                if (building->order == OrderId::Land) {
+                    // This is supposed get queued and executed after the landing fails.
+                    SendCommand_RightClick(building, Point(200, 200), true);
+                    CreateUnitForTestAt(UnitId::Marine, 0, Point(5 * 32, 5 * 32));
+                    state++;
+                }
+            } break; case 11: {
+                if (building->order == OrderId::Move) {
+                    state++;
+                }
+            } break; case 12: {
+                if (building->order != OrderId::Move) {
+                    TestAssert(building->sprite->position == Point(200, 200));
+                    TestAssert(FindUnit(UnitId::ComsatStation) == nullptr);
+                    Pass();
+                }
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -2273,6 +2403,7 @@ GameTests::GameTests()
     AddTest("Morph extractor", new Test_Extractor);
     AddTest("Critter explosion", new Test_CritterExplosion);
     AddTest("Building land death", new Test_BuildingLandDeath);
+    AddTest("Building land queuing", new Test_BuildingLandQueuing);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)

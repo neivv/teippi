@@ -4835,7 +4835,7 @@ void Unit::Order_Land(ProgressUnitResults *results)
             {
                 bw::ShowLandingError(this);
                 if (order_queue_begin != nullptr && order_queue_begin->Type() == OrderId::PlaceAddon)
-                    DeleteOrder(order_queue_end);
+                    DeleteOrder(order_queue_begin);
                 OrderDone();
             }
             else
