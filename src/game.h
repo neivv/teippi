@@ -10,6 +10,9 @@ void ProgressObjects();
 void GameEnd();
 void BriefingOk(Dialog *dlg, int leave);
 
+// Forces a render/ui update before next frame (if the render skip command was used)
+void ForceRender();
+
 struct DoWeaponDamageData
 {
     DoWeaponDamageData(Unit *a, int p, Unit *t, int d, int w, int dir) :

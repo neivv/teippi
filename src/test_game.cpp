@@ -38,23 +38,6 @@ using std::get;
 
 // This file has special permission for different brace style =)
 
-static void SelectUnit(Unit *unit) {
-    int player = *bw::local_unique_player_id;
-    bw::selection_groups[player][0] = unit;
-    bw::selection_groups[player][1] = nullptr;
-    bw::client_selection_group3[0] = unit;
-    bw::client_selection_group2[0] = unit;
-    bw::client_selection_group[0] = unit;
-    *bw::primary_selected = unit;
-    for (int i = 1; i < Limits::Selection; i++) {
-        bw::client_selection_group2[i] = nullptr;
-        bw::client_selection_group3[i] = nullptr;
-        bw::client_selection_group[i] = nullptr;
-    }
-    *bw::client_selection_changed = 1;
-    RefreshUi();
-}
-
 static void SendCommand_CreateHotkeyGroup(uint8_t group) {
     uint8_t buf[] = { commands::Hotkey, 0, group };
     bw::SendCommand(buf, sizeof buf);
@@ -82,7 +65,7 @@ static void SendCommand_PlaceBuilding(Unit *unit,
                                       int y_tile,
                                       OrderType order) {
 
-    SelectUnit(unit);
+    SendCommand_Select(unit);
     uint16_t building_id = building.Raw();
     uint8_t cmd[8];
     cmd[0] = commands::Build;
@@ -690,7 +673,7 @@ struct Test_Bunker : public GameTest {
                 // and check that bunker's load command works.
                 marine = CreateUnitForTest(UnitId::Marine, 0);
                 bunker = CreateUnitForTest(UnitId::Bunker, 0);
-                SelectUnit(bunker);
+                SendCommand_Select(bunker);
                 Test_SendTargetedOrderCommand(OrderId::PickupBunker,
                                               marine->sprite->position,
                                               marine,
@@ -699,7 +682,7 @@ struct Test_Bunker : public GameTest {
                 state++;
             } break; case 8: {
                 if (marine->flags & UnitStatus::InBuilding) {
-                    SelectUnit(bunker);
+                    SendCommand_Select(bunker);
                     uint8_t cmd[] = {commands::UnloadAll, 0};
                     bw::SendCommand(cmd, sizeof cmd);
                     state++;
@@ -1134,7 +1117,10 @@ struct Test_RightClick : public GameTest {
                 // so MoveScreen(300, 200) would do same thing
                 bw::MoveScreen(296, 200);
                 frames_remaining = 50;
-                SelectUnit(building);
+                SendCommand_Select(building);
+                ForceRender();
+                state++;
+            } break; case 2: {
                 Event event;
                 event.ext_type = 0;
                 event.type = 0xe;
@@ -1143,7 +1129,7 @@ struct Test_RightClick : public GameTest {
                 event.y = 10;
                 GameScreenRClickEvent(&event);
                 state++;
-            } break; case 2: {
+            } break; case 3: {
                 if (building->rally.position == Point(310, 210)) {
                     Pass();
                 }
@@ -2136,7 +2122,7 @@ struct Test_RallyPoint : public GameTest {
     }
     void Rally() {
         old_rally = unit->rally.position;
-        SelectUnit(unit);
+        SendCommand_Select(unit);
         Test_SendTargetedOrderCommand(OrderId::RallyPointTile, Point(50, 50), nullptr, UnitId::None, false);
         frames_remaining = 50;
     }
@@ -2189,7 +2175,7 @@ struct Test_Extractor : public GameTest {
                     TestAssert(FindUnit(UnitId::VespeneGeyser) == nullptr);
                     TestAssert(FindUnit(UnitId::Extractor) != nullptr);
                     TestAssert(bw::minerals[0] == 0);
-                    SelectUnit(FindUnit(UnitId::Extractor));
+                    SendCommand_Select(FindUnit(UnitId::Extractor));
                     uint8_t cmd[] = {commands::CancelMorph};
                     bw::SendCommand(cmd, sizeof cmd);
                     state++;
@@ -2213,7 +2199,7 @@ struct Test_CritterExplosion : public GameTest {
         switch (state) {
             case 0: {
                 Unit *critter = CreateUnitForTestAt(UnitId::Kakaru, 0, Point(100, 100));
-                SelectUnit(critter);
+                SendCommand_Select(critter);
                 SendCommand_CreateHotkeyGroup(1);
                 state++;
             } break; case 1: {

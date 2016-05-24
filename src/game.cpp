@@ -23,11 +23,17 @@
 #include "console/windows_wrap.h"
 
 unsigned int render_wait = 0;
+static bool force_render;
 float fps;
 const bool dont_pause_on_alttab = true;
 bool all_visions = false;
 // Hack to reduce amount of unnecessarily hooked code, externed only in limits.cpp
 bool unitframes_in_progress = false;
+
+void ForceRender()
+{
+    force_render = true;
+}
 
 GameTests *game_tests = nullptr;
 Score *score = nullptr;
@@ -328,7 +334,8 @@ int ProgressFrames()
         if (!ret)
             break;
         fps_count++;
-    } while (IsInGame() && GetTickCount() - new_tick < render_wait);
+    } while (IsInGame() && GetTickCount() - new_tick < render_wait && !force_render);
+    force_render = false;
 
     // Bw has these rare cases when it should RefreshUi but doesn't
     // (Taking scv away from building that is being constructed).
