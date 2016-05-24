@@ -539,7 +539,7 @@ void Unit::ProgressOrder(ProgressUnitResults *results)
         Case(ZergBuildSelf);
         Case(ConstructingBuilding);
         Case(Critter);
-        Case(Harvest3);
+        Case(MineralHarvestInterrupted);
         Case(StopHarvest);
         Case(Heal);
         Case(HealMove);
@@ -2293,12 +2293,12 @@ void Unit::RemoveHarvesters()
 {
     Unit *worker = resource.first_awaiting_worker;
     resource.awaiting_workers = 0;
-    while (worker)
+    while (worker != nullptr)
     {
         Unit *next = worker->harvester.harvesters.next;
         worker->harvester.harvesters.prev = nullptr;
         worker->harvester.harvesters.next = nullptr;
-        worker->harvester.previous_harvested = nullptr;
+        worker->harvester.harvest_target = nullptr;
         worker = next;
     }
 }
@@ -4069,59 +4069,53 @@ void Unit::MutateExtractor(ProgressUnitResults *results)
 
 void Unit::Order_HarvestMinerals(ProgressUnitResults *results)
 {
-    if (target != nullptr && target->Type().IsMineralField())
+    if (target == nullptr || !target->Type().IsMineralField())
     {
-        bw::AddResetHarvestCollisionOrder(this);
-        switch (order_state)
+        // I don't think this check can ever be true, as RemoveReferences() will
+        // clean up all harvesters from the mineral, and ordering will cancel this
+        // order and do the same thing in Order_MineralHarvestInterrupted.
+        if (worker.is_harvesting)
         {
-            case 0:
-            {
-                if (!bw::IsFacingMoveTarget(AsFlingy()))
-                    return;
-
-                auto x = bw::circle[facing_direction][0] * 20 / 256;
-                auto y = bw::circle[facing_direction][1] * 20 / 256;
-                order_target_pos = sprite->position + Point(x, y); // To get iscript useweapon spawn the bullet properly
-                order_state = 4;
-            } // Fall through
-            case 4:
-            {
-                SetIscriptAnimation(Iscript::Animation::AlmostBuilt, true, "Order_HarvestMinerals", results);
-                order_state = 5;
-                order_timer = 75;
-            }
-            break;
-            case 5:
-            if (order_timer == 0)
-            {
-                SetIscriptAnimation(Iscript::Animation::GndAttkToIdle, true, "Order_HarvestMinerals", results);
-                AcquireResource(target, results);
-                bw::FinishedMining(target, this);
-                DeleteSpecificOrder(OrderId::Harvest3);
-                if (carried_powerup_flags)
-                    IssueOrderTargetingNothing(OrderId::ReturnMinerals);
-                else
-                    IssueOrderTargetingNothing(OrderId::MoveToMinerals); // Huh?
-            }
-            break;
+            bw::FinishedMining(harvester.harvest_target, this);
         }
-    }
-    else
-    {
-        if (worker.is_carrying)
-        {
-            worker.is_carrying = 0;
-            Unit *previous_harvested = harvester.previous_harvested;
-            if (previous_harvested != nullptr)
-            {
-                harvester.previous_harvested = nullptr;
-                previous_harvested->resource.awaiting_workers--;
-                if (bw::LetNextUnitMine(previous_harvested) != 0)
-                    bw::BeginHarvest(this, previous_harvested);
-            }
-        }
-        DeleteSpecificOrder(OrderId::Harvest3);
+        DeleteSpecificOrder(OrderId::MineralHarvestInterrupted);
         IssueOrderTargetingNothing(OrderId::MoveToMinerals);
+        return;
+    }
+    bw::AddResetHarvestCollisionOrder(this);
+    switch (order_state)
+    {
+        case 0:
+        {
+            if (!bw::IsFacingMoveTarget(AsFlingy()))
+                return;
+
+            auto x = bw::circle[facing_direction][0] * 20 / 256;
+            auto y = bw::circle[facing_direction][1] * 20 / 256;
+            // To get iscript useweapon spawn the bullet properly
+            order_target_pos = sprite->position + Point(x, y);
+            order_state = 4;
+        } // Fall through
+        case 4:
+        {
+            SetIscriptAnimation(Iscript::Animation::AlmostBuilt, true, "Order_HarvestMinerals", results);
+            order_state = 5;
+            order_timer = 75;
+        }
+        break;
+        case 5:
+        if (order_timer == 0)
+        {
+            SetIscriptAnimation(Iscript::Animation::GndAttkToIdle, true, "Order_HarvestMinerals", results);
+            AcquireResource(target, results);
+            bw::FinishedMining(target, this);
+            DeleteSpecificOrder(OrderId::MineralHarvestInterrupted);
+            if (carried_powerup_flags)
+                IssueOrderTargetingNothing(OrderId::ReturnMinerals);
+            else
+                IssueOrderTargetingNothing(OrderId::MoveToMinerals); // Huh?
+        }
+        break;
     }
 }
 

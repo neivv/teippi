@@ -43,7 +43,7 @@ bool OrderType::IsTargetable() const
         case BuildProtoss1: case BuildProtoss2: case ConstructingBuilding: case PlaceAddon: case BuildNydusExit:
         case Land: case LiftOff: case DroneLiftOff: case HarvestObscured: case MoveToGas:
         case WaitForGas: case HarvestGas: case MoveToMinerals: case WaitForMinerals: case MiningMinerals:
-        case Harvest3: case StopHarvest: case CtfCop2:
+        case MineralHarvestInterrupted: case StopHarvest: case CtfCop2:
             return false;
         default:
             return true;

@@ -498,7 +498,7 @@ void SaveBase<P>::ConvertUnit(Unit *unit)
         {
             ConvertUnitPtr<saving>(&unit->worker.powerup);
             ConvertUnitPtr<saving>(&unit->worker.current_harvest_target);
-            ConvertUnitPtr<saving>(&unit->harvester.previous_harvested);
+            ConvertUnitPtr<saving>(&unit->harvester.harvest_target);
             ConvertUnitPtr<saving>(&unit->harvester.harvesters.prev);
             ConvertUnitPtr<saving>(&unit->harvester.harvesters.next);
         }

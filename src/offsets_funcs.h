@@ -463,7 +463,7 @@ namespace bw {
     extern Func<void(Unit *)> Order_BuildNydusExit;
     extern Func<void(Unit *)> Order_NukeTrack;
     extern Func<void(Unit *)> Order_MedicHoldPosition;
-    extern Func<void(Unit *)> Order_Harvest3;
+    extern Func<void(Unit *)> Order_MineralHarvestInterrupted;
     extern Func<void(Unit *)> Order_InitArbiter;
     extern Func<void(Unit *)> Order_CompletingArchonSummon;
     extern Func<void(Unit *)> Order_Guard;
@@ -527,7 +527,6 @@ namespace bw {
     extern Func<Unit *(int, Unit *)> BeginGasBuilding;
     extern Func<void(Unit *)> StartZergBuilding;
 
-    extern Func<int(Unit *)> LetNextUnitMine;
     extern Func<void(Unit *, Unit *)> BeginHarvest;
     extern Func<void(Unit *)> AddResetHarvestCollisionOrder;
     extern Func<bool(Flingy *)> IsFacingMoveTarget;

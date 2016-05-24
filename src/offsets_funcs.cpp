@@ -467,7 +467,7 @@ void InitBwFuncs_1161(Common::PatchManager *exec_heap, uintptr_t current_base_ad
     bw::Order_BuildNydusExit.Init<Ebx>(exec_heap, 0x0045DC20 + diff);
     bw::Order_NukeTrack.Init<Ebx>(exec_heap, 0x00479480 + diff);
     bw::Order_MedicHoldPosition.Init<Esi>(exec_heap, 0x00464050 + diff);
-    bw::Order_Harvest3.Init<Esi>(exec_heap, 0x00468E80 + diff);
+    bw::Order_MineralHarvestInterrupted.Init<Esi>(exec_heap, 0x00468E80 + diff);
     bw::Order_InitArbiter.Init<Esi>(exec_heap, 0x00493A80 + diff);
     bw::Order_CompletingArchonSummon.Init<Esi>(exec_heap, 0x00493B10 + diff);
     bw::Order_Guard.Init<Esi>(exec_heap, 0x00475B90 + diff);
@@ -536,7 +536,6 @@ void InitBwFuncs_1161(Common::PatchManager *exec_heap, uintptr_t current_base_ad
     bw::BeginGasBuilding.Init<Stack, Eax>(exec_heap, 0x004678A0 + diff);
     bw::StartZergBuilding.Init<Eax>(exec_heap, 0x0045D2E0 + diff);
 
-    bw::LetNextUnitMine.Init<Ebx>(exec_heap, 0x00468970 + diff);
     bw::BeginHarvest.Init<Eax, Edi>(exec_heap, 0x00468C70 + diff);
     bw::AddResetHarvestCollisionOrder.Init<Eax>(exec_heap, 0x00468AA0 + diff);
     bw::IsFacingMoveTarget.Init<Esi>(exec_heap, 0x00402BE0 + diff);
@@ -1112,7 +1111,7 @@ namespace bw {
     Func<void(Unit *)> Order_BuildNydusExit;
     Func<void(Unit *)> Order_NukeTrack;
     Func<void(Unit *)> Order_MedicHoldPosition;
-    Func<void(Unit *)> Order_Harvest3;
+    Func<void(Unit *)> Order_MineralHarvestInterrupted;
     Func<void(Unit *)> Order_InitArbiter;
     Func<void(Unit *)> Order_CompletingArchonSummon;
     Func<void(Unit *)> Order_Guard;
@@ -1176,7 +1175,6 @@ namespace bw {
     Func<Unit *(int, Unit *)> BeginGasBuilding;
     Func<void(Unit *)> StartZergBuilding;
 
-    Func<int(Unit *)> LetNextUnitMine;
     Func<void(Unit *, Unit *)> BeginHarvest;
     Func<void(Unit *)> AddResetHarvestCollisionOrder;
     Func<bool(Flingy *)> IsFacingMoveTarget;

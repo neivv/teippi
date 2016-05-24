@@ -247,7 +247,7 @@ class Unit
                 uint16_t target_resource_pos[2];
                 Unit *current_harvest_target;
                 uint16_t repair_resource_loss_timer;
-                uint8_t is_carrying;
+                uint8_t is_harvesting;
                 uint8_t carried_resource_count;
             } worker;
         };
@@ -263,7 +263,7 @@ class Unit
             } resource;
 
             struct {
-                Unit *previous_harvested;
+                Unit *harvest_target;
                 RevListEntry<Unit, 0xd4> harvesters;
             } harvester;
 

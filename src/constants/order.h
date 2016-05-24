@@ -94,7 +94,7 @@ namespace OrderId {
     constexpr OrderType MoveToMinerals(0x55);
     constexpr OrderType WaitForMinerals(0x56);
     constexpr OrderType MiningMinerals(0x57);
-    constexpr OrderType Harvest3(0x58);
+    constexpr OrderType MineralHarvestInterrupted(0x58);
     constexpr OrderType StopHarvest(0x59);
     constexpr OrderType ReturnMinerals(0x5A);
     constexpr OrderType Interrupted(0x5B);
