@@ -2266,7 +2266,7 @@ void Unit::Kill(ProgressUnitResults *results)
         DeleteOrder(order_queue_begin);
     }
 
-    IssueOrderTargetingNothing(OrderId::Die);
+    IssueOrderTargetingGround(OrderId::Die, order_target_pos);
     Ai::RemoveUnitAi(this, false);
 }
 

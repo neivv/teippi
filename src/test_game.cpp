@@ -2186,6 +2186,47 @@ struct Test_CritterExplosion : public GameTest {
     }
 };
 
+struct Test_BuildingLandDeath : public GameTest {
+    Unit *building;
+    void Init() override {
+    }
+    void NextFrame() override {
+        auto BuildingFlag = [](auto x_tile, auto y_tile) {
+            return (*bw::map_tile_flags)[*bw::map_width_tiles * y_tile + x_tile] & 0x08000000;
+        };
+        switch (state) {
+            case 0: {
+                building = CreateUnitForTestAt(UnitId::CommandCenter, 0, Point(0x60, 0x50));
+                building->IssueOrderTargetingNothing(OrderId::LiftOff);
+                state++;
+            } break; case 1: {
+                if (building->order != OrderId::LiftOff) {
+                    TestAssert(!BuildingFlag(1, 1));
+                    building->IssueOrderTargetingGround(OrderId::Land, Point(0x60, 0x50));
+                    state++;
+                }
+            } break; case 2: {
+                if (building->building.is_landing)
+                {
+                    TestAssert(BuildingFlag(1, 1));
+                    TestAssert(((*bw::map_tile_flags)[*bw::map_width_tiles + 1] & 0x08000000) != 0);
+                    building->Kill(nullptr);
+                    state++;
+                }
+                else
+                {
+                    TestAssert(!BuildingFlag(1, 1));
+                }
+            } break; case 3: {
+                if (UnitCount() == 0) {
+                    TestAssert(!BuildingFlag(1, 1));
+                    Pass();
+                }
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -2231,6 +2272,7 @@ GameTests::GameTests()
     AddTest("Rally point", new Test_RallyPoint);
     AddTest("Morph extractor", new Test_Extractor);
     AddTest("Critter explosion", new Test_CritterExplosion);
+    AddTest("Building land death", new Test_BuildingLandDeath);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)
