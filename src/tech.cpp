@@ -589,7 +589,7 @@ void Unit::Order_Hallucination(ProgressUnitResults *results)
         }
         if (bw::PlaceHallucination(hallu) == 0)
         {
-            hallu->Remove(results);
+            hallu->Destroy(results);
             break;
         }
     }

@@ -125,16 +125,13 @@ static void ClearUnits() {
         Unit *loaded = unit->first_loaded;
         while (loaded) {
             Unit *next = loaded->next_loaded;
-            loaded->order_flags |= 0x4;
-            loaded->Kill(nullptr);
+            loaded->Remove(nullptr);
             loaded = next;
         }
-        unit->order_flags |= 0x4;
-        unit->Kill(nullptr);
+        unit->Remove(nullptr);
     }
     for (Unit *unit : *bw::first_revealer) {
-        unit->order_flags |= 0x4;
-        unit->Kill(nullptr);
+        unit->Remove(nullptr);
     }
 }
 

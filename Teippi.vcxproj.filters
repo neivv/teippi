@@ -180,6 +180,9 @@
     <ClCompile Include="src\unit_ai.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="src\unit_death.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
     <ClCompile Include="src\unit_movement.cpp">
       <Filter>Sources</Filter>
     </ClCompile>

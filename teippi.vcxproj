@@ -61,6 +61,7 @@
     <ClCompile Include="src\triggers.cpp" />
     <ClCompile Include="src\unit.cpp" />
     <ClCompile Include="src\unit_ai.cpp" />
+    <ClCompile Include="src\unit_death.cpp" />
     <ClCompile Include="src\unit_movement.cpp" />
     <ClCompile Include="src\unit_type.cpp" />
     <ClCompile Include="src\unitsearch.cpp" />

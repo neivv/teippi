@@ -172,8 +172,7 @@ void Unit::Order_NukeLaunch(ProgressUnitResults *results)
             if (~order_signal & 0x1)
                 return;
             order_signal &= ~0x1;
-            order_flags |= 0x4;
-            Kill(results);
+            Remove(results);
         break;
     }
 }

@@ -132,8 +132,7 @@ void Neutralize(int player)
                     bw::DeletePowerupImages(worker);
                     if (worker->worker.powerup != nullptr)
                     {
-                        worker->worker.powerup->order_flags |= 0x4;
-                        worker->worker.powerup->Kill(nullptr);
+                        worker->worker.powerup->Remove(nullptr);
                     }
                     worker->worker.powerup = nullptr;
                     worker->carried_powerup_flags = 0;

@@ -315,8 +315,7 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, WeaponType we
         if (parent)
         {
             parent->flags |= UnitStatus::SelfDestructing;
-            parent->order_flags |= 0x4;
-            parent->Kill(nullptr);
+            parent->Remove(nullptr);
         }
         break;
         case 0x9: // Go to max range

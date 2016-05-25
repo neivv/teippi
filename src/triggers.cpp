@@ -154,8 +154,7 @@ int Trig_KillUnitGeneric(Unit *unit, KillUnitArgs *args, bool check_height, bool
             bw::DeletePowerupImages(worker);
             if (worker->worker.powerup)
             {
-                worker->worker.powerup->order_flags |= 0x4;
-                worker->worker.powerup->Kill(nullptr);
+                worker->worker.powerup->Remove(nullptr);
                 worker->worker.powerup = 0;
             }
             worker->carried_powerup_flags = 0;

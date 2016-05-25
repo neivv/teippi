@@ -420,14 +420,17 @@ class Unit
             return order_type;
         }
 
-        // results may be nullptr but should only be when called from BulletSystem
+        // unit_death.cpp
+        // `results` may be nullptr but should only be when called from BulletSystem.
         void Kill(ProgressUnitResults *results);
+        void Remove(ProgressUnitResults *results);
+
         // Applies to training and morphing as well
         void CancelConstruction(ProgressUnitResults *results);
-        void RemoveFromHangar();
-        void RemoveHarvesters();
-        void RemoveFromLists();
         bool IsDying() const { return order == 0 && order_state == 1; }
+
+        /// Cancels all trains in build queue.
+        void CancelTrain(ProgressUnitResults *results);
 
         Unit *Ai_ChooseAirTarget();
         Unit *Ai_ChooseGroundTarget();
@@ -719,18 +722,12 @@ class Unit
         static Unit *id_lookup[UNIT_ID_LOOKUP_SIZE];
         static vector<Unit *>temp_flagged;
 
-        // Returns all attackers with which UnitWasHit has to be called
-        vector<Unit *> RemoveFromResults(ProgressUnitResults *results);
-
+        // unit_death.cpp
         void Order_Die(ProgressUnitResults *results);
-        void KillChildren(ProgressUnitResults *results);
-        void Die(ProgressUnitResults *results);
-        void BuildingDeath(ProgressUnitResults *results);
-        void Remove(ProgressUnitResults *results);
-        void TransportedDeath();
-        void TransportDeath(ProgressUnitResults *results);
-        void KillHangarUnits(ProgressUnitResults *results);
-        bool RemoveSubunitOrGasContainer();
+        /// Can be used to clean an unit which was never properly created, but otherwise
+        /// `Remove()` should be used..? `Remove()` should do the same thing, just delay it
+        /// to next order step.
+        void Destroy(ProgressUnitResults *results);
 
         void Order_SapUnit(ProgressUnitResults *results);
         void Order_SapLocation(ProgressUnitResults *results);
@@ -781,7 +778,6 @@ class Unit
         // Though it could maybe be nullptr if called from triggers
         void Trigger_GiveUnit(int new_player, ProgressUnitResults *results);
         void GiveTo(int new_player, ProgressUnitResults *results);
-        void CancelTrain(ProgressUnitResults *results);
         void TransferTechsAndUpgrades(int new_player);
         void Order_Train(ProgressUnitResults *results);
         void Order_ProtossBuildSelf(ProgressUnitResults *results);
@@ -811,5 +807,7 @@ static_assert(Unit::offset_of_allocated == offsetof(Unit, allocated), "Unit::all
 // If there's UnitSystem or something this should just be part of its constructor
 void AllocateEnemyUnitCache();
 void InitEnemyUnitCache();
+
+Unit **FindNearbyHelpingUnits(Unit *unit, TempMemoryPool *allocation_pool);
 
 #endif
