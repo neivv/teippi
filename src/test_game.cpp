@@ -101,6 +101,21 @@ static void SendCommand_RightClick(Unit *unit, const Point &pos, bool queued) {
     SendRightClickCommand(nullptr, pos.x, pos.y, UnitId::None, queued);
 }
 
+static void SendCommand_TargetedUnit(Unit *unit, OrderType order, Unit *target, bool queued) {
+    SendCommand_Select(unit);
+    Test_SendTargetedOrderCommand(order,
+                                  target->sprite->position,
+                                  target,
+                                  UnitId::None,
+                                  queued);
+}
+
+static void SendCommand_Burrow(Unit *unit) {
+    SendCommand_Select(unit);
+    uint8_t cmd[] = { commands::Burrow, 0 };
+    bw::SendCommand(cmd, sizeof cmd);
+}
+
 static void ClearTriggers() {
     for (int i = 0; i < Limits::ActivePlayers; i++)
         bw::FreeTriggerList(&bw::triggers[i]);
@@ -2340,6 +2355,114 @@ struct Test_BuildingLandQueuing : public GameTest {
     }
 };
 
+struct Test_Irradiate : public GameTest {
+    Unit *vessel;
+    Unit *target;
+    Unit *other;
+    Unit *goon;
+    uint32_t target_uid;
+    void Init() override {
+        bw::minerals[0] = 50;
+        bw::gas[0] = 50;
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                vessel = CreateUnitForTestAt(UnitId::ScienceVessel, 0, Point(100, 100));
+                target = CreateUnitForTestAt(UnitId::Lurker, 0, Point(100, 100));
+                target_uid = target->lookup_id;
+                SendCommand_TargetedUnit(vessel, OrderId::Irradiate, target, false);
+                state++;
+            } break; case 1: {
+                // It can't do too much damage at once
+                if (target->GetHealth() > 50 && target->GetHealth() < 55) {
+                    state++;
+                }
+            } break; case 2: {
+                // But it'll kill the target eventually.
+                if (target->IsDying()) {
+                    // Test for taking damage from another unit's irra.
+                    target = CreateUnitForTestAt(UnitId::Marine, 0, Point(100, 100));
+                    target_uid = target->lookup_id;
+                    other = CreateUnitForTestAt(UnitId::ScienceVessel, 0, Point(100, 100));
+                    vessel->energy = 150 * 256;
+                    SendCommand_TargetedUnit(vessel, OrderId::Irradiate, other, false);
+                    state++;
+                }
+            } break; case 3: {
+                if (target->IsDying()) {
+                    // Units shouldn't take damage if they're inside an irradiated dropship.
+                    target = CreateUnitForTestAt(UnitId::Marine, 0, Point(400, 100));
+                    target_uid = target->lookup_id;
+                    other = CreateUnitForTestAt(UnitId::Dropship, 0, Point(400, 100));
+                    vessel->energy = 150 * 256;
+                    SendCommand_TargetedUnit(vessel, OrderId::Irradiate, other, false);
+                    SendCommand_TargetedUnit(target, OrderId::EnterTransport, other, false);
+                    state++;
+                }
+            } break; case 4: {
+                TestAssert(Unit::FindById(target_uid) != nullptr);
+                if (other->irradiate_timer != 0) {
+                    TestAssert(other->irradiated_by == vessel);
+                    TestAssert(other->irradiate_player == vessel->player);
+                    state++;
+                }
+            } break; case 5: {
+                TestAssert(Unit::FindById(target_uid) != nullptr);
+                if (other->irradiate_timer == 0) {
+                    // Irradiated units inside dropship should die though.
+                    target = CreateUnitForTestAt(UnitId::Marine, 0, Point(600, 100));
+                    target_uid = target->lookup_id;
+                    other = CreateUnitForTestAt(UnitId::Dropship, 0, Point(600, 100));
+                    vessel->energy = 150 * 256;
+                    SendCommand_TargetedUnit(vessel, OrderId::Irradiate, target, false);
+                    state++;
+                }
+            } break; case 6: {
+                if (target->irradiate_timer != 0) {
+                    SendCommand_TargetedUnit(target, OrderId::EnterTransport, other, false);
+                    state++;
+                }
+            } break; case 7: {
+                if (Unit::FindById(target_uid) == nullptr) {
+                    // Irradiate deals damage to other loaded units.
+                    target = CreateUnitForTestAt(UnitId::Marine, 0, Point(800, 100));
+                    target_uid = target->lookup_id;
+                    other = CreateUnitForTestAt(UnitId::Dropship, 0, Point(800, 100));
+                    goon = CreateUnitForTestAt(UnitId::Dragoon, 0, Point(800, 100));
+                    vessel->energy = 150 * 256;
+                    SendCommand_TargetedUnit(vessel, OrderId::Irradiate, goon, false);
+                    SendCommand_TargetedUnit(target, OrderId::EnterTransport, other, false);
+                    state++;
+                }
+            } break; case 8: {
+                TestAssert(Unit::FindById(target_uid) != nullptr);
+                if (goon->irradiate_timer != 0) {
+                    SendCommand_TargetedUnit(goon, OrderId::EnterTransport, other, false);
+                    state++;
+                }
+            } break; case 9: {
+                if (Unit::FindById(target_uid) == nullptr) {
+                    // No splash when the unit is burrowed
+                    target = CreateUnitForTestAt(UnitId::Marine, 0, Point(1000, 100));
+                    target_uid = target->lookup_id;
+                    other = CreateUnitForTestAt(UnitId::Lurker, 0, Point(1000, 100));
+                    vessel->energy = 150 * 256;
+                    SendCommand_TargetedUnit(vessel, OrderId::Irradiate, other, false);
+                    SendCommand_Burrow(other);
+                    state++;
+                }
+            } break; case 10: {
+                TestAssert(!target->IsDying())
+                SendCommand_RightClick(target, other->sprite->position, false);
+                if (other->IsDying()) {
+                    Pass();
+                }
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -2387,6 +2510,7 @@ GameTests::GameTests()
     AddTest("Critter explosion", new Test_CritterExplosion);
     AddTest("Building land death", new Test_BuildingLandDeath);
     AddTest("Building land queuing", new Test_BuildingLandQueuing);
+    AddTest("Irradiate", new Test_Irradiate);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)
