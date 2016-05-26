@@ -2,7 +2,6 @@
 
 #include "patch/patchmanager.h"
 #include "ai.h"
-#include "building.h"
 #include "bullet.h"
 #include "bunker.h"
 #include "commands.h"

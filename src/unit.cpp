@@ -14,33 +14,32 @@
 #include "constants/weapon.h"
 
 #include "ai.h"
+#include "bullet.h"
+#include "bunker.h"
+#include "entity.h"
+#include "flingy.h"
+#include "image.h"
+#include "lofile.h"
+#include "log.h"
 #include "offsets.h"
 #include "order.h"
-#include "selection.h"
-#include "targeting.h"
-#include "upgrade.h"
-#include "bullet.h"
-#include "sprite.h"
-#include "image.h"
 #include "pathing.h"
-#include "sound.h"
-#include "yms.h"
-#include "player.h"
-#include "unitsearch.h"
 #include "perfclock.h"
-#include "log.h"
-#include "tech.h"
-#include "lofile.h"
-#include "flingy.h"
-#include "warn.h"
+#include "player.h"
 #include "rng.h"
-#include "building.h"
-#include "text.h"
-#include "bunker.h"
 #include "scthread.h"
+#include "selection.h"
+#include "sound.h"
+#include "sprite.h"
 #include "strings.h"
+#include "targeting.h"
+#include "tech.h"
+#include "text.h"
+#include "upgrade.h"
 #include "unit_cache.h"
-#include "entity.h"
+#include "unitsearch.h"
+#include "yms.h"
+#include "warn.h"
 
 using std::get;
 using std::max;
@@ -3438,71 +3437,6 @@ void Unit::AttackMelee(int sound_amt, uint16_t *sounds, ProgressUnitResults *res
     bw::PlaySoundAtPos(sound, sprite->position.AsDword(), 1, 0);
 }
 
-void Unit::Order_DroneMutate(ProgressUnitResults *results)
-{
-    if (sprite->position == order_target_pos)
-    {
-        UnitType building(build_queue[current_build_slot]);
-        int x_tile = (sprite->position.x - (building.PlacementBox().width / 2)) / 32;
-        int y_tile = (sprite->position.y - (building.PlacementBox().height / 2)) / 32;
-        if (UpdateBuildingPlacementState(this, player, x_tile, y_tile, building, 0, false, true, true) == 0)
-        {
-            bw::player_build_minecost[player] = building.MineralCost();
-            bw::player_build_gascost[player] = building.GasCost();
-            if (bw::CheckSupplyForBuilding(player, building.Raw(), 1) != 0)
-            {
-                if (bw::minerals[player] < bw::player_build_minecost[player])
-                    bw::ShowInfoMessage(String::NotEnoughMinerals, Sound::NotEnoughMinerals + *bw::player_race, player);
-                else if (bw::gas[player] < bw::player_build_gascost[player])
-                    bw::ShowInfoMessage(String::NotEnoughGas, Sound::NotEnoughGas + *bw::player_race, player);
-                else // All checks succeeded
-                {
-                    bw::ReduceBuildResources(player);
-                    Unit *powerup = worker.powerup;
-                    if (powerup)
-                        bw::DropPowerup(this);
-                    if (building.Raw() == UnitId::Extractor)
-                        MutateExtractor(results);
-                    else
-                        bw::MutateBuilding(this, building.Raw());
-                    if (powerup)
-                        bw::MoveUnit(powerup, powerup->powerup.origin_point.x, powerup->powerup.origin_point.y);
-                    return;
-                }
-            }
-        }
-    }
-    // Any kind of error happened
-    if (sprite->last_overlay->drawfunc == Image::Shadow)
-        sprite->last_overlay->SetOffset(sprite->last_overlay->x_off, 7);
-    bw::PrepareDrawSprite(sprite.get()); // ?
-    PrependOrderTargetingNothing(OrderId::ResetCollision1);
-    DoNextQueuedOrder();
-}
-
-void Unit::MutateExtractor(ProgressUnitResults *results)
-{
-    Unit *extractor = bw::BeginGasBuilding(UnitId::Extractor, this);
-    if (extractor)
-    {
-        bw::InheritAi(this, extractor);
-        Remove(results);
-        bw::StartZergBuilding(extractor);
-        bw::AddOverlayBelowMain(extractor->sprite.get(), ImageId::VespeneGeyserUnderlay, 0, 0, 0);
-    }
-    else
-    {
-        if (sprite->last_overlay->drawfunc == Image::Shadow)
-        {
-            sprite->last_overlay->SetOffset(sprite->last_overlay->x_off, 7);
-            sprite->last_overlay->flags |= 0x4;
-        }
-        unk_move_waypoint = sprite->position;
-        PrependOrderTargetingNothing(OrderId::ResetCollision1);
-        DoNextQueuedOrder();
-    }
-}
-
 void Unit::Order_HarvestMinerals(ProgressUnitResults *results)
 {
     if (target == nullptr || !target->Type().IsMineralField())
@@ -4428,30 +4362,6 @@ void Unit::Order_SiegeMode(ProgressUnitResults *results)
     }
 }
 
-void Unit::CancelTrain(ProgressUnitResults *results)
-{
-    for (int i = 0; i < 5; i++)
-    {
-        UnitType build_unit(build_queue[(current_build_slot + i) % 5]);
-        if (build_unit != UnitId::None)
-        {
-            if (i == 0 && currently_building != nullptr)
-            {
-                currently_building->CancelConstruction(results);
-            }
-            else if (!build_unit.IsBuilding())
-            {
-                bw::RefundFullCost(build_unit.Raw(), player);
-            }
-        }
-    }
-    for (int i = 0; i < 5; i++)
-    {
-        build_queue[i] = UnitId::None.Raw();
-    }
-    current_build_slot = 0;
-}
-
 static void TransferUpgrade(UpgradeType upgrade, int from_player, int to_player)
 {
     if (GetUpgradeLevel(upgrade, from_player) > GetUpgradeLevel(upgrade, to_player))
@@ -4735,165 +4645,6 @@ void Unit::Trigger_GiveUnit(int new_player, ProgressUnitResults *results)
             nydus.exit->GiveTo(new_player, results);
         }
     }
-}
-
-void Unit::Order_Train(ProgressUnitResults *results)
-{
-    if (IsDisabled())
-        return;
-    // Some later added hackfix
-    if (Type().Race() == Race::Zerg && Type() != UnitId::InfestedCommandCenter)
-        return;
-    switch (secondary_order_state)
-    {
-        case 0:
-        case 1:
-        {
-            int train_unit_id = build_queue[current_build_slot];
-            if (UnitType(train_unit_id) == UnitId::None)
-            {
-                IssueSecondaryOrder(OrderId::Nothing);
-                SetIscriptAnimation(Iscript::Animation::WorkingToIdle, true, "Unit::Order_Train", results);
-            }
-            else
-            {
-                currently_building = bw::BeginTrain(this, train_unit_id, secondary_order_state == 0);
-                if (currently_building == nullptr)
-                {
-                    secondary_order_state = 1;
-                }
-                else
-                {
-                    SetIscriptAnimation(Iscript::Animation::Working, true, "Unit::Order_Train", results);
-                    secondary_order_state = 2;
-                }
-            }
-        }
-        break;
-        case 2:
-            if (currently_building != nullptr)
-            {
-                int good = bw::ProgressBuild(currently_building, bw::GetBuildHpGain(currently_building), 1);
-                if (good && ~currently_building->flags & UnitStatus::Completed)
-                    return;
-                if (good)
-                {
-                    bw::InheritAi2(this, currently_building);
-                    if (currently_building->Type() == UnitId::NuclearMissile)
-                        bw::HideUnit(currently_building);
-                    else
-                        bw::RallyUnit(this, currently_building);
-                    if (ai && ai->type == 3)
-                    {
-                        Ai::BuildingAi *building = (Ai::BuildingAi *)ai;
-                        building->train_queue_types[current_build_slot] = 0;
-                        building->train_queue_values[current_build_slot] = 0;
-                    }
-                    build_queue[current_build_slot] = UnitId::None.Raw();
-                    current_build_slot = (current_build_slot + 1) % 5;
-                }
-                else if (UnitType(build_queue[current_build_slot]) != UnitId::None)
-                {
-                    int train_unit_id = build_queue[current_build_slot];
-                    if (currently_building != nullptr)
-                        currently_building->CancelConstruction(results);
-                    else if (!UnitType(train_unit_id).IsBuilding())
-                        bw::RefundFullCost(train_unit_id, player);
-                    int slot = current_build_slot;
-                    for (int i = 0; i < 5; i++)
-                    {
-                        if (UnitType(build_queue[slot]) == UnitId::None)
-                            break;
-                        int next_slot = (slot + 1) % 5;
-                        build_queue[slot] = build_queue[next_slot];
-                        if (ai && ai->type == 3)
-                        {
-                            Ai::BuildingAi *building = (Ai::BuildingAi *)ai;
-                            building->train_queue_types[slot] = building->train_queue_types[next_slot];
-                            building->train_queue_values[slot] = building->train_queue_values[next_slot];
-                        }
-                        slot = next_slot;
-                    }
-                }
-            }
-            RefreshUi();
-            secondary_order_state = 0;
-            currently_building = nullptr;
-        break;
-    }
-}
-
-void Unit::Order_ProtossBuildSelf(ProgressUnitResults *results)
-{
-    switch (order_state)
-    {
-        case 0:
-            if (remaining_build_time == 0)
-            {
-                SetIscriptAnimation(Iscript::Animation::Special1, true, "Order_ProtossBuildSelf", results);
-                bw::PlaySound(Sound::ProtossBuildingFinishing, this, 1, 0);
-                order_state = 1;
-            }
-            else
-            {
-                ProgressBuildingConstruction();
-            }
-        break;
-        case 1:
-            if (order_signal & 0x1)
-            {
-                order_signal &= ~0x1;
-                bw::ReplaceSprite(sprite->Type().Image().Raw(), 0, sprite.get());
-                Image *image = sprite->main_image;
-                // Bw actually has iscript header hardcoded as 193
-                image->iscript.Initialize(*bw::iscript, ImageId::WarpTexture.IscriptHeader());
-                UnitIscriptContext ctx(this, results, "Order_ProtossBuildSelf", MainRng(), false);
-                image->SetIscriptAnimation(&ctx, Iscript::Animation::Init);
-                image->iscript.Initialize(*bw::iscript, image->Type().IscriptHeader());
-                // Now the image is still executing the warp texture iscript, even though
-                // any future SetIscriptAnimation() calls cause it to use original iscript.
-                image->SetDrawFunc(Image::UseWarpTexture, image->drawfunc_param);
-                // Why?
-                image->iscript.ProgressFrame(&ctx, image);
-                order_state = 2;
-            }
-        break;
-        case 2:
-            if (order_signal & 0x1)
-            {
-                order_signal &= ~0x1;
-                // Wait, why again?
-                bw::ReplaceSprite(sprite->Type().Image().Raw(), 0, sprite.get());
-                SetIscriptAnimation(Iscript::Animation::WarpIn, true, "Order_ProtossBuildSelf", results);
-                order_state = 3;
-            }
-        break;
-        case 3:
-            if (order_signal & 0x1)
-            {
-                order_signal &= ~0x1;
-                bw::FinishUnit_Pre(this);
-                bw::FinishUnit(this);
-                bw::CheckUnstack(this);
-                if (flags & UnitStatus::Disabled)
-                {
-                    SetIscriptAnimation(Iscript::Animation::Disable, true, "Order_ProtossBuildSelf", results);
-                }
-                // This heals a bit if the buidling was damaged but is otherwise pointless
-                ProgressBuildingConstruction();
-            }
-        break;
-    }
-}
-
-void Unit::ProgressBuildingConstruction()
-{
-    int build_speed = 1;
-    if (IsCheatActive(Cheats::Operation_Cwal))
-        build_speed = 10;
-    remaining_build_time = std::max((int)remaining_build_time - build_speed, 0);
-    bw::SetHp(this, hitpoints + build_hp_gain * build_speed);
-    shields = std::min(Type().Shields() * 256, shields + build_shield_gain * build_speed);
 }
 
 Iscript::CmdResult Unit::HandleIscriptCommand(UnitIscriptContext *ctx, Image *img,
@@ -5183,4 +4934,11 @@ void Unit::InsertOrderBefore(class OrderType order_id, Unit *target, const Point
     if (insert_before->list.prev != nullptr)
         insert_before->list.prev->list.next = new_order;
     insert_before->list.prev = new_order;
+}
+
+Ai::BuildingAi *Unit::AiAsBuildingAi()
+{
+    if (ai != nullptr && ai->type == 3)
+        return (Ai::BuildingAi *)ai;
+    return nullptr;
 }

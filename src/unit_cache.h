@@ -11,6 +11,7 @@
 #include "unit.h"
 #include "unitsearch.h"
 #include "unitsearch_cache.h"
+#include "yms.h"
 
 #include "unitsearch.hpp"
 #include "unitsearch_cache.hpp"

@@ -13,7 +13,6 @@
   <ItemGroup>
     <ClCompile Include="src\ai.cpp" />
     <ClCompile Include="src\ai_hit_reactions.cpp" />
-    <ClCompile Include="src\building.cpp" />
     <ClCompile Include="src\bullet.cpp" />
     <ClCompile Include="src\bunker.cpp" />
     <ClCompile Include="src\bwlauncher.cpp" />
@@ -61,6 +60,7 @@
     <ClCompile Include="src\triggers.cpp" />
     <ClCompile Include="src\unit.cpp" />
     <ClCompile Include="src\unit_ai.cpp" />
+    <ClCompile Include="src\unit_build.cpp" />
     <ClCompile Include="src\unit_death.cpp" />
     <ClCompile Include="src\unit_movement.cpp" />
     <ClCompile Include="src\unit_type.cpp" />
@@ -72,7 +72,6 @@
     <ClInclude Include="src\MPQDraftPlugin.h" />
     <ClInclude Include="src\ai.h" />
     <ClInclude Include="src\ai_hit_reactions.h" />
-    <ClInclude Include="src\building.h" />
     <ClInclude Include="src\bullet.h" />
     <ClInclude Include="src\bunker.h" />
     <ClInclude Include="src\commands.h" />

@@ -175,6 +175,10 @@ class Image
         /// Changes the iscript animation and runs the script for a frame.
         void SetIscriptAnimation(Iscript::Context *ctx, int anim);
 
+        /// Runs an animation from another image's iscript. Any future animations
+        /// will still use the usual script.
+        void ExternalAnimation(Iscript::Context *ctx, ImageType image, int anim);
+
         enum DrawFunc
         {
             Normal = 0x0,

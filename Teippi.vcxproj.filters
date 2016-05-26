@@ -36,9 +36,6 @@
     <ClCompile Include="src\ai_hit_reactions.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
-    <ClCompile Include="src\building.cpp">
-      <Filter>Sources</Filter>
-    </ClCompile>
     <ClCompile Include="src\bullet.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
@@ -180,6 +177,9 @@
     <ClCompile Include="src\unit_ai.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="src\unit_build.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
     <ClCompile Include="src\unit_death.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
@@ -211,9 +211,6 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="src\ai_hit_reactions.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\building.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="src\bullet.h">

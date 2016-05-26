@@ -670,6 +670,8 @@ class Unit
         void Ai_Cloak();
         bool Ai_TryReturnHome(bool dont_issue);
 
+        Ai::BuildingAi *AiAsBuildingAi();
+
         bool TempFlagCheck();
         static void ClearTempFlags();
         void StartHelperSearch();
@@ -682,6 +684,8 @@ class Unit
         void ProgressIscript(const char *caller, ProgressUnitResults *results);
         /// Hack for hooks
         void SetIscriptAnimationForImage(Image *img, int anim);
+
+        void SetIscriptAnimation(int anim, bool force, const char *caller, ProgressUnitResults *results);
 
     private:
         static Unit *RawAlloc();
@@ -741,8 +745,6 @@ class Unit
         void PickNewAttackTargetIfNeeded();
         bool Ai_ShouldStopChasing(const Unit *other) const;
 
-        void Order_DroneMutate(ProgressUnitResults *results);
-        void MutateExtractor(ProgressUnitResults *results);
         void Order_HarvestMinerals(ProgressUnitResults *results);
         void AcquireResource(Unit *resource, ProgressUnitResults *results);
         int MineResource(ProgressUnitResults *results);
@@ -779,16 +781,15 @@ class Unit
         void Trigger_GiveUnit(int new_player, ProgressUnitResults *results);
         void GiveTo(int new_player, ProgressUnitResults *results);
         void TransferTechsAndUpgrades(int new_player);
+
+        // unit_build.cpp
+        void Order_DroneMutate(ProgressUnitResults *results);
         void Order_Train(ProgressUnitResults *results);
         void Order_ProtossBuildSelf(ProgressUnitResults *results);
-        /// Increases hp and reduces build time (if needed).
-        /// Might be only be used for protoss buildings.
-        void ProgressBuildingConstruction();
 
         Iscript::CmdResult HandleIscriptCommand(UnitIscriptContext *ctx, Image *img,
                                                 Iscript::Script *script, const Iscript::Command &cmd);
         void WarnUnhandledIscriptCommand(const Iscript::Command &cmd, const char *caller) const;
-        void SetIscriptAnimation(int anim, bool force, const char *caller, ProgressUnitResults *results);
 
     public:
         static uint32_t next_id;
@@ -809,5 +810,8 @@ void AllocateEnemyUnitCache();
 void InitEnemyUnitCache();
 
 Unit **FindNearbyHelpingUnits(Unit *unit, TempMemoryPool *allocation_pool);
+// unit_build.cpp
+int UpdateBuildingPlacementState(Unit *builder, int player, x32 x_tile, y32 y_tile, UnitType unit_id,
+    int placement_state_entry, bool check_vision, bool also_invisible, bool without_vision);
 
 #endif

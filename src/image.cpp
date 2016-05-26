@@ -567,6 +567,13 @@ void Image::SetIscriptAnimation(Iscript::Context *ctx, int anim)
             DebugStr().c_str(), Iscript::Script::AnimationName(anim));
 }
 
+void Image::ExternalAnimation(Iscript::Context *ctx, ImageType anim_img, int anim)
+{
+    iscript.Initialize(ctx->iscript, anim_img.IscriptHeader());
+    SetIscriptAnimation(ctx, anim);
+    iscript.Initialize(ctx->iscript, Type().IscriptHeader());
+}
+
 void Image::DrawFunc_ProgressFrame(Iscript::Context *ctx)
 {
     if (drawfunc == DrawFunc::Cloaking || drawfunc == DrawFunc::DetectedCloaking)
