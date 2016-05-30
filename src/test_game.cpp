@@ -2463,6 +2463,207 @@ struct Test_Irradiate : public GameTest {
     }
 };
 
+struct Test_ProtossBuilding : public GameTest {
+    Unit *probe;
+    void Init() override {
+        bw::minerals[0] = 1000;
+    }
+    void NextFrame() override {
+        constexpr ImageType PylonImg(0xbd);
+        constexpr ImageType WarpAnchor(0xd3);
+
+        switch (state) {
+            case 0: {
+                probe = CreateUnitForTestAt(UnitId::Probe, 0, Point(100, 100));
+                CommandToBuild(probe, UnitId::Pylon, Point(0x60, 0x60), OrderId::BuildProtoss1);
+                state++;
+            } break; case 1: {
+                Unit *pylon = FindUnit(UnitId::Pylon);
+                if (pylon != nullptr) {
+                    TestAssert(~pylon->flags & UnitStatus::Completed);
+                    TestAssert(pylon->sprite != nullptr);
+                    TestAssert(pylon->sprite->main_image != nullptr);
+                    TestAssert(pylon->sprite->main_image->image_id == WarpAnchor);
+                    state++;
+                }
+            } break; case 2: {
+                Unit *pylon = FindUnit(UnitId::Pylon);
+                TestAssert(pylon != nullptr);
+                TestAssert(~pylon->flags & UnitStatus::Completed);
+                TestAssert(pylon->sprite != nullptr);
+                TestAssert(pylon->sprite->main_image != nullptr);
+                if (pylon->sprite->main_image->image_id == PylonImg) {
+                    TestAssert(pylon->sprite->main_image->drawfunc == Image::UseWarpTexture);
+                    state++;
+                }
+            } break; case 3: {
+                Unit *pylon = FindUnit(UnitId::Pylon);
+                TestAssert(pylon != nullptr);
+                if (pylon->flags & UnitStatus::Completed) {
+                    CreateUnitForTestAt(UnitId::Nexus, 0, Point(800, 100));
+                    // Shouldn't work since it's outside pylon radius
+                    CommandToBuild(probe, UnitId::Forge, Point(0x160, 0x160), OrderId::BuildProtoss1);
+                    frames_remaining = 500;
+                    state++;
+                }
+            } break; case 4: {
+                TestAssert(FindUnit(UnitId::Forge) == nullptr);
+                if (frames_remaining == 15) {
+                    frames_remaining = 5000;
+                    CommandToBuild(probe, UnitId::Forge, Point(0x60, 0xc0), OrderId::BuildProtoss1);
+                    state++;
+                }
+            } break; case 5: {
+                Unit *forge = FindUnit(UnitId::Forge);
+                if (forge != nullptr && forge->sprite->main_image->image_id != WarpAnchor) {
+                    FindUnit(UnitId::Pylon)->Kill(nullptr);
+                    state++;
+                }
+            } break; case 6: {
+                Unit *forge = FindUnit(UnitId::Forge);
+                TestAssert(forge != nullptr);
+                if (forge->flags & UnitStatus::Completed) {
+                    TestAssert(forge->IsDisabled());
+                    CommandToBuild(probe, UnitId::Nexus, Point(0x160, 0x1a0), OrderId::BuildProtoss1);
+                    state++;
+                }
+            } break; case 7: {
+                Unit *nexus = FindUnit(UnitId::Nexus);
+                if (nexus != nullptr) {
+                    Pass();
+                }
+            }
+        }
+    }
+};
+
+struct Test_BuildFailure : public GameTest {
+    void Init() override {
+    }
+    void NextFrame() override {
+        using namespace OrderId;
+
+        constexpr ImageType PylonImg(0xbd);
+        constexpr ImageType WarpAnchor(0xd3);
+
+        switch (state) {
+            case 0: {
+                bw::minerals[0] = 100;
+                Unit *probe1 = CreateUnitForTestAt(UnitId::Probe, 0, Point(100, 100));
+                Unit *probe2 = CreateUnitForTestAt(UnitId::Probe, 0, Point(300, 300));
+                CommandToBuild(probe1, UnitId::Pylon, Point(0x200, 0x100), BuildProtoss1);
+                CommandToBuild(probe2, UnitId::Pylon, Point(0x200, 0x200), BuildProtoss1);
+                state++;
+            } break; case 1: {
+                if (HasInfoMessage("minerals")) {
+                    bw::minerals[0] = 1000;
+                    bw::gas[0] = 200;
+                    CreateUnitForTestAt(UnitId::Pylon, 0, Point(0x300, 0x300));
+                    CreateUnitForTestAt(UnitId::CyberneticsCore, 0, Point(0x40, 0x40));
+                    Unit *probe1 = CreateUnitForTestAt(UnitId::Probe, 0, Point(100, 100));
+                    Unit *probe2 = CreateUnitForTestAt(UnitId::Probe, 0, Point(300, 300));
+                    CommandToBuild(probe1, UnitId::Stargate, Point(0x280, 0x300), BuildProtoss1);
+                    CommandToBuild(probe2, UnitId::Stargate, Point(0x380, 0x300), BuildProtoss1);
+                    state++;
+                }
+            } break; case 2: {
+                if (HasInfoMessage("vespene")) {
+                    bw::minerals[0] = 200;
+                    Unit *probe1 = CreateUnitForTestAt(UnitId::Probe, 0, Point(100, 100));
+                    Unit *probe2 = CreateUnitForTestAt(UnitId::Probe, 0, Point(300, 300));
+                    CommandToBuild(probe1, UnitId::Pylon, Point(0x100, 0x200), BuildProtoss1);
+                    CommandToBuild(probe2, UnitId::Pylon, Point(0x100, 0x200), BuildProtoss1);
+                    state++;
+                }
+            } break; case 3: {
+                if (HasInfoMessage("here")) {
+                    ClearUnits();
+                    state++;
+                }
+            } break; case 4: {
+                if (NoUnits()) {
+                    bw::minerals[0] = 300;
+                    Unit *drone1 = CreateUnitForTestAt(UnitId::Drone, 0, Point(100, 100));
+                    Unit *drone2 = CreateUnitForTestAt(UnitId::Drone, 0, Point(300, 300));
+                    CommandToBuild(drone1, UnitId::Hatchery, Point(0x200, 0x100), DroneStartBuild);
+                    CommandToBuild(drone2, UnitId::Hatchery, Point(0x200, 0x200), DroneStartBuild);
+                    state++;
+                }
+            } break; case 5: {
+                if (HasInfoMessage("minerals")) {
+                    TestAssert(FindUnit(UnitId::Hatchery) != nullptr);
+                    state++;
+                }
+            } break; case 6: {
+                if (FindUnit(UnitId::Hatchery)->flags & UnitStatus::Completed) {
+                    // Give a while for creep to spread for next building.
+                    frames_remaining = 5000;
+                    state++;
+                }
+            } break; case 7: {
+                if (frames_remaining == 50) {
+                    frames_remaining = 15000;
+                    bw::minerals[0] = 1000;
+                    bw::gas[0] = 200;
+                    CreateUnitForTestAt(UnitId::Hive, 0, Point(0x40, 0x40));
+                    Unit *drone1 = CreateUnitForTestAt(UnitId::Drone, 0, Point(100, 100));
+                    Unit *drone2 = CreateUnitForTestAt(UnitId::Drone, 0, Point(300, 300));
+                    CommandToBuild(drone1, UnitId::Spire, Point(0x120, 0x200), DroneStartBuild);
+                    CommandToBuild(drone2, UnitId::Spire, Point(0x2a0, 0x200), DroneStartBuild);
+                    state++;
+                }
+            } break; case 8: {
+                if (HasInfoMessage("vespene")) {
+                    bw::minerals[0] = 600;
+                    Unit *drone1 = CreateUnitForTestAt(UnitId::Drone, 0, Point(100, 100));
+                    Unit *drone2 = CreateUnitForTestAt(UnitId::Drone, 0, Point(300, 300));
+                    CommandToBuild(drone1, UnitId::Hatchery, Point(0x400, 0x100), DroneStartBuild);
+                    CommandToBuild(drone2, UnitId::Hatchery, Point(0x400, 0x100), DroneStartBuild);
+                    state++;
+                }
+            } break; case 9: {
+                if (HasInfoMessage("here")) {
+                    ClearUnits();
+                    state++;
+                }
+            } break; case 10: {
+                if (NoUnits() && NoCreep()) {
+                    bw::minerals[0] = 100;
+                    Unit *scv1 = CreateUnitForTestAt(UnitId::SCV, 0, Point(100, 100));
+                    Unit *scv2 = CreateUnitForTestAt(UnitId::SCV, 0, Point(300, 300));
+                    CommandToBuild(scv1, UnitId::SupplyDepot, Point(0x200, 0x100), BuildTerran);
+                    CommandToBuild(scv2, UnitId::SupplyDepot, Point(0x200, 0x200), BuildTerran);
+                    state++;
+                }
+            } break; case 11: {
+                if (HasInfoMessage("minerals")) {
+                    bw::minerals[0] = 1000;
+                    bw::gas[0] = 200;
+                    CreateUnitForTestAt(UnitId::Barracks, 0, Point(0x40, 0x40));
+                    Unit *scv1 = CreateUnitForTestAt(UnitId::SCV, 0, Point(100, 100));
+                    Unit *scv2 = CreateUnitForTestAt(UnitId::SCV, 0, Point(300, 300));
+                    CommandToBuild(scv1, UnitId::Factory, Point(0x280, 0x100), BuildTerran);
+                    CommandToBuild(scv2, UnitId::Factory, Point(0x280, 0x200), BuildTerran);
+                    state++;
+                }
+            } break; case 12: {
+                if (HasInfoMessage("vespene")) {
+                    bw::minerals[0] = 200;
+                    Unit *scv1 = CreateUnitForTestAt(UnitId::SCV, 0, Point(100, 100));
+                    Unit *scv2 = CreateUnitForTestAt(UnitId::SCV, 0, Point(300, 300));
+                    CommandToBuild(scv1, UnitId::SupplyDepot, Point(0x300, 0x100), BuildTerran);
+                    CommandToBuild(scv2, UnitId::SupplyDepot, Point(0x300, 0x100), BuildTerran);
+                    state++;
+                }
+            } break; case 13: {
+                if (HasInfoMessage("here")) {
+                    Pass();
+                }
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -2511,6 +2712,7 @@ GameTests::GameTests()
     AddTest("Building land death", new Test_BuildingLandDeath);
     AddTest("Building land queuing", new Test_BuildingLandQueuing);
     AddTest("Irradiate", new Test_Irradiate);
+    AddTest("Protoss building", new Test_ProtossBuilding);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)
