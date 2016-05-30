@@ -46,7 +46,7 @@ class GameTests
 {
     public:
         DEBUG_MEM_FN(GameTests())
-        DEBUG_MEM_FN(void RunTests(int first, int last))
+        DEBUG_MEM_FN(void RunTests(int first, int last, int repeat))
         DEBUG_MEM_FN(void NextFrame())
 
     private:
@@ -57,7 +57,9 @@ class GameTests
         void StartTest();
         vector<ptr<GameTest>> tests;
         int current_test;
+        int first_test;
         int last_test;
+        int repeat;
 };
 
 #undef DEBUG_MEM_FN

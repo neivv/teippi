@@ -2814,10 +2814,12 @@ void GameTests::AddTest(const char *name, GameTest *test)
     tests.emplace_back(test);
 }
 
-void GameTests::RunTests(int first, int last)
+void GameTests::RunTests(int first, int last, int rep)
 {
     current_test = first;
+    first_test = first;
     last_test = last;
+    repeat = rep;
     if (last_test > tests.size())
         last_test = tests.size();
 
@@ -2826,14 +2828,20 @@ void GameTests::RunTests(int first, int last)
 
 void GameTests::NextTest()
 {
-    if (current_test == last_test)
-    {
-        Print("All tests passed!");
-        current_test = -1;
-        return;
+    if (current_test == last_test) {
+        repeat -= 1;
+        if (repeat <= 0) {
+            Print("All tests passed!");
+            current_test = -1;
+            return;
+        } else {
+            current_test = first_test;
+        }
     }
 
     tests[current_test]->state = -1;
+    tests[current_test]->status = GameTest::Status::Running;
+    tests[current_test]->frames_remaining = 20000;
     ClearUnits();
     if (CanStartTest()) {
         StartTest();

@@ -94,6 +94,7 @@ bool ScConsole::Test(const CmdArgs &args)
     if (!IsInGame() || !Debug)
         return false;
     int low = -1, high = -1;
+    int repeat = 1;
     if (strcmp(args[1], "all") == 0)
     {
         low = 0;
@@ -115,12 +116,18 @@ bool ScConsole::Test(const CmdArgs &args)
     }
     if (low == -1)
     {
-        Print("'test all' or 'test <begin_id> [end_id]'");
+        Print("'test all [_] [repeat]' or 'test <begin_id> [end_id] [repeat]'");
         return false;
     }
+
+    if (args[3][0] != 0)
+    {
+        repeat = atoi(args[3]);
+    }
+
     delete game_tests;
     game_tests = new GameTests;
-    game_tests->RunTests(low, high);
+    game_tests->RunTests(low, high, repeat);
     return true;
 }
 
