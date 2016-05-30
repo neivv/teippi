@@ -25,7 +25,8 @@ namespace String // Note: 1-based
 {
     const int Kills = 0x2fc;
     const int NotEnoughMinerals = 0x352;
-    const int NotEnoughGas = 0x352;
+    const int NotEnoughGas = 0x353;
+    const int CantBuildHere = 0x358;
     const int NotEnoughEnergy_Zerg = 0x360;
     const int NotEnoughEnergy_Terran = 0x361;
     const int NotEnoughEnergy_Protoss = 0x362;

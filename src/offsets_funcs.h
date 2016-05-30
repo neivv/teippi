@@ -526,6 +526,7 @@ namespace bw {
     extern Func<int(int, int, int)> CheckSupplyForBuilding;
     extern Func<Unit *(int, Unit *)> BeginGasBuilding;
     extern Func<void(Unit *)> StartZergBuilding;
+    extern Func<void(Unit *, int)> BuildErrorMessage;
 
     extern Func<void(Unit *, Unit *)> BeginHarvest;
     extern Func<void(Unit *)> AddResetHarvestCollisionOrder;

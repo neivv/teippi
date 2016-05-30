@@ -535,6 +535,7 @@ void InitBwFuncs_1161(Common::PatchManager *exec_heap, uintptr_t current_base_ad
     bw::CheckSupplyForBuilding.Init<Stack, Stack, Stack>(exec_heap, 0x0042CF70 + diff);
     bw::BeginGasBuilding.Init<Stack, Eax>(exec_heap, 0x004678A0 + diff);
     bw::StartZergBuilding.Init<Eax>(exec_heap, 0x0045D2E0 + diff);
+    bw::BuildErrorMessage.Init<Eax, Stack>(exec_heap, 0x0048F6C0 + diff);
 
     bw::BeginHarvest.Init<Eax, Edi>(exec_heap, 0x00468C70 + diff);
     bw::AddResetHarvestCollisionOrder.Init<Eax>(exec_heap, 0x00468AA0 + diff);
@@ -1174,6 +1175,7 @@ namespace bw {
     Func<int(int, int, int)> CheckSupplyForBuilding;
     Func<Unit *(int, Unit *)> BeginGasBuilding;
     Func<void(Unit *)> StartZergBuilding;
+    Func<void(Unit *, int)> BuildErrorMessage;
 
     Func<void(Unit *, Unit *)> BeginHarvest;
     Func<void(Unit *)> AddResetHarvestCollisionOrder;

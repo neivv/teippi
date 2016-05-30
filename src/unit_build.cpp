@@ -358,9 +358,11 @@ static bool BuildingCreationCheck(Unit *builder, UnitType building, const Point 
     int y_tile = (pos.y - (building.PlacementBox().height / 2)) / 32;
     int error = UpdateBuildingPlacementState(builder, player, x_tile, y_tile, building,
                                              0, false, true, true);
-
     if (error != 0)
+    {
+        bw::BuildErrorMessage(builder, String::CantBuildHere);
         return false;
+    }
 
     bw::player_build_minecost[player] = building.MineralCost();
     bw::player_build_gascost[player] = building.GasCost();

@@ -22,7 +22,7 @@ class GameTest
         virtual void Done() {}
         virtual void NextFrame() = 0;
 
-        void Fail(const char *reason) { status = Status::Failed; fail_reason = reason; }
+        void Fail(std::string reason) { status = Status::Failed; fail_reason = move(reason); }
         void Pass() { status = Status::Passed; }
 
         Unit *CreateUnitForTest(UnitType unit_id, int player);
