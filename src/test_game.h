@@ -60,6 +60,9 @@ class GameTests
         int first_test;
         int last_test;
         int repeat;
+        // Init waiting is always fast forwarded through, but if the test
+        // was started without fast forward, revert it back once ready.
+        int orig_render_wait;
 };
 
 #undef DEBUG_MEM_FN

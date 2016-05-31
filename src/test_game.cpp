@@ -2900,6 +2900,8 @@ void GameTests::NextTest()
     tests[current_test]->status = GameTest::Status::Running;
     tests[current_test]->frames_remaining = 20000;
     ClearUnits();
+    orig_render_wait = render_wait;
+    render_wait = 100;
     if (CanStartTest()) {
         StartTest();
     }
@@ -2907,6 +2909,7 @@ void GameTests::NextTest()
 
 void GameTests::StartTest() {
     Print("Running test %d: %s", current_test, tests[current_test]->name);
+    render_wait = orig_render_wait;
     NoAi();
     AllyPlayers();
     GiveAllTechs();
