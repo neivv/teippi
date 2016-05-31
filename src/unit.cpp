@@ -1265,14 +1265,14 @@ bool Unit::IsEnemy(const Unit *other) const
 
 bool Unit::IsOnBurningHealth() const
 {
-    int max_hp = GetMaxHealth();
+    int max_hp = GetMaxHitPoints();
     int hp = (hitpoints + 0xff) >> 8;
     return (hp * 100 / max_hp) <= 33;
 }
 
 bool Unit::IsOnYellowHealth() const
 {
-    int max_hp = GetMaxHealth();
+    int max_hp = GetMaxHitPoints();
     int hp = (hitpoints + 0xff) >> 8;
     int percentage = (hp * 100 / max_hp);
     return percentage < 66 && percentage > 33;
