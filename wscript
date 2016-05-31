@@ -97,7 +97,7 @@ def build(bld):
     libpath = []
     stlibpath = []
     if not msvc:
-        cflags += ['-Wno-format']
+        cflags += ['-Wno-format', '-Wno-missing-braces']
         if bld.env.CXX_NAME == 'gcc':
             cflags += ['-Wno-strict-overflow', '-Wno-sign-compare']
         # Only msvc works without optimizations atm
