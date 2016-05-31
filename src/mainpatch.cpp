@@ -63,7 +63,7 @@ uint32_t GetRngSeed()
     else if (SyncTest)
         seed = 0;
     else
-        seed = time(0);
+        seed = (uint32_t)time(0);
 
     debug_log->Log("Rng seed %08x\n", seed);
     return seed;

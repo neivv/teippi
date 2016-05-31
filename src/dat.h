@@ -41,7 +41,7 @@ class OrderType
 {
     public:
         OrderType();
-        constexpr explicit OrderType(int order_id) : order_id(order_id) { }
+        constexpr explicit OrderType(uint8_t order_id) : order_id(order_id) { }
 
         bool UseWeaponTargeting() const { return Value<uint8_t>(1); }
         bool SubunitInheritance() const { return Value<uint8_t>(4); }
@@ -59,11 +59,11 @@ class OrderType
         bool CanQueueOn() const;
         bool IsTargetable() const;
 
-        constexpr uint16_t Raw() const { return order_id; }
-        constexpr operator uint16_t() const { return Raw(); }
+        constexpr uint8_t Raw() const { return order_id; }
+        constexpr operator uint8_t() const { return Raw(); }
 
     private:
-        uint16_t order_id;
+        uint8_t order_id;
 
         template <class Type>
         const Type &Value(int index, int offset = 0) const {

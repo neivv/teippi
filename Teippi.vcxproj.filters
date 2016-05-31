@@ -1,494 +1,494 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Sources">
-      <UniqueIdentifier>{5088f974-fbe4-4a41-8acb-5bc0eb490e10}</UniqueIdentifier>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Headers">
-      <UniqueIdentifier>{795b9e32-8ee2-4aa5-ae8c-d448c30e2889}</UniqueIdentifier>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Sources\console">
-      <UniqueIdentifier>{f00bb6cc-3d29-42e2-bd39-3056719fcab5}</UniqueIdentifier>
+    <Filter Include="Source Files\patch">
+      <UniqueIdentifier>{fe73dde0-3475-4a29-af7a-9f9749a60f96}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Sources\func">
-      <UniqueIdentifier>{444193c3-0b05-4a82-a480-7575cef0fa3c}</UniqueIdentifier>
+    <Filter Include="Source Files\console">
+      <UniqueIdentifier>{55e16ac0-7821-450b-8dc9-1193f43d1068}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Headers\console">
-      <UniqueIdentifier>{966d5892-7eb4-4a78-8840-41b6ece6db88}</UniqueIdentifier>
+    <Filter Include="Header Files\constants">
+      <UniqueIdentifier>{834623c2-4142-457f-ab04-442b2e4d64dd}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Headers\common">
-      <UniqueIdentifier>{a1b5e92a-04a7-4407-926a-ae33fcae0fc6}</UniqueIdentifier>
+    <Filter Include="Header Files\common">
+      <UniqueIdentifier>{ccef54d6-b248-4fa1-a381-77e55f60091b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Headers\constants">
-      <UniqueIdentifier>{5b5665f0-11e1-4e65-b9bc-4e0592ce2a50}</UniqueIdentifier>
+    <Filter Include="Header Files\console">
+      <UniqueIdentifier>{c1a88f22-2b2c-4c04-a226-64a1b736ecd7}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Headers\patch">
-      <UniqueIdentifier>{28950ba4-c3f4-49ce-8924-145aaeaade79}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Sources\patch">
-      <UniqueIdentifier>{2332ec5d-5302-4489-b008-37504a9342ed}</UniqueIdentifier>
+    <Filter Include="Header Files\patch">
+      <UniqueIdentifier>{d6b89c8f-19ab-468d-95cb-63e902536d00}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\ai.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\ai_hit_reactions.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\bullet.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\bunker.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\bwlauncher.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\commands.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\console\assert.cpp">
-      <Filter>Sources\console</Filter>
+      <Filter>Source Files\console</Filter>
     </ClCompile>
     <ClCompile Include="src\console\cmdargs.cpp">
-      <Filter>Sources\console</Filter>
+      <Filter>Source Files\console</Filter>
     </ClCompile>
     <ClCompile Include="src\console\console.cpp">
-      <Filter>Sources\console</Filter>
+      <Filter>Source Files\console</Filter>
     </ClCompile>
     <ClCompile Include="src\console\font.cpp">
-      <Filter>Sources\console</Filter>
+      <Filter>Source Files\console</Filter>
     </ClCompile>
     <ClCompile Include="src\console\genericconsole.cpp">
-      <Filter>Sources\console</Filter>
+      <Filter>Source Files\console</Filter>
     </ClCompile>
     <ClCompile Include="src\dat.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\datastream.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\dialog.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\draw.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\flingy.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\game.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\image.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\init.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\iscript.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\limits.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\lofile.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\log.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\mainpatch.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\mpqdraft.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\nuke.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\offsets_funcs.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\order.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\patch\memory.cpp">
-      <Filter>Sources\patch</Filter>
+      <Filter>Source Files\patch</Filter>
     </ClCompile>
     <ClCompile Include="src\patch\patchmanager.cpp">
-      <Filter>Sources\patch</Filter>
+      <Filter>Source Files\patch</Filter>
     </ClCompile>
     <ClCompile Include="src\patch\x86.cpp">
-      <Filter>Sources\patch</Filter>
+      <Filter>Source Files\patch</Filter>
     </ClCompile>
     <ClCompile Include="src\pathing.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\perfclock.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\player.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\replay.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\save.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\scconsole.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\scthread.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\selection.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\sound.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\sprite.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\strings.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\targeting.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\tech.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\test_game.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\text.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\triggers.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\unit.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\unit_ai.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\unit_build.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\unit_death.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\unit_movement.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\unit_type.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\unitsearch.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\unitsearch_cache.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\upgrade.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\warn.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\yms.cpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClInclude Include="src\MPQDraftPlugin.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\ai.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\ai_hit_reactions.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\bullet.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\bunker.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\commands.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\common\assert.h">
-      <Filter>Headers\common</Filter>
+      <Filter>Header Files\common</Filter>
     </ClInclude>
     <ClInclude Include="src\common\claimable.h">
-      <Filter>Headers\common</Filter>
+      <Filter>Header Files\common</Filter>
     </ClInclude>
     <ClInclude Include="src\common\iter.h">
-      <Filter>Headers\common</Filter>
+      <Filter>Header Files\common</Filter>
     </ClInclude>
     <ClInclude Include="src\common\ll-deque.h">
-      <Filter>Headers\common</Filter>
+      <Filter>Header Files\common</Filter>
     </ClInclude>
     <ClInclude Include="src\common\log_freeze.h">
-      <Filter>Headers\common</Filter>
+      <Filter>Header Files\common</Filter>
     </ClInclude>
     <ClInclude Include="src\common\optional.h">
-      <Filter>Headers\common</Filter>
+      <Filter>Header Files\common</Filter>
     </ClInclude>
     <ClInclude Include="src\common\vector.h">
-      <Filter>Headers\common</Filter>
+      <Filter>Header Files\common</Filter>
     </ClInclude>
     <ClInclude Include="src\console\assert.h">
-      <Filter>Headers\console</Filter>
+      <Filter>Header Files\console</Filter>
     </ClInclude>
     <ClInclude Include="src\console\cmdargs.h">
-      <Filter>Headers\console</Filter>
+      <Filter>Header Files\console</Filter>
     </ClInclude>
     <ClInclude Include="src\console\console.h">
-      <Filter>Headers\console</Filter>
+      <Filter>Header Files\console</Filter>
     </ClInclude>
     <ClInclude Include="src\console\font.h">
-      <Filter>Headers\console</Filter>
+      <Filter>Header Files\console</Filter>
     </ClInclude>
     <ClInclude Include="src\console\genericconsole.h">
-      <Filter>Headers\console</Filter>
+      <Filter>Header Files\console</Filter>
     </ClInclude>
     <ClInclude Include="src\console\surface.h">
-      <Filter>Headers\console</Filter>
+      <Filter>Header Files\console</Filter>
     </ClInclude>
     <ClInclude Include="src\console\types.h">
-      <Filter>Headers\console</Filter>
+      <Filter>Header Files\console</Filter>
     </ClInclude>
     <ClInclude Include="src\console\windows_wrap.h">
-      <Filter>Headers\console</Filter>
+      <Filter>Header Files\console</Filter>
     </ClInclude>
     <ClInclude Include="src\constants\image.h">
-      <Filter>Headers\constants</Filter>
+      <Filter>Header Files\constants</Filter>
     </ClInclude>
     <ClInclude Include="src\constants\iscript.h">
-      <Filter>Headers\constants</Filter>
+      <Filter>Header Files\constants</Filter>
     </ClInclude>
     <ClInclude Include="src\constants\order.h">
-      <Filter>Headers\constants</Filter>
+      <Filter>Header Files\constants</Filter>
     </ClInclude>
     <ClInclude Include="src\constants\sound.h">
-      <Filter>Headers\constants</Filter>
+      <Filter>Header Files\constants</Filter>
     </ClInclude>
     <ClInclude Include="src\constants\sprite.h">
-      <Filter>Headers\constants</Filter>
+      <Filter>Header Files\constants</Filter>
     </ClInclude>
     <ClInclude Include="src\constants\string.h">
-      <Filter>Headers\constants</Filter>
+      <Filter>Header Files\constants</Filter>
     </ClInclude>
     <ClInclude Include="src\constants\tech.h">
-      <Filter>Headers\constants</Filter>
+      <Filter>Header Files\constants</Filter>
     </ClInclude>
     <ClInclude Include="src\constants\unit.h">
-      <Filter>Headers\constants</Filter>
+      <Filter>Header Files\constants</Filter>
     </ClInclude>
     <ClInclude Include="src\constants\upgrade.h">
-      <Filter>Headers\constants</Filter>
+      <Filter>Header Files\constants</Filter>
     </ClInclude>
     <ClInclude Include="src\constants\weapon.h">
-      <Filter>Headers\constants</Filter>
+      <Filter>Header Files\constants</Filter>
     </ClInclude>
     <ClInclude Include="src\damage_calculation.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\dat.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\datastream.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\dialog.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\draw.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\entity.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\flingy.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\game.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\image.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\init.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\iscript.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\limits.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\list.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\lofile.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\log.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\mainpatch.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\mapdirectory.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\mpqdraft.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\nuke.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\offsets.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\offsets_funcs.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\offsets_hooks.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\order.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\patch\func.h">
-      <Filter>Headers\patch</Filter>
+      <Filter>Header Files\patch</Filter>
     </ClInclude>
     <ClInclude Include="src\patch\hook.h">
-      <Filter>Headers\patch</Filter>
+      <Filter>Header Files\patch</Filter>
     </ClInclude>
     <ClInclude Include="src\patch\memory.h">
-      <Filter>Headers\patch</Filter>
+      <Filter>Header Files\patch</Filter>
     </ClInclude>
     <ClInclude Include="src\patch\patchmanager.h">
-      <Filter>Headers\patch</Filter>
+      <Filter>Header Files\patch</Filter>
     </ClInclude>
     <ClInclude Include="src\patch\write_asm.h">
-      <Filter>Headers\patch</Filter>
+      <Filter>Header Files\patch</Filter>
     </ClInclude>
     <ClInclude Include="src\patch\x86.h">
-      <Filter>Headers\patch</Filter>
+      <Filter>Header Files\patch</Filter>
     </ClInclude>
     <ClInclude Include="src\pathing.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\perfclock.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\player.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\replay.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\resolution.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\rng.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\save.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\scconsole.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\scthread.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\selection.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\sound.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\sprite.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\strings.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\sync.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\targeting.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\tech.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\test_game.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\text.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\thread.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\triggers.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\types.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\unit.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\unit_cache.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\unit_type.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\unitlist.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\unitsearch.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\unitsearch_cache.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\unsorted_list.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\upgrade.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\warn.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\yms.h">
-      <Filter>Headers</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\patch\func.hpp">
-      <Filter>Sources\patch</Filter>
+      <Filter>Source Files\patch</Filter>
     </ClInclude>
     <ClInclude Include="src\possearch.hpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="src\unitsearch.hpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="src\unitsearch_cache.hpp">
-      <Filter>Sources</Filter>
+      <Filter>Source Files</Filter>
     </ClInclude>
-    <None Include="wscript" />
+  </ItemGroup>
+  <ItemGroup>
   </ItemGroup>
 </Project>

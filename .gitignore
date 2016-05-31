@@ -1,6 +1,7 @@
 *.bat
 Release/*
 Debug/*
+FastDebug/*
 build/*
 .lock-*
 waf*/*
@@ -10,3 +11,5 @@ x86/*
 *.user
 *.opensdf
 *.sdf
+teippi.VC.db
+teippi.VC.VC.opendb

@@ -230,7 +230,8 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, WeaponType we
         return false;
 
     player = player_;
-    weapon_id = weapon.Raw();
+    Assert(weapon.Raw() < 0x100);
+    weapon_id = (uint8_t)weapon.Raw();
     time_remaining = weapon.DeathTime();
     flingy_flags |= 0x8;
     flags = 0;
@@ -282,7 +283,8 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, WeaponType we
     {
         case 0x8: // Move near
         {
-            spread_seed = spawner->bullet_spread_seed;
+            Assert(spawner->bullet_spread_seed < 0x100);
+            spread_seed = (uint8_t)spawner->bullet_spread_seed;
             spawner->bullet_spread_seed++;
             if (spawner->bullet_spread_seed >= sizeof random_chances / sizeof(random_chances[0]))
                 spawner->bullet_spread_seed = 0;

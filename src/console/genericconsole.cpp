@@ -61,18 +61,19 @@ bool GenericConsole::Pid(const CmdArgs &args)
 
 bool GenericConsole::Color(const CmdArgs &args)
 {
+    uint8_t color = (uint8_t)strtoul(args[2], 0, 16);
     if (strcmp(args[1], "bg") == 0)
-        colors[Color::bg] = strtoul(args[2], 0, 16);
+        colors[Color::bg] = color;
     else if (strcmp(args[1], "text") == 0)
-        colors[Color::text] = strtoul(args[2], 0, 16);
+        colors[Color::text] = color;
     else if (strcmp(args[1], "own") == 0)
-        colors[Color::own] = strtoul(args[2], 0, 16);
+        colors[Color::own] = color;
     else if (strcmp(args[1], "border") == 0)
-        colors[Color::border] = strtoul(args[2], 0, 16);
+        colors[Color::border] = color;
     else if (strcmp(args[1], "typo") == 0)
-        colors[Color::typo] = strtoul(args[2], 0, 16);
+        colors[Color::typo] = color;
     else if (strcmp(args[1], "fail") == 0)
-        colors[Color::fail] = strtoul(args[2], 0, 16);
+        colors[Color::fail] = color;
     else
         return false;
     dirty = true;

@@ -1,0 +1,6 @@
+The freetype/ directory includes the FreeType font library (Version 2.6) for Visual Studio,
+whose source code can be acquired from http://download.savannah.gnu.org/releases/freetype/
+See freetype\FTL.txt for the FreeType license.
+
+This prebuilt library has only been tested to work with the Visual Studio 2015 compiler's debug
+builds, and other setups may require compiling the library from source.

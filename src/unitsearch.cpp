@@ -419,12 +419,13 @@ void MainUnitSearch::ChangeUnitPosition(Unit *unit, int x_diff, int y_diff)
             unit->search_left = it + 1;
             std::swap(left_positions[it + 1], left_positions[it]);
         }
+        int new_pos = it + 1;
         int pos = unit->search_left;
-        rotate(left_to_value.begin() + it + 1, left_to_value.begin() + pos, left_to_value.begin() + pos + 1);
-        rotate(left_to_top.begin() + it + 1, left_to_top.begin() + pos, left_to_top.begin() + pos + 1);
-        rotate(left_to_bottom.begin() + it + 1, left_to_bottom.begin() + pos, left_to_bottom.begin() + pos + 1);
-        rotate(left_to_right.begin() + it + 1, left_to_right.begin() + pos, left_to_right.begin() + pos + 1);
-        unit->search_left = it + 1;
+        rotate(left_to_value.begin() + new_pos, left_to_value.begin() + pos, left_to_value.begin() + pos + 1);
+        rotate(left_to_top.begin() + new_pos, left_to_top.begin() + pos, left_to_top.begin() + pos + 1);
+        rotate(left_to_bottom.begin() + new_pos, left_to_bottom.begin() + pos, left_to_bottom.begin() + pos + 1);
+        rotate(left_to_right.begin() + new_pos, left_to_right.begin() + pos, left_to_right.begin() + pos + 1);
+        unit->search_left = new_pos;
     }
     area_cache_enabled = false;
     Validate();
@@ -443,7 +444,9 @@ void MainUnitSearch::ChangeUnitPosition_Fast(Unit *unit, int x_diff, int y_diff)
         left_high_invalid = std::max((int)left_high_invalid, (int)left_positions[unit->search_left] + x_diff);
     }
     if (x_diff != 0)
+    {
         Assert(left_low_invalid >= 0 && left_high_invalid >= 0);
+    }
     left_positions[unit->search_left] += x_diff;
     left_to_right[unit->search_left] += x_diff;
     left_to_top[unit->search_left] += y_diff;

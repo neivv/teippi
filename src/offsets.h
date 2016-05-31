@@ -57,6 +57,18 @@ class array_offset_iterator {
         bool operator!=(const array_offset_iterator<Type> &other) const {
             return address != other.address;
         }
+        bool operator<(const array_offset_iterator<Type> &other) const {
+            return address < other.address;
+        }
+        bool operator>(const array_offset_iterator<Type> &other) const {
+            return address > other.address;
+        }
+        bool operator>=(const array_offset_iterator<Type> &other) const {
+            return !(*this < other);
+        }
+        bool operator<=(const array_offset_iterator<Type> &other) const {
+            return !(*this > other);
+        }
 
     private:
         uintptr_t address;

@@ -266,7 +266,7 @@ static void Command_Sync(const uint8_t *data)
                     snprintf(buf, sizeof buf, "%s.%s",
                             bw::net_players[*bw::self_net_player].name, timestr);
                     auto time = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
-                    SaveGame(buf, time);
+                    SaveGame(buf, (uint32_t)time);
                 }
             }
             *bw::desync_happened = 1;

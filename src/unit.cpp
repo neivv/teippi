@@ -3013,7 +3013,7 @@ void Unit::DoNextQueuedOrder()
             subunit_order = subunit->Type().AttackUnitOrder();
         else if (OrderType() == Type().AttackMoveOrder())
             subunit_order = Type().AttackMoveOrder();
-        else if (next->Type().SubunitInheritance())
+        else if (OrderType().SubunitInheritance())
             subunit_order = OrderType();
         else
             return;

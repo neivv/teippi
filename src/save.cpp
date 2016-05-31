@@ -314,7 +314,7 @@ void SaveBase<P>::ConvertSpritePtr(Sprite **in, const LoneSpriteSystem *lone_spr
             else
                 *in = id_to_sprite.at((uintptr_t)*in);
         }
-        catch (const std::out_of_range &e)
+        catch (const std::out_of_range &)
         {
             throw NewSaveConvertFail(Sprite *, in, 0);
         }
@@ -344,7 +344,7 @@ void SaveBase<P>::ConvertBulletPtr(Bullet **in, const BulletSystem *bullets) con
             else
                 *in = id_to_bullet.at((uintptr_t)*in);
         }
-        catch (const std::out_of_range &e)
+        catch (const std::out_of_range &)
         {
             throw NewSaveConvertFail(Bullet *, in, 0);
         }

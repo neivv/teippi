@@ -879,7 +879,7 @@ void ScConsole::DrawAiInfo(uint8_t *textbuf, uint8_t *framebuf, xuint w, yuint h
                 surface.DrawLine(town->building_scv->sprite->position - screen_pos, town->position - screen_pos, 0x71);
             char str[64];
             snprintf(str, sizeof str, "Inited: %d, workers %d / %d", town->inited, town->worker_count, town->unk1b);
-            Point32 draw_pos = town->position - screen_pos + Point32(-strlen(str) * 3, 20);
+            Point32 draw_pos = town->position - screen_pos + Point32(0 - strlen(str) * 3, 20);
             text_surface.DrawText(&font, str, draw_pos, 0x55);
             draw_pos += Point32(0, 10);
             std::string req_str = "Requests: ";

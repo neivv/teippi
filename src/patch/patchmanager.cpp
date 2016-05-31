@@ -88,7 +88,8 @@ PatchContext PatchManager::BeginPatch(const char *module_name, uint32_t expected
         bool found = false;
         for (const auto &mod : patched_modules)
         {
-            if (strcmpi(module_name, mod.c_str()) == 0)
+            auto eq_nocase = [](auto a, auto b) { return tolower(a) == tolower(b); };
+            if (std::equal(mod.begin(), mod.end(), module_name, eq_nocase))
             {
                 found = true;
                 break;
@@ -241,7 +242,8 @@ bool PatchContext::ImportPatch(uintptr_t base, const char *dll, const char *func
     {
         uint32_t str_off = *(uint32_t *)(import_header + 0xc);
         const char *str = (const char *)(base + str_off);
-        if (strcmpi(str, dll) == 0)
+        auto eq_nocase = [](auto a, auto b) { return tolower(a) == tolower(b); };
+        if (std::equal(str, str + strlen(str), dll, eq_nocase))
         {
             const char **import_lookup = (const char **)(base + *(uint32_t *)import_header);
             int j = 0;

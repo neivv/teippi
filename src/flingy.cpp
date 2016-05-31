@@ -55,10 +55,6 @@ bool Flingy::Initialize(Iscript::Context *ctx,
     return true;
 }
 
-Flingy::~Flingy()
-{
-}
-
 void Flingy::SingleDelete()
 {
     if (*bw::last_active_flingy == this)

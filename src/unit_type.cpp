@@ -44,7 +44,7 @@ uint32_t UnitType::WhatSound() const
 
 uint32_t UnitType::WhatSoundCount() const
 {
-    return abs(UintValue(30) - UintValue(31)) + 1;
+    return abs((int)(UintValue(30) - UintValue(31))) + 1;
 }
 
 uint32_t UnitType::AnnoyedSound() const
@@ -58,7 +58,7 @@ uint32_t UnitType::AnnoyedSoundCount() const
 {
     if (unit_id > UnitId::CommandCenter)
         return 0;
-    return abs(UintValue(32) - UintValue(33)) + 1;
+    return abs((int)(UintValue(32) - UintValue(33))) + 1;
 }
 
 bool UnitType::IsGoliath() const

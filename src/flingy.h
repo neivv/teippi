@@ -115,7 +115,6 @@ class Flingy
 
     private:
         Flingy();
-        ~Flingy();
         void SingleDelete();
 };
 #pragma pack(pop)
