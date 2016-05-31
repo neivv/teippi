@@ -97,8 +97,8 @@ class UnitType
         uint8_t ArmorType() const { return UintValue(26); }
         uint8_t Armor() const { return UintValue(27); }
         uint8_t RightClickAction() const { return UintValue(28); }
-        uint32_t WhatSound() const { return UintValue(30); }
-        uint32_t WhatSoundCount() const { return UintValue(31) - WhatSound() + 1; }
+        uint32_t WhatSound() const;
+        uint32_t WhatSoundCount() const;
         uint32_t AnnoyedSound() const;
         uint32_t AnnoyedSoundCount() const;
         uint16_t MineralCost() const { return UintValue(40); }

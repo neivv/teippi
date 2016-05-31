@@ -569,6 +569,8 @@ namespace bw
     const offset<uint32_t> previous_unit_sound = 0x006D5BE0;
     const offset<uint32_t> quiet_sounds = 0x0064086C;
     const offset<uint32_t> selection_sound_cooldown = 0x0064087C;
+    const offset<uint32_t> digital_volume = 0x006CDFE4;
+    const array_offset<SoundChannel, 8> sound_channels = 0x005998F0;
 
     const array_offset<DatTable, 0x35> units_dat = 0x00513C30;
     const array_offset<DatTable, 0x17> weapons_dat = 0x00513868;

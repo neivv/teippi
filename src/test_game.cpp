@@ -22,6 +22,7 @@
 #include "order.h"
 #include "player.h"
 #include "selection.h"
+#include "sound.h"
 #include "targeting.h"
 #include "tech.h"
 #include "text.h"
@@ -38,6 +39,12 @@ using std::get;
 #define TestAssert(s) if (!(s)) { if(IsDebuggerPresent()) { INT3(); } Fail(#s); return; }
 
 // This file has special permission for different brace style =)
+
+static std::array<SoundChannel, 8> SoundChannels() {
+    std::array<SoundChannel, 8> ret;
+    std::copy_n(bw::sound_channels.begin(), 8, ret.begin());
+    return ret;
+}
 
 static void SendCommand_CreateHotkeyGroup(uint8_t group) {
     uint8_t buf[] = { commands::Hotkey, 0, group };
@@ -2753,6 +2760,55 @@ struct Test_BuildFailureT : public GameTest {
     }
 };
 
+/// Bw has ultralisk's units.dat selection sounds defined incorrectly.
+struct Test_UltraliskSounds : public GameTest {
+    bool was_muted;
+    std::array<bool, 4> sounds_played;
+    void Init() override {
+        was_muted = *bw::digital_volume == 0;
+        if (was_muted) {
+            bw::ToggleSound();
+        }
+        sounds_played = { false, false, false, false };
+    }
+    void Done() override {
+        if (was_muted) {
+            bw::ToggleSound();
+        }
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                TestAssert(UnitId::Ultralisk.WhatSoundCount() == 4);
+                Unit *unit = CreateUnitForTestAt(UnitId::Ultralisk, 0, Point(100, 100));
+                SendCommand_Select(unit);
+                SendCommand_CreateHotkeyGroup(1);
+                state++;
+            } break; case 1: {
+                SelectHotkeyGroup(1);
+                for (int i = 0; i < 4; i++) {
+                    for (auto channel : SoundChannels()) {
+                        int sound = channel.sound - UnitId::Ultralisk.WhatSound();
+                        // Shouldn't play the acknowledgement sounds like bw does.
+                        TestAssert(sound < 4 || sound > 8);
+                        if (sound >= 0 && sound < 4) {
+                            sounds_played[sound]= true;
+                        }
+                    }
+                }
+                const auto &s = sounds_played;
+                if (std::find(s.begin(), s.end(), false) == s.end()) {
+                    Pass();
+                }
+                *bw::selection_sound_cooldown = 0;
+                bw::ToggleSound();
+                bw::ToggleSound();
+                ForceRender();
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -2805,6 +2861,7 @@ GameTests::GameTests()
     AddTest("Protoss build failure", new Test_BuildFailureP);
     AddTest("Zerg build failure", new Test_BuildFailureZ);
     AddTest("Terran build failure", new Test_BuildFailureT);
+    AddTest("Ultralisk sounds", new Test_UltraliskSounds);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)
@@ -2876,6 +2933,7 @@ void GameTests::CheckTest()
     }
     else if (tests[current_test]->status == GameTest::Status::Passed)
     {
+        tests[current_test]->Done();
         Print("Test passed %d: %s", current_test, tests[current_test]->name);
         current_test++;
         NextTest();

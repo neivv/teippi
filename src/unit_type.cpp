@@ -1,5 +1,7 @@
 #include "unit_type.h"
 
+#include <algorithm>
+
 #include "constants/unit.h"
 #include "constants/upgrade.h"
 #include "constants/weapon.h"
@@ -35,18 +37,28 @@ UpgradeType UnitType::ArmorUpgrade() const
     return UpgradeType(UintValue(25));
 }
 
+uint32_t UnitType::WhatSound() const
+{
+    return std::min(UintValue(30), UintValue(31));
+}
+
+uint32_t UnitType::WhatSoundCount() const
+{
+    return abs(UintValue(30) - UintValue(31)) + 1;
+}
+
 uint32_t UnitType::AnnoyedSound() const
 {
     if (unit_id > UnitId::CommandCenter)
         return 0;
-    return UintValue(32);
+    return std::min(UintValue(32), UintValue(33));
 }
 
 uint32_t UnitType::AnnoyedSoundCount() const
 {
     if (unit_id > UnitId::CommandCenter)
         return 0;
-    return UintValue(33) - AnnoyedSound() + 1;
+    return abs(UintValue(32) - UintValue(33)) + 1;
 }
 
 bool UnitType::IsGoliath() const

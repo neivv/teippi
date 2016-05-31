@@ -121,6 +121,7 @@ struct CycleStruct;
 struct DatTable;
 struct SoundData;
 struct ProgressUnitResults;
+struct SoundChannel;
 
 // Trigger-related callback param structures
 struct KillUnitArgs;
