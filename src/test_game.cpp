@@ -2809,6 +2809,88 @@ struct Test_UltraliskSounds : public GameTest {
     }
 };
 
+struct Test_AiStim : public GameTest {
+    Unit *unit;
+    Unit *target;
+    void Init() override {
+        ClearTechs();
+        AiPlayer(1);
+        SetEnemy(1, 0);
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                unit = CreateUnitForTestAt(UnitId::Marine, 1, Point(100, 100));
+                target = CreateUnitForTestAt(UnitId::Dragoon, 0, Point(300, 100));
+                unit->IssueOrderTargetingGround(OrderId::AttackMove, Point(300, 100));
+                state++;
+            } break; case 1: {
+                TestAssert(unit->GetHitPoints() == unit->GetMaxHitPoints());
+                TestAssert(~unit->flags & UnitStatus::AttackSpeedUpgrade);
+                TestAssert(unit->stim_timer == 0);
+                if (target->IsDying()) {
+                    ClearUnits();
+                    // Won't stim against an unit which can't attack back.
+                    unit = CreateUnitForTestAt(UnitId::Marine, 1, Point(100, 100));
+                    target = CreateUnitForTestAt(UnitId::Valkyrie, 0, Point(300, 100));
+                    unit->IssueOrderTargetingGround(OrderId::AttackMove, Point(300, 100));
+                    GiveTech(TechId::Stimpacks, 1);
+                    state++;
+                }
+            } break; case 2: {
+                TestAssert(unit->GetHitPoints() == unit->GetMaxHitPoints());
+                TestAssert(~unit->flags & UnitStatus::AttackSpeedUpgrade);
+                TestAssert(unit->stim_timer == 0);
+                if (target->IsDying()) {
+                    ClearUnits();
+                    unit = CreateUnitForTestAt(UnitId::Marine, 1, Point(100, 100));
+                    target = CreateUnitForTestAt(UnitId::SunkenColony, 0, Point(300, 100));
+                    unit->IssueOrderTargetingGround(OrderId::AttackMove, Point(300, 100));
+                    state++;
+                }
+            } break; case 3: {
+                TestAssert(!target->IsDying());
+                if (unit->stim_timer != 0) {
+                    ClearUnits();
+                    // Won't stim if unit has less than 100 health
+                    unit = CreateUnitForTestAt(UnitId::Firebat, 1, Point(100, 100));
+                    target = CreateUnitForTestAt(UnitId::Hydralisk, 0, Point(300, 100));
+                    unit->IssueOrderTargetingGround(OrderId::AttackMove, Point(300, 100));
+                    state++;
+                }
+            } break; case 4: {
+                TestAssert(unit->GetHitPoints() == unit->GetMaxHitPoints());
+                TestAssert(~unit->flags & UnitStatus::AttackSpeedUpgrade);
+                TestAssert(unit->stim_timer == 0);
+                if (target->IsDying()) {
+                    ClearUnits();
+                    unit = CreateUnitForTestAt(UnitId::Firebat, 1, Point(100, 100));
+                    target = CreateUnitForTestAt(UnitId::Zealot, 0, Point(300, 100));
+                    unit->IssueOrderTargetingGround(OrderId::AttackMove, Point(300, 100));
+                    state++;
+                }
+            } break; case 5: {
+                TestAssert(!target->IsDying());
+                if (unit->stim_timer != 0) {
+                    ClearUnits();
+                    // Heroes shouldn't stim
+                    unit = CreateUnitForTestAt(UnitId::JimRaynorM, 1, Point(100, 100));
+                    target = CreateUnitForTestAt(UnitId::Ultralisk, 0, Point(300, 100));
+                    unit->IssueOrderTargetingGround(OrderId::AttackMove, Point(300, 100));
+                    state++;
+                }
+            } break; case 6: {
+                TestAssert(unit->GetHitPoints() == unit->GetMaxHitPoints());
+                TestAssert(~unit->flags & UnitStatus::AttackSpeedUpgrade);
+                TestAssert(unit->stim_timer == 0);
+                if (target->IsDying()) {
+                    Pass();
+                }
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -2862,6 +2944,7 @@ GameTests::GameTests()
     AddTest("Zerg build failure", new Test_BuildFailureZ);
     AddTest("Terran build failure", new Test_BuildFailureT);
     AddTest("Ultralisk sounds", new Test_UltraliskSounds);
+    AddTest("Ai stim", new Test_AiStim);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)
