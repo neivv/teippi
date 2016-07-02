@@ -461,7 +461,6 @@ class Unit
         int GetSightRange(bool dont_check_blind) const;
         int GetTargetAcquisitionRange() const;
         int GetMaxEnergy() const;
-        int GetModifiedDamage(int dmg) const;
         /// Assumes that dmg <= shields, most likely should not be called but let
         /// DamagedUnit call it when necessary
         void DamageShields(int32_t dmg, int direction);

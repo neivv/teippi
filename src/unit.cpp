@@ -3053,16 +3053,6 @@ bool Unit::CanLocalPlayerSelect() const
     return true;
 }
 
-int Unit::GetModifiedDamage(int dmg) const
-{
-    if (flags & UnitStatus::Hallucination)
-        dmg *= 2;
-    dmg += acid_spore_count * 256;
-    if (dmg < 128)
-        dmg = 128;
-    return dmg;
-}
-
 void Unit::ShowShieldHitOverlay(int direction)
 {
     Image *img = sprite->main_image;
