@@ -100,7 +100,7 @@ namespace bw
     const Stdcall<int(Ecx<const Unit *>)> GetUsedSpace = 0x004E7170;
 
     const Stdcall<void(int, Unit **)> SendChangeSelectionCommand = 0x004C0860;
-    const Stdcall<void(uint8_t)> CenterOnSelectionGroup = 0x004967E0;
+    const Stdcall<void(Ecx<uint8_t>)> CenterOnSelectionGroup = 0x004967E0;
     const Stdcall<void(uint8_t)> SelectHotkeyGroup = 0x00496B40;
     const Stdcall<int(Unit *)> TrySelectRecentHotkeyGroup = 0x00496D30;
     const Stdcall<void(Eax<uint8_t>, int)> Command_SaveHotkeyGroup = 0x004965D0;
