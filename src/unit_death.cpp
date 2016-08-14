@@ -361,10 +361,10 @@ static void Die(Unit *unit, ProgressUnitResults *results)
     TransportCleanup(unit, results);
     bw::RemoveReferences(unit, 1);
     // Hak fix
-    for (Unit *unit : first_allocated_unit)
+    for (Unit *other : first_allocated_unit)
     {
-        if (unit->path && unit->path->dodge_unit == unit)
-            unit->path->dodge_unit = nullptr;
+        if (other->path && other->path->dodge_unit == unit)
+            other->path->dodge_unit = nullptr;
     }
 
     RemoveFromBulletTargets(unit);
