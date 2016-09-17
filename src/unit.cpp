@@ -186,7 +186,10 @@ Unit *Unit::RawAlloc()
 
 Unit *Unit::AllocateAndInit(uint8_t player, int unused_seed, uint16_t x, uint16_t y, uint16_t unit_id)
 {
-    if (!bw::DoesFitHere(unit_id, x, y))
+    // This check doesn't have the usual +1 right/bottom for the collision rect, oh well.
+    const Rect16 dbox = UnitType(unit_id).DimensionBox();
+    if (x - dbox.left < 0 || y - dbox.top < 0 ||
+        x + dbox.right >= *bw::map_width || y + dbox.bottom >= *bw::map_height)
     {
         *bw::error_message = 0;
         return nullptr;
