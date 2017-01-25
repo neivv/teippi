@@ -118,7 +118,7 @@ void InitBwFuncs_1161(Common::PatchManager *exec_heap, uintptr_t current_base_ad
     bw::ReplaceWithFullPath.Init<Edi, Esi>(exec_heap, 0x004CE300 + diff);
     bw::FirstCommandUser.Init<>(exec_heap, 0x004C3DB0 + diff);
     bw::IsInvalidFilename.Init<Edx, Ecx, Eax>(exec_heap, 0x004F3F20 + diff);
-    bw::GetUserFilePath.Init<Stack, Edx, Eax, Ebx>(exec_heap, 0x004CF2A0 + diff);
+    bw::GetUserFilePath.Init<Stack, Ecx, Eax, Ebx>(exec_heap, 0x004CF2A0 + diff);
     bw::ShowWaitDialog.Init<Esi>(exec_heap, 0x004F5C50 + diff);
     bw::HidePopupDialog.Init<>(exec_heap, 0x004F5930 + diff);
 
