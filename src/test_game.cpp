@@ -261,6 +261,10 @@ static void ClearTechs() {
     }
 }
 
+static bool CanStartTest() {
+    return bullet_system->BulletCount() == 0 && NoUnits() && NoCreep();
+}
+
 struct Test_Dummy : public GameTest {
     void Init() override {
         Pass();
@@ -2001,7 +2005,6 @@ struct Test_NearbyHelpers : public GameTest {
     Unit *helper;
     Unit *target;
     Unit *enemy;
-    const TransmissionTest *variant;
     void Init() override {
         AiPlayer(1);
         SetEnemy(0, 1);
@@ -2891,6 +2894,98 @@ struct Test_AiStim : public GameTest {
     }
 };
 
+struct HalluSpellKill {
+    UnitType target_unit;
+    UnitType caster_unit;
+    OrderType tech_order;
+    bool should_fail;
+};
+constexpr HalluSpellKill hallu_spell_kill_tests[] = {
+    { UnitId::Marine, UnitId::Queen, OrderId::Parasite, false },
+    { UnitId::Marine, UnitId::Queen, OrderId::SpawnBroodlings, false },
+    { UnitId::Marine, UnitId::Queen, OrderId::Ensnare, false },
+    { UnitId::Marine, UnitId::Defiler, OrderId::DarkSwarm, true },
+    { UnitId::Marine, UnitId::Defiler, OrderId::Plague, false },
+    { UnitId::Zergling, UnitId::Defiler, OrderId::Consume, false },
+    { UnitId::Marine, UnitId::HighTemplar, OrderId::PsiStorm, false },
+    // Feedback cannot target units without energy ^_^
+    { UnitId::Medic, UnitId::DarkArchon, OrderId::Feedback, true },
+    { UnitId::Marine, UnitId::DarkArchon, OrderId::MindControl, false },
+    { UnitId::Marine, UnitId::DarkArchon, OrderId::Maelstrom, false },
+    { UnitId::Marine, UnitId::Arbiter, OrderId::Recall, true },
+    { UnitId::Marine, UnitId::Arbiter, OrderId::StasisField, false },
+    { UnitId::Marine, UnitId::Medic, OrderId::Restoration, false },
+    { UnitId::Marine, UnitId::Medic, OrderId::OpticalFlare, false },
+    { UnitId::Vulture, UnitId::Ghost, OrderId::Lockdown, false },
+    { UnitId::Marine, UnitId::ScienceVessel, OrderId::DefensiveMatrix, false },
+    { UnitId::Marine, UnitId::ScienceVessel, OrderId::EmpShockwave, false },
+    { UnitId::Marine, UnitId::ScienceVessel, OrderId::Irradiate, false },
+};
+
+struct Test_HalluSpell : public GameTest {
+    Unit *spellcaster;
+    const HalluSpellKill *variant;
+    int hallu_count;
+    void Init() override {
+        variant = hallu_spell_kill_tests;
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                if (CanStartTest()) {
+                    int target_player = variant->tech_order == OrderId::Consume ? 0 : 1;
+                    auto target_unit = variant->target_unit;
+                    Unit *ht = CreateUnitForTestAt(UnitId::HighTemplar, target_player, Point(100, 100));
+                    Unit *real = CreateUnitForTestAt(target_unit, 0, Point(100, 100));
+                    spellcaster = CreateUnitForTestAt(variant->caster_unit, 0, Point(100, 200));
+                    ht->IssueOrderTargetingUnit(OrderId::Hallucination, real);
+                    state++;
+                }
+            } break; case 1: {
+                hallu_count = 0;
+                for (Unit *unit : *bw::first_active_unit) {
+                    if (unit->flags & UnitStatus::Hallucination) {
+                        hallu_count += 1;
+                        if (hallu_count == 1) {
+                            spellcaster->IssueOrderTargetingUnit(variant->tech_order, unit);
+                        }
+                    }
+                }
+                if (hallu_count > 0) {
+                    frames_remaining = 300;
+                    state++;
+                }
+            } break; case 2: {
+                int current_hallu_count = 0;
+                for (Unit *unit : *bw::first_active_unit) {
+                    if (unit->flags & UnitStatus::Hallucination) {
+                        current_hallu_count += 1;
+                    }
+                }
+                bool ok = false;
+                if (current_hallu_count < hallu_count) {
+                    TestAssert(!variant->should_fail);
+                    ok = true;
+                } else if (frames_remaining < 10) {
+                    TestAssert(variant->should_fail);
+                    ok = true;
+                }
+                if (ok) {
+                    variant += 1;
+                    auto test_end = hallu_spell_kill_tests +
+                        sizeof hallu_spell_kill_tests / sizeof(hallu_spell_kill_tests[0]);
+                    state = 0;
+                    frames_remaining = 300;
+                    ClearUnits();
+                    if (variant == test_end) {
+                        Pass();
+                    }
+                }
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -2945,6 +3040,7 @@ GameTests::GameTests()
     AddTest("Terran build failure", new Test_BuildFailureT);
     AddTest("Ultralisk sounds", new Test_UltraliskSounds);
     AddTest("Ai stim", new Test_AiStim);
+    AddTest("Hallucination dying from spells", new Test_HalluSpell);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)
@@ -3001,10 +3097,6 @@ void GameTests::StartTest() {
     tests[current_test]->state = 0;
     tests[current_test]->Init();
     CheckTest();
-}
-
-bool GameTests::CanStartTest() {
-    return bullet_system->BulletCount() == 0 && NoUnits() && NoCreep();
 }
 
 void GameTests::CheckTest()

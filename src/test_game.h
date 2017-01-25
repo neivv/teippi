@@ -53,7 +53,6 @@ class GameTests
         void AddTest(const char *name, GameTest *test);
         void NextTest();
         void CheckTest();
-        bool CanStartTest();
         void StartTest();
         vector<ptr<GameTest>> tests;
         int current_test;

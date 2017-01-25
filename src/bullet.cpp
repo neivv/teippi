@@ -1085,7 +1085,7 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
             }
         break;
         case 0x8:
-            EmpShockwave(parent, sprite->position);
+            return SpellCast(player, sprite->position, TechId::EmpShockwave, parent);
         break;
         case 0x9:
             if (target && !target->IsDying())
@@ -1117,7 +1117,7 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
         break;
         case 0x10:
             if (target && !target->IsDying())
-                target->Restoration();
+                return SpellCast(player, order_target_pos, TechId::Restoration, target);
         break;
         case 0x11:
             return SpellCast(player, order_target_pos, TechId::DisruptionWeb, parent);
@@ -1135,12 +1135,12 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
             // Unused (Mind control and feedback), sc crashes but we stay silent..
         break;
         case 0x15:
-            if (target && !target->IsDying())
-                target->OpticalFlare(player);
+            if (target != nullptr && !target->IsDying())
+                return SpellCast(player, order_target_pos, TechId::OpticalFlare, target);
         break;
         case 0x16:
             if (order_target_pos != Point(0, 0))
-                Maelstrom(parent, order_target_pos);
+                return SpellCast(player, order_target_pos, TechId::Maelstrom, parent);
         break;
         case 0x17:
             // Unused as well
@@ -1360,7 +1360,8 @@ void BulletSystem::ProgressFrames(BulletFramesInput input)
         bullet->target = new_target;
     }
 
-    // These two are delayed as they invalidate unit search caches
+    // These spells are delayed as they invalidate unit search caches,
+    // either by spawning units or by killing hallucinations.
     for (const auto &spell : spells.Inner())
     {
         switch (spell.tech.Raw())
@@ -1373,6 +1374,20 @@ void BulletSystem::ProgressFrames(BulletFramesInput input)
             break;
             case TechId::DisruptionWeb:
                 DisruptionWeb(spell.player, spell.pos);
+            break;
+            case TechId::Maelstrom:
+                Maelstrom(spell.parent, spell.pos);
+            break;
+            case TechId::OpticalFlare:
+                // Actually the unit is not the caster but target in this case
+                spell.parent->OpticalFlare(spell.player);
+            break;
+            case TechId::Restoration:
+                // Same here
+                spell.parent->Restoration();
+            break;
+            case TechId::EmpShockwave:
+                EmpShockwave(spell.parent, spell.pos);
             break;
         }
     }
