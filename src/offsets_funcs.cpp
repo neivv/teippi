@@ -658,6 +658,8 @@ void InitBwFuncs_1161(Common::PatchManager *exec_heap, uintptr_t current_base_ad
     bw::ProgressBuild.Init<Eax, Edx, Stack>(exec_heap, 0x004679A0 + diff);
     bw::RallyUnit.Init<Ecx, Eax>(exec_heap, 0x00466F50 + diff);
     bw::AiScript_StartTown.Init<Stack, Stack, Stack, Eax>(exec_heap, 0x00434220 + diff);
+
+    bw::DeleteMapSounds.Init<>(exec_heap, 0x004BBE40 + diff);
 }
 
 namespace bw {
@@ -1300,6 +1302,8 @@ namespace bw {
     Func<int(Unit *, int, int)> ProgressBuild;
     Func<void(Unit *, Unit *)> RallyUnit;
     Func<void(int, int, int, int)> AiScript_StartTown;
+
+    Func<void()> DeleteMapSounds;
 }
 
 void InitStormFuncs_1161(Common::PatchManager *exec_heap, uintptr_t current_base_address)

@@ -18,7 +18,8 @@ struct SoundChannel
     uint8_t _dc4[0x2];
     uint8_t flags;
     uint8_t priority;
-    uint8_t _dc8[0x4];
+    uint8_t free_on_finish;
+    uint8_t _dc9[0x3];
     uint16_t sound;
     uint8_t _dce[0xa];
 };

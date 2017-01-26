@@ -651,6 +651,8 @@ namespace bw {
     extern Func<int(Unit *, int, int)> ProgressBuild;
     extern Func<void(Unit *, Unit *)> RallyUnit;
     extern Func<void(int, int, int, int)> AiScript_StartTown;
+
+    extern Func<void()> DeleteMapSounds;
 }
 
 namespace storm {

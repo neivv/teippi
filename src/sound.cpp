@@ -2,6 +2,9 @@
 
 #include <algorithm>
 
+#include "console/windows_wrap.h"
+#include <dsound.h>
+
 #include "constants/sprite.h"
 #include "dat.h"
 #include "offsets.h"
@@ -140,6 +143,37 @@ void PlaySelectionSound(Unit *unit)
                 int time = (*bw::sound_data)[sound.Raw()].duration / 1000 * 1000 +
                     sound.PortraitTimeModifier();
                 bw::TalkingPortrait(unit, time, 0, sound.Raw());
+            }
+        }
+    }
+}
+
+void DeleteSounds()
+{
+    bw::DeleteMapSounds();
+    for (auto &channel : bw::sound_channels)
+    {
+        if (channel.flags & 0x8)
+        {
+            channel.flags &= ~0x8;
+            // Bw doesn't do this, and it causes sounds to become unplayable as it thinks
+            // they have been queued already. There are still other bugs with sound deletion
+            // and the background sound loading thread, but they should only let sound to
+            // slip in after mute, while this fixes sounds being permamently muted.
+            *(SoundType(channel.sound).Flags()) &= ~0x8;
+        }
+        else if (channel.direct_sound_buffer != nullptr)
+        {
+            auto buffer = (IDirectSoundBuffer *)channel.direct_sound_buffer;
+            unsigned long status = 0;
+            auto result = buffer->GetStatus(&status);
+            if (result != 0 && status != 0)
+            {
+                buffer->Stop();
+                if (channel.free_on_finish)
+                    buffer->Release();
+                else
+                    buffer->SetCurrentPosition(0);
             }
         }
     }

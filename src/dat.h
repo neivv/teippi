@@ -22,6 +22,12 @@ namespace Dat {
         return *((const Type *)dat->data + entry + offset);
     }
 
+    template <class Type>
+    Type *Pointer(const DatTable *dat, int entry, int offset = 0) {
+        Assert(dat->entries > entry + offset);
+        return (Type *)dat->data + entry + offset;
+    }
+
     inline uint32_t UintValue(const DatTable *dat, int entry, int offset = 0) {
         switch (dat->entry_size) {
             case 1:
@@ -80,6 +86,9 @@ class SoundType
     public:
         constexpr explicit SoundType(int sound_id) : sound_id(sound_id) { }
 
+        uint8_t *Flags() const {
+            return Dat::Pointer<uint8_t>(&bw::sfxdata_dat[2], sound_id, 0);
+        }
         int16_t PortraitTimeModifier() const { return Value<int16_t>(3); }
 
         constexpr uint16_t Raw() const { return sound_id; }
