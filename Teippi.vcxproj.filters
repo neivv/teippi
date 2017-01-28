@@ -359,6 +359,9 @@
     <ClInclude Include="src\offsets_funcs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\offsets_funcs_1161.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\offsets_hooks.h">
       <Filter>Header Files</Filter>
     </ClInclude>

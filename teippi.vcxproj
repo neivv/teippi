@@ -238,6 +238,7 @@
     <ClInclude Include="src\nuke.h" />
     <ClInclude Include="src\offsets.h" />
     <ClInclude Include="src\offsets_funcs.h" />
+    <ClInclude Include="src\offsets_funcs_1161.h" />
     <ClInclude Include="src\offsets_hooks.h" />
     <ClInclude Include="src\order.h" />
     <ClInclude Include="src\patch\func.h" />
