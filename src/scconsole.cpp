@@ -681,6 +681,24 @@ bool ScConsole::Pause(const CmdArgs &args)
     return true;
 }
 
+static int CountImages(Sprite *sprite) {
+    int count = 0;
+    for (Image *img : sprite->first_overlay) {
+        (void)img; // Intentionally unused
+        count += 1;
+    }
+    return count;
+}
+
+static int CountUnitImages(Unit *unit)
+{
+    int count = CountImages(unit->sprite.get());
+    if (unit->subunit != nullptr) {
+        count += CountImages(unit->subunit->sprite.get());
+    }
+    return count;
+}
+
 void ScConsole::ConstructInfoLines()
 {
     info_lines.clear();
@@ -712,6 +730,35 @@ void ScConsole::ConstructInfoLines()
         info_lines.emplace_back("Sprites: Drawn/lone/fow");
         snprintf(str, sizeof str, "         %d/%d/%d", Sprite::DrawnSprites(),
                 lone_sprites->lone_sprites.size(), lone_sprites->fow_sprites.size());
+        info_lines.emplace_back(str);
+        int unit_images = 0;
+        int lone_images = 0;
+        int fow_images = 0;
+        int bullet_images = 0;
+        for (Unit *unit : *bw::first_active_unit) {
+            unit_images += CountUnitImages(unit);
+        }
+        for (Unit *unit : *bw::first_hidden_unit) {
+            unit_images += CountUnitImages(unit);
+        }
+        for (Unit *unit : *bw::first_dying_unit) {
+            unit_images += CountUnitImages(unit);
+        }
+        for (Unit *unit : *bw::first_revealer) {
+            unit_images += CountUnitImages(unit);
+        }
+        for (Bullet *bullet : bullet_system->ActiveBullets()) {
+            bullet_images += CountImages(bullet->sprite.get());
+        }
+        for (const auto &sprite : lone_sprites->lone_sprites) {
+            lone_images += CountImages(sprite.get());
+        }
+        for (const auto &sprite : lone_sprites->fow_sprites) {
+            fow_images += CountImages(sprite.get());
+        }
+        info_lines.emplace_back("Images: Total/unit/bullet/lone/fow");
+        snprintf(str, sizeof str, "        %d/%d/%d/%d/%d", unit_images + lone_images + fow_images +
+                bullet_images, unit_images, bullet_images, lone_images, fow_images);
         info_lines.emplace_back(str);
     }
 }
