@@ -26,6 +26,7 @@
 
 #include <string>
 #include <algorithm>
+#include <unordered_set>
 
 using namespace Common;
 using std::get;
@@ -977,25 +978,53 @@ void ScConsole::DrawAiInfo(uint8_t *textbuf, uint8_t *framebuf, xuint w, yuint h
         if (ai_data.request_count)
         {
             std::string str = "Requests: ";
+            std::unordered_set<uint32_t> collapsed_requests;
             for (int i = 0; i < ai_data.request_count;)
             {
                 int line_len = draw_ai_named ? 4 : 8;
-                for (int j = 0; j < line_len && i < ai_data.request_count; j++, i++)
+                for (int j = 0; j < line_len && i < ai_data.request_count;)
                 {
-                    if (j != 0)
-                        str.append(", ");
-                    char buf[64];
+                    bool skip = false;
                     auto unit_id = ai_data.requests[i].unit_id;
-                    const char *desc = RequestStr(ai_data.requests[i].type);
-                    if (draw_ai_named && ai_data.requests[i].type == 5)
-                        snprintf(buf, sizeof buf, "%s %s", desc, UpgradeType(unit_id).Name());
-                    else if (draw_ai_named && ai_data.requests[i].type == 6)
-                        snprintf(buf, sizeof buf, "%s %s", desc, TechType(unit_id).Name());
-                    else if (draw_ai_named)
-                        snprintf(buf, sizeof buf, "%s %s", desc, (*bw::stat_txt_tbl)->GetTblString(unit_id + 1));
-                    else
-                        snprintf(buf, sizeof buf, "%s %x", desc, unit_id);
-                    str.append(buf);
+                    auto type = ai_data.requests[i].type;
+                    int amt = 1;
+                    uint32_t hashset_key = (unit_id << 16) | type;
+                    if (i >= 4 && !draw_ai_full) {
+                        if (collapsed_requests.count(hashset_key) != 0) {
+                            skip = true;
+                        } else {
+                            for (int k = i + 1; k < ai_data.request_count; k++) {
+                                auto other_req = ai_data.requests[k];
+                                if (other_req.unit_id == unit_id && other_req.type == type) {
+                                    amt += 1;
+                                }
+                            }
+                            collapsed_requests.emplace(hashset_key);
+                        }
+                    }
+                    if (!skip) {
+                        if (j != 0)
+                            str.append(", ");
+                        char buf[64];
+                        const char *desc = RequestStr(type);
+                        if (draw_ai_named && ai_data.requests[i].type == 5) {
+                            snprintf(buf, sizeof buf, "%s %s", desc, UpgradeType(unit_id).Name());
+                        } else if (draw_ai_named && ai_data.requests[i].type == 6) {
+                            snprintf(buf, sizeof buf, "%s %s", desc, TechType(unit_id).Name());
+                        } else if (draw_ai_named) {
+                            auto name = (*bw::stat_txt_tbl)->GetTblString(unit_id + 1);
+                            snprintf(buf, sizeof buf, "%s %s", desc, name);
+                        } else {
+                            snprintf(buf, sizeof buf, "%s %x", desc, unit_id);
+                        }
+                        str.append(buf);
+                        if (amt != 1) {
+                            snprintf(buf, sizeof buf, " (x%d)", amt);
+                            str.append(buf);
+                        }
+                        j += 1;
+                    }
+                    i += 1;
                 }
                 text_surface.DrawText(&font, str, info_pos + Point32(10, 0), 0x55);
                 info_pos += Point32(0, 10);
