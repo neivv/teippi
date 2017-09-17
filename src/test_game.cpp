@@ -255,8 +255,8 @@ static void GiveTech(TechType tech, int player) {
     SetTechLevel(tech, player, 1);
 }
 
-static void GiveUpgrade(UpgradeType upgrade, int player) {
-    SetUpgradeLevel(upgrade, player, 1);
+static void GiveUpgrade(UpgradeType upgrade, int player, int level) {
+    SetUpgradeLevel(upgrade, player, level);
 }
 
 static void ClearTechs() {
@@ -534,9 +534,51 @@ struct Test_ShieldDamage : public GameTest {
             } break; case 2: {
                 // Test that unit will not take hp damage as long as it has shields
                 if (target->shields < 256) {
-                    Pass();
+                    // Test again with shield upgrades
+                    attacker = CreateUnitForTest(UnitId::Marine, 0);
+                    target = CreateUnitForTest(UnitId::Zealot, 0);
+                    GiveUpgrade(UpgradeId::ProtossPlasmaShields, 0, 3);
+                    attacker->IssueOrderTargetingUnit(OrderId::AttackUnit, target);
+                    state++;
                 } else {
                     TestAssert(target->GetHitPoints() == target->GetMaxHitPoints());
+                }
+            } break; case 3: {
+                if (target->shields < 256) {
+                    target->shields = 0;
+                    target->hitpoints = target->GetMaxHitPoints() * 256;
+                    state++;
+                } else {
+                    TestAssert(target->GetHitPoints() == target->GetMaxHitPoints());
+                }
+            } break; case 4: {
+                // Check that shield upgrades don't apply when shields < 256
+                int hp_dmg = target->Type().HitPoints() - target->hitpoints;
+                if (hp_dmg != 0) {
+                    int expected_damage =
+                        (attacker->Type().GroundWeapon().Damage() - target->GetArmor()) * 256;
+                    TestAssert(hp_dmg == expected_damage);
+                    target->hitpoints = target->GetMaxHitPoints() * 256;
+                    target->shields = 512;
+                    state++;
+                } else {
+                    target->shields = 0;
+                }
+            } break; case 5: {
+                // If shields get broken, the upgrade reduction is "lost"
+                // E.g. 2 shields, 3 reduction, 6 damage => 2 shield damage, 4 hp damage
+                int hp_dmg = target->Type().HitPoints() - target->hitpoints;
+                int shield_dmg = 512 - target->shields;
+                if (hp_dmg != 0) {
+                    int expected_damage =
+                        (attacker->Type().GroundWeapon().Damage() - target->GetArmor()) * 256 -
+                        shield_dmg;
+                    // Allow 0x10 regen at most
+                    TestAssert(abs(hp_dmg - expected_damage) < 0x10);
+                    TestAssert(abs(shield_dmg - 512) < 0x10);
+                    Pass();
+                } else {
+                    target->shields = 512;
                 }
             }
         }
@@ -2197,7 +2239,7 @@ struct Test_RallyPoint : public GameTest {
                     state++;
                 }
             } break; case 2: {
-                Assert(unit->rally.position == old_rally);
+                TestAssert(unit->rally.position == old_rally);
                 if (frames_remaining == 1) {
                     // Shouldn't be able to change marine rally.
                     unit = CreateUnitForTestAt(UnitId::Marine, 0, Point(300, 100));
@@ -2205,7 +2247,7 @@ struct Test_RallyPoint : public GameTest {
                     state++;
                 }
             } break; case 3: {
-                Assert(unit->rally.position == old_rally);
+                TestAssert(unit->rally.position == old_rally);
                 if (frames_remaining == 1) {
                     Pass();
                 }
@@ -3013,8 +3055,8 @@ struct Test_AiUnload : public GameTest {
         AiPlayer(1);
         SetEnemy(0, 1);
         SetEnemy(1, 0);
-        GiveUpgrade(UpgradeId::VentralSacs, 1);
-        GiveUpgrade(UpgradeId::PneumatizedCarapace, 1);
+        GiveUpgrade(UpgradeId::VentralSacs, 1, 1);
+        GiveUpgrade(UpgradeId::PneumatizedCarapace, 1, 1);
     }
     void CreateAiTown(const Point &pos, int player) {
         CreateUnitForTestAt(UnitId::Nexus, player, pos);

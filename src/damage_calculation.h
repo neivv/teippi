@@ -62,10 +62,18 @@ class DamageCalculation
             damage -= matrix_damage;
 
             auto shield_damage = damage;
-            if (!ignore_armor)
-                shield_damage = std::max(128, shield_damage - shield_reduction);
-            shield_damage = std::min(shield_damage, shields);
-            damage -= shield_damage;
+            if (shields < 256) {
+                shield_damage = 0;
+            } else {
+                if (!ignore_armor)
+                    shield_damage = std::max(128, shield_damage - shield_reduction);
+                if (shield_damage <= shields) {
+                    damage = 0;
+                } else {
+                    shield_damage = std::min(shield_damage, shields);
+                    damage -= shield_damage;
+                }
+            }
 
             if (!ignore_armor)
             {
