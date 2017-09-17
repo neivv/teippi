@@ -1098,14 +1098,14 @@ void SuicideMission(int player, uint8_t random)
             SetSuicideTarget(unit);
         }
     }
-    else if (!bw::player_ai[player].strategic_suicide)
+    else if (bw::player_ai[player].strategic_suicide == 0)
     {
-        Region *unk_region = nullptr;
+        Region *target_region = nullptr;
         for (Unit *unit : bw::first_player_unit[player])
         {
             if (!unit->sprite || unit->OrderType() == OrderId::Die || !unit->ai || unit->IsTransport())
                 continue;
-            if (unit->flags & UnitStatus::InBuilding && bw::player_ai[player].flags & 0x20)
+            if (unit->flags & UnitStatus::InBuilding && ~bw::player_ai[player].flags & 0x20)
                 continue;
 
             if (unit->ai->type == 2 || unit->ai->type == 3)
@@ -1120,18 +1120,21 @@ void SuicideMission(int player, uint8_t random)
             }
             if (IsInAttack(unit))
                 continue;
-            if (!unk_region)
+            if (target_region == nullptr)
             {
-                memset(bw::player_ai[player].unit_ids, 0, 0x40 * 2);
-                bw::player_ai[player].unk_region = 0;
+                memset(bw::player_ai[player].attack_force, 0, 0x40 * 2);
+                bw::player_ai[player].attack_grouping_region = 0;
                 bw::Ai_EndAllMovingToAttack(player);
-                if (bw::Ai_AttackTo(player, unit->sprite->position.x, unit->sprite->position.y, 0, 1))
+                const auto &pos = unit->sprite->position;
+                auto error = bw::Ai_AttackTo(player, pos.x, pos.y, 0, 1);
+                if (error != 0)
                     continue;
                 bw::player_ai[player].strategic_suicide = 0x18;
-                unk_region = bw::player_ai_regions[player] + (bw::player_ai[player].unk_region - 1);
+                target_region = bw::player_ai_regions[player] +
+                    (bw::player_ai[player].attack_grouping_region - 1);
             }
             RemoveUnitAi(unit, 0);
-            AddMilitaryAi(unit, unk_region, true);
+            AddMilitaryAi(unit, target_region, true);
         }
     }
 }

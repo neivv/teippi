@@ -79,14 +79,14 @@ namespace Ai
         uint8_t unk212[0x6];
         uint16_t flags; // 0x218
         uint8_t dc21a[0x4];
-        uint16_t unk_region;
+        uint16_t attack_grouping_region;
         uint16_t wanted_unit;
         uint8_t dc222[0x2];
         uint32_t unk_count; // 0x224
         uint8_t unk228[0x4];
         uint8_t strategic_suicide; // 0x22c
         uint8_t unk22d[0x3];
-        uint16_t unit_ids[0x40]; // 0x230
+        uint16_t attack_force[0x40]; // 0x230
         uint8_t unk2b0[0x140];
         uint8_t unit_build_limits[0xe4]; // 0x3f0
         Unit *free_medic; // 0x4d4

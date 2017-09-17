@@ -1,6 +1,7 @@
 #ifndef YMS_H
 #define YMS_H
 
+#include "game.h"
 #include "offsets.h"
 
 inline bool IsInGame()
@@ -17,6 +18,11 @@ inline bool IsPaused()
 
 inline bool IsTeamGame()
 { return *bw::team_game != 0 && IsMultiplayer(); }
+
+inline bool IsUms() {
+    Got &got = bw::game_data->got;
+    return got.victory_conditions == 0 && got.starting_units == 0 && got.unk_tournament == 0;
+}
 
 inline Rect16 MapBounds()
 { return Rect16(0, 0, *bw::map_width, *bw::map_height); }

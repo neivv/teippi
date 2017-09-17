@@ -120,12 +120,9 @@ static void Command_JoinedGame(const uint8_t *data, int net_player, bool creator
     Player *player;
     if (game_player == -1)
     {
-        Got &got = bw::game_data->got;
-        // Ums-like?
-        bool basic_got = got.victory_conditions == 0 && got.starting_units == 0 && got.unk_tournament == 0;
-        if (basic_got && *bw::loaded_save == nullptr)
+        if (IsUms() && *bw::loaded_save == nullptr)
             game_player = bw::GetFreeSlotFromEmptiestTeam();
-        else if ((!IsTeamGame() && basic_got) || *bw::loaded_save == nullptr)
+        else if ((!IsTeamGame() && IsUms()) || *bw::loaded_save == nullptr)
             game_player = bw::GetFirstFreeHumanPlayerId();
         else
             game_player = save_slot;

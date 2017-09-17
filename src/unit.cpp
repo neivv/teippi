@@ -3879,7 +3879,7 @@ void Unit::Order_ComputerAi(ProgressUnitResults *results)
            if (!plague_timer && !irradiate_timer && !Type().IsWorker())
            {
                Unit *scv = bw::Ai_FindNearestRepairer(this);
-               if (scv)
+               if (scv != nullptr)
                    IssueOrderTargetingUnit(OrderId::Follow, scv);
                return;
            }
