@@ -66,7 +66,8 @@ namespace Ai
             void AddReaction(Unit *own, Unit *attacker, bool important_hit, bool call_help);
             /// Updates/buffers for updating the ai-global state related to hitting units,
             /// and possibly orders nearby units to help
-            void UnitWasHit(Unit *own, Unit *attacker, bool important_hit, bool call_help);
+            /// Return true for early exit (transports unloading)
+            bool UnitWasHit(Unit *own, Unit *attacker, bool important_hit, bool call_help);
             /// Does unit-specific reactions for the hit. Note: There are some cases when it modifies
             /// global ai state as well, at least with Ai_Detect.
             void React(Unit *own, Unit *attacker, bool important_hit);

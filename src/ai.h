@@ -277,6 +277,7 @@ namespace Ai
     void DeleteTown(Town *town);
 
     void AddUnitAi(Unit *unit, Town *town);
+    void AddMilitaryAi(Unit *unit, Region *region, bool always_use_this_region);
 
     bool ShouldCancelDamaged(const Unit *unit);
     void RemoveUnitAi(Unit *unit, bool unk);

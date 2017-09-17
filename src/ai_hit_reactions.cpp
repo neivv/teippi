@@ -143,7 +143,7 @@ bool HitReactions::AskForHelp_IsGood(Unit *unit, Unit *enemy, bool attacking_mil
 /// If UnitWasHit logic is ever modified, this has to be modified as well :s
 bool HitReactions::AskForHelp_CheckIfDoesAnything(Unit *own)
 {
-    if (own->ai)
+    if (own->ai != nullptr)
     {
         if (own->ai->type == 4)
         {
@@ -246,7 +246,7 @@ void HitReactions::AskForHelp(Unit *own, Unit *enemy, bool attacking_military)
 }
 
 /// See AskForHelp_CheckIfDoesAnything() if you are modifying the logic here.
-void HitReactions::UnitWasHit(Unit *own, Unit *attacker, bool important_hit, bool call_help)
+bool HitReactions::UnitWasHit(Unit *own, Unit *attacker, bool important_hit, bool call_help)
 {
     auto attacker_region = GetAiRegion(own->player, attacker->sprite->position);
     int player = own->player;
@@ -270,14 +270,14 @@ void HitReactions::UnitWasHit(Unit *own, Unit *attacker, bool important_hit, boo
             {
                 if (own->order != OrderId::Unload)
                     own->IssueOrderTargetingNothing(OrderId::Unload);
-                return;
+                return true;
             }
             else
             {
                 if (!own->Ai_TryReturnHome(false))
                 {
                     if (bw::Ai_ReturnToNearestBaseForced(own))
-                        return;
+                        return true;
                 }
                 if (bw::player_ai[player].flags & 0x20)
                     ignore_transport = true;
@@ -315,7 +315,7 @@ void HitReactions::UnitWasHit(Unit *own, Unit *attacker, bool important_hit, boo
         }
     }
     target_region->flags |= 0x20;
-    return;
+    return false;
 }
 
 void HitReactions::UpdatePickedTarget(Unit *own, Unit *attacker)
@@ -399,8 +399,10 @@ void HitReactions::React(Unit *own, Unit *attacker, bool important_hit)
 
 void HitReactions::AddReaction(Unit *own, Unit *attacker, bool important_hit, bool call_help)
 {
-    UnitWasHit(own, attacker, important_hit, call_help);
-    React(own, attacker, important_hit);
+    bool skip = UnitWasHit(own, attacker, important_hit, call_help);
+    if (!skip) {
+        React(own, attacker, important_hit);
+    }
 }
 
 void HitReactions::NewHit(Unit *own, Unit *attacker, bool important_hit)

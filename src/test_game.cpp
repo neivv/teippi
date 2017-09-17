@@ -10,6 +10,7 @@
 #include "constants/image.h"
 #include "constants/order.h"
 #include "constants/tech.h"
+#include "constants/upgrade.h"
 #include "constants/unit.h"
 #include "constants/weapon.h"
 #include "ai.h"
@@ -27,6 +28,7 @@
 #include "tech.h"
 #include "text.h"
 #include "triggers.h"
+#include "upgrade.h"
 #include "unit.h"
 #include "unitsearch.h"
 #include "yms.h"
@@ -251,6 +253,10 @@ static void GiveAllTechs() {
 
 static void GiveTech(TechType tech, int player) {
     SetTechLevel(tech, player, 1);
+}
+
+static void GiveUpgrade(UpgradeType upgrade, int player) {
+    SetUpgradeLevel(upgrade, player, 1);
 }
 
 static void ClearTechs() {
@@ -2986,6 +2992,83 @@ struct Test_HalluSpell : public GameTest {
     }
 };
 
+struct AiUnload {
+    UnitType transport;
+    UnitType carry_unit;
+};
+constexpr AiUnload ai_unload_tests[] = {
+    { UnitId::Overlord, UnitId::Marine },
+    { UnitId::Overlord, UnitId::Ultralisk },
+    { UnitId::Dropship, UnitId::Dragoon },
+    { UnitId::Shuttle, UnitId::Defiler },
+};
+
+/// Ai shoudl unload when dropship is attacked.
+struct Test_AiUnload : public GameTest {
+    Unit *transport;
+    const AiUnload *variant;
+    int hallu_count;
+    void Init() override {
+        variant = ai_unload_tests;
+        AiPlayer(1);
+        SetEnemy(0, 1);
+        SetEnemy(1, 0);
+        GiveUpgrade(UpgradeId::VentralSacs, 1);
+        GiveUpgrade(UpgradeId::PneumatizedCarapace, 1);
+    }
+    void CreateAiTown(const Point &pos, int player) {
+        CreateUnitForTestAt(UnitId::Nexus, player, pos);
+        CreateUnitForTestAt(UnitId::Probe, player, pos + Point(0, 100));
+        Unit *mineral = CreateUnitForTestAt(UnitId::MineralPatch1, NeutralPlayer, pos + Point(0, 200));
+        mineral->resource.resource_amount = 1500;
+        bw::AiScript_StartTown(pos.x, pos.y, 1, player);
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                if (CanStartTest()) {
+                    CreateAiTown(Point(100, 100), 1);
+                    transport = CreateUnitForTestAt(variant->transport, 1, Point(100, 100));
+                    Unit *other = CreateUnitForTestAt(variant->carry_unit, 1, Point(100, 100));
+                    other->IssueOrderTargetingUnit(OrderId::EnterTransport, transport);
+                    auto region = Ai::GetAiRegion(1, Point(1000, 100));
+                    Ai::AddMilitaryAi(transport, region, true);
+                    state++;
+                }
+            } break; case 1: {
+                if (transport->HasLoadedUnits()) {
+                    transport->IssueOrderTargetingGround(OrderId::Move, Point(1000, 100));
+                    state++;
+                }
+            } break; case 2: {
+                if (transport->sprite->position.x > 400) {
+                    Unit *enemy = CreateUnitForTestAt(UnitId::Wraith, 0, Point(800, 100));
+                    enemy->IssueOrderTargetingUnit(OrderId::AttackUnit, transport);
+                    state++;
+                }
+            } break; case 3: {
+                if (transport->GetHealth() != transport->GetMaxHealth()) {
+                    frames_remaining = 30;
+                    state++;
+                }
+            } break; case 4: {
+                bool ok = !transport->HasLoadedUnits();
+                if (ok) {
+                    variant += 1;
+                    auto test_end = ai_unload_tests +
+                        sizeof ai_unload_tests / sizeof(ai_unload_tests[0]);
+                    state = 0;
+                    frames_remaining = 300;
+                    ClearUnits();
+                    if (variant == test_end) {
+                        Pass();
+                    }
+                }
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -3041,6 +3124,7 @@ GameTests::GameTests()
     AddTest("Ultralisk sounds", new Test_UltraliskSounds);
     AddTest("Ai stim", new Test_AiStim);
     AddTest("Hallucination dying from spells", new Test_HalluSpell);
+    AddTest("Ai unloading", new Test_AiUnload);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)
