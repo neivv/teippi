@@ -10,4 +10,6 @@ void InitLoneSprites();
 int InitGame();
 void InitCursorMarker();
 void InitStartingRacesAndTypes();
+void InitResourceAreas();
+
 #endif /* INIT_H */

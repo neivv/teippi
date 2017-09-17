@@ -1,9 +1,13 @@
 #include "init.h"
 
+#include <algorithm>
+
 #include "console/windows_wrap.h"
+#include "constants/order.h"
 #include "constants/sprite.h"
 #include "constants/unit.h"
 #include "constants/weapon.h"
+#include "ai.h"
 #include "bullet.h"
 #include "image.h"
 #include "limits.h"
@@ -14,6 +18,8 @@
 #include "unit.h"
 #include "yms.h"
 #include "warn.h"
+
+#include "log.h"
 
 static int GetDecodedImageSize(const void *data_, int padding)
 {
@@ -283,4 +289,147 @@ void InitStartingRacesAndTypes()
             bw::save_races[i] = bw::players[i].race;
     }
     *bw::loaded_local_player_id = *bw::local_player_id;
+}
+
+static void CreateResourceAreas(vector<uint8_t> *res_states, int state) {
+    struct PotentialResArea {
+        Rect16 area;
+        int val;
+        Unit *unit;
+    };
+    vector<PotentialResArea> potential_resource_areas;
+    potential_resource_areas.reserve(100);
+    auto i = 0;
+    for (Unit *unit : *bw::first_active_unit) {
+        if ((*res_states)[i] == state) {
+            Rect16 rect(unit->sprite->position, 0x3c0);
+            int topleft = (rect.top << 16) | rect.left;
+            int botright = (rect.bottom << 16) | rect.right;
+            potential_resource_areas.emplace_back(PotentialResArea {
+                rect,
+                bw::HighestResourceConcentration(unit, topleft, botright),
+                unit,
+            });
+        }
+        i += 1;
+    }
+    for (auto i = 0; i < potential_resource_areas.size(); i++) {
+        auto largest = potential_resource_areas[0].val;
+        auto largest_index = 0;
+        for (auto j = 1; j < i; j++) {
+            if (potential_resource_areas[j].val > largest) {
+                largest = potential_resource_areas[j].val;
+                largest_index = j;
+            }
+        }
+        potential_resource_areas[largest_index].val = 0;
+        x32 x_sum = 0;
+        y32 y_sum = 0;
+        int count = 0;
+        for (Unit *unit : *bw::first_active_unit) {
+            const auto &pos = unit->sprite->position;
+            const auto &rect = potential_resource_areas[largest_index].area;
+            uint32_t topleft = (rect.top << 16) | rect.left;
+            uint32_t botright = (rect.bottom << 16) | rect.right;
+            if (bw::IsOnResourceArea(unit, pos.x, pos.y, topleft, botright)) {
+                x_sum += pos.x;
+                y_sum += pos.y;
+                count += 1;
+            }
+        }
+        if (count != 0) {
+            if (bw::resource_areas->used_count >= 0xf9) {
+                return;
+            }
+            bw::resource_areas->used_count += 1;
+            int area_id = bw::resource_areas->used_count;
+            auto &area = bw::resource_areas->areas[area_id];
+            x32 x = x_sum / count;
+            y32 y = y_sum / count;
+            Unit *unit = potential_resource_areas[largest_index].unit;
+            Unit *center = bw::FindNearestMineral(res_states->data(), unit, x, y);
+            area.position = center->sprite->position;
+            potential_resource_areas[largest_index].unit = center;
+            potential_resource_areas[largest_index].area = Rect16(center->sprite->position, 0x3c0);
+            auto min_x = area.position.x;
+            auto max_x = area.position.x;
+            auto min_y = area.position.y;
+            auto max_y = area.position.y;
+            auto i = 0;
+            for (Unit *unit : *bw::first_active_unit) {
+                const auto &pos = unit->sprite->position;
+                const auto &rect = potential_resource_areas[largest_index].area;
+                const auto &area_pos = area.position;
+                uint32_t topleft = (rect.top << 16) | rect.left;
+                uint32_t botright = (rect.bottom << 16) | rect.right;
+                if (bw::IsOnResourceArea(unit, area_pos.x, area_pos.y, topleft, botright)) {
+                    if ((*res_states)[i] == 1) {
+                        (*res_states)[i] = 3;
+                        area.mineral_field_count += 1;
+                        area.total_minerals += unit->resource.resource_amount;
+                    } else if ((*res_states)[i] == 2) {
+                        (*res_states)[i] = 4;
+                        area.geyser_count += 1;
+                        area.total_gas += unit->resource.resource_amount;
+                    }
+                    unit->resource.resource_area = area_id;
+                    max_x = std::max(max_x, pos.x);
+                    max_y = std::max(max_y, pos.y);
+                    min_x = std::min(min_x, pos.x);
+                    min_y = std::min(min_y, pos.y);
+                }
+                i += 1;
+            }
+            area.position.x = (max_x + min_x) / 2;
+            area.position.y = (max_y + min_y) / 2;
+        }
+    }
+}
+
+void InitResourceAreas() {
+    memset(&*bw::resource_areas, 0, sizeof(Ai::ResourceAreaArray));
+    for (int i = 0; i < Limits::ActivePlayers; i++) {
+        if (bw::start_positions[i] != Point(0, 0)) {
+            bool is_active_player = IsHumanPlayer(i) || IsComputerPlayer(i);
+            int flags = is_active_player ? 1 : 0;
+            // Yes, 0 becomes unused
+            bw::resource_areas->used_count += 1;
+            int area_id = bw::resource_areas->used_count;
+            bw::resource_areas->areas[area_id].position = bw::start_positions[i];
+            bw::resource_areas->areas[area_id].is_start_location = 1;
+            bw::resource_areas->areas[area_id].flags = flags;
+        }
+    }
+    // 0 = irrelevant, 1 = unallocated mine, 2 = unallocated gas, 3 = used mine, 4 = used gas
+    vector<uint8_t> type_buf;
+    type_buf.reserve(1000);
+    for (Unit *unit : *bw::first_active_unit) {
+        if (unit->sprite == nullptr || unit->order == OrderId::Die) {
+            type_buf.emplace_back(0);
+        } else if (~unit->Type().Flags() & UnitFlags::ResourceContainer) {
+            type_buf.emplace_back(0);
+        } else {
+            if (unit->Type().IsMineralField()) {
+                type_buf.emplace_back(1);
+            } else {
+                type_buf.emplace_back(2);
+            }
+            int area_id = bw::FindMatchingResourceArea(unit);
+            unit->resource.resource_area = area_id;
+            if (area_id != 0) {
+                auto &area = bw::resource_areas->areas[area_id];
+                if (unit->Type().IsMineralField()) {
+                    area.mineral_field_count += 1;
+                    area.total_minerals += unit->resource.resource_amount;
+                    type_buf[type_buf.size() - 1] = 3;
+                } else {
+                    area.geyser_count += 1;
+                    area.total_gas += unit->resource.resource_amount;
+                    type_buf[type_buf.size() - 1] = 4;
+                }
+            }
+        }
+    }
+    CreateResourceAreas(&type_buf, 2);
+    CreateResourceAreas(&type_buf, 1);
 }

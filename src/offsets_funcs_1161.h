@@ -591,6 +591,11 @@ BW_FUNC(int(Unit *, int, int), ProgressBuild, 0x004679A0, Eax, Edx, Stack);
 BW_FUNC(void(Unit *, Unit *), RallyUnit, 0x00466F50, Ecx, Eax);
 BW_FUNC(void(int, int, int, int), AiScript_StartTown, 0x00434220, Stack, Stack, Stack, Eax);
 BW_FUNC(void(), DeleteMapSounds, 0x004BBE40);
+
+BW_FUNC(int(Unit *, x32, y32, uint32_t, uint32_t), IsOnResourceArea, 0x00445820, Esi, Stack, Edi, Stack, Stack);
+BW_FUNC(int(Unit *), FindMatchingResourceArea, 0x00445930, Esi);
+BW_FUNC(int(Unit *, uint32_t, uint32_t), HighestResourceConcentration, 0x00445B00, Stack, Stack, Stack);
+BW_FUNC(Unit *(const uint8_t *, Unit *, x32, y32), FindNearestMineral, 0x004447D0, Eax, Stack, Stack, Stack);
 FUNC_LIST_END(bw_1161)
 
 FUNC_LIST_START(storm, storm_1161)

@@ -1060,7 +1060,7 @@ void ScConsole::DrawResourceAreas(uint8_t *textbuf, uint8_t *framebuf, xuint w, 
                     area.total_minerals, area.mineral_field_count,
                     area.total_gas, area.geyser_count, area.flags);
             text_surface.DrawText(&font, buf, Point32(x - 50, y + 20), 0x55);
-            snprintf(buf, sizeof buf, "Unk: %02x %08x %08x %08x %08x", area.dc6,
+            snprintf(buf, sizeof buf, "Unk: %02x %08x %08x %08x %08x", area.is_start_location,
                     area.unk10[0], area.unk10[1], area.unk10[2], area.unk10[3]);
             text_surface.DrawText(&font, buf, Point32(x - 50, y + 30), 0x55);
             snprintf(buf, sizeof buf, "%08x %08x %08x %08x",

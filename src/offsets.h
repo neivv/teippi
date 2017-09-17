@@ -608,6 +608,8 @@ namespace bw
 
     const offset<SoundData *> sound_data = 0x004BB8E8;
 
+    const array_offset<Point, 8> start_positions = 0x0058D720;
+
     // Some kind of league thing? Most likely those 0xc00 bytes contain
     // other related data
     const array_offset<char, 0xc00> validation_replay_path = 0x00628668;

@@ -115,7 +115,7 @@ namespace Ai
         Point position;
         uint8_t mineral_field_count;
         uint8_t geyser_count;
-        uint8_t dc6;
+        uint8_t is_start_location;
         uint8_t flags;
         uint32_t total_minerals;
         uint32_t total_gas;

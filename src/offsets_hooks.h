@@ -259,6 +259,8 @@ namespace bw
 
     const Stdcall<void(Sprite *)> AddDamageOverlay = 0x004993C0;
     const Stdcall<void(Unit *)> PlaySelectionSound = 0x0048F910;
+
+    const Stdcall<void()> InitResourceAreas = 0x00446350;
 }
 
 
