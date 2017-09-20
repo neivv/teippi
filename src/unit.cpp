@@ -1227,14 +1227,7 @@ int Unit::GetHealth() const
 
 int Unit::GetMaxEnergy() const
 {
-    if (Type().IsHero())
-        return Spell::HeroEnergy;
-
-    auto energy_upgrade = Type().EnergyUpgrade();
-    if (energy_upgrade == UpgradeId::None)
-        return Spell::DefaultEnergy;
-    else
-        return Spell::DefaultEnergy + GetUpgradeLevel(energy_upgrade, player) * Spell::EnergyBonus;
+    return bw::GetMaxEnergy(this);
 }
 
 int Unit::GetArmorUpgrades() const

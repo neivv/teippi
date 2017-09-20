@@ -596,6 +596,9 @@ BW_FUNC(int(Unit *, x32, y32, uint32_t, uint32_t), IsOnResourceArea, 0x00445820,
 BW_FUNC(int(Unit *), FindMatchingResourceArea, 0x00445930, Esi);
 BW_FUNC(int(Unit *, uint32_t, uint32_t), HighestResourceConcentration, 0x00445B00, Stack, Stack, Stack);
 BW_FUNC(Unit *(const uint8_t *, Unit *, x32, y32), FindNearestMineral, 0x004447D0, Eax, Stack, Stack, Stack);
+
+BW_FUNC(int(const Unit *), GetMaxEnergy, 0x00491870, Eax);
+
 FUNC_LIST_END(bw_1161)
 
 FUNC_LIST_START(storm, storm_1161)

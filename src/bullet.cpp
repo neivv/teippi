@@ -45,6 +45,10 @@ namespace {
 const Point32 random_chances[] = { Point32(1, 1), Point32(51, 31), Point32(7, 12), Point32(-36, -52), Point32(-49, 25),
   Point32(40, -46), Point32(-4, -19), Point32(28, 50), Point32(50, -15), Point32(-54, -13), Point32(11, -53),
   Point32(15, -9), Point32(-19, 50), Point32(-17, 8), Point32(0, 0) };
+
+bool EnableScourgeExeEdit() {
+    return *((uint32_t *)0x0048C129) == 0xffff62e9;
+}
 }
 
 TempMemoryPool pbf_memory;
@@ -314,7 +318,7 @@ bool Bullet::Initialize(Unit *spawner, int player_, int direction, WeaponType we
             Move(order_target_pos);
         break;
         case 0x6: // Suicide
-        if (parent)
+        if (parent && !EnableScourgeExeEdit())
         {
             parent->flags |= UnitStatus::SelfDestructing;
             parent->Remove(nullptr);
@@ -1039,6 +1043,12 @@ void Bullet::SpawnBroodlingHit(vector<Unit *> *killed_units) const
 
 Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
 {
+    if (Type().Behaviour() == 6 && EnableScourgeExeEdit() && target != nullptr) {
+        if (target->hitpoints != 0 && parent != nullptr) {
+            parent->flags |= UnitStatus::SelfDestructing;
+            parent->Remove(nullptr);
+        }
+    }
     auto effect = Type().Effect();
     switch (effect)
     {
