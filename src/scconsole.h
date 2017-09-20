@@ -49,6 +49,7 @@ class ScConsole : public Common::GenericConsole
         bool Show(const CmdArgs &args);
         bool Test(const CmdArgs &args);
         bool Spawn(const CmdArgs &args);
+        bool AiscriptExec(const CmdArgs &args);
 
         bool Death(const CmdArgs &args, bool print, bool clear);
 

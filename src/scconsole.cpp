@@ -74,6 +74,7 @@ ScConsole::ScConsole()
     AddCommand("grid", &ScConsole::Cmd_Grid);
     AddCommand("test", &ScConsole::Test);
     AddCommand("spawn", &ScConsole::Spawn);
+    AddCommand("ais_exec", &ScConsole::AiscriptExec);
     commands["dc"] = [this](const auto &a) { return this->Death(a, false, false); };
     commands["dc?"] = [this](const auto &a) { return this->Death(a, true, false); };
     commands["dc;"] = [this](const auto &a) { return this->Death(a, false, true); };
@@ -268,6 +269,37 @@ bool ScConsole::Spawn(const CmdArgs &args)
         bw::FinishUnit(unit);
         bw::GiveAi(unit);
     }
+    return true;
+}
+
+bool ScConsole::AiscriptExec(const CmdArgs &args)
+{
+    if (!IsInGame())
+        return false;
+    auto player_str = args[1];
+    if (args[1][0] == 0)
+    {
+        Printf("ais_exec <player> <bytes..>");
+        return false;
+    }
+    int player = atoi(player_str);
+    vector<uint8_t> data;
+    for (int i = 2; args[i][0] != 0; i++) {
+        int byte = strtoul(args[i], 0, 16);
+        if (byte >= 0x100) {
+            return false;
+        }
+        data.emplace_back(byte);
+    }
+    // Wait 0x22
+    data.emplace_back(0x2);
+    data.emplace_back(0x2);
+    data.emplace_back(0x2);
+    ptr<Ai::Script> script(new Ai::Script(player, 0, false, nullptr));
+    auto aiscript = *bw::aiscript_bin;
+    *bw::aiscript_bin = data.data();
+    bw::ProgressAiScript(script.get());
+    *bw::aiscript_bin = aiscript;
     return true;
 }
 
