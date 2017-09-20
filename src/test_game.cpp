@@ -129,6 +129,13 @@ static void SendCommand_Burrow(Unit *unit) {
     bw::SendCommand(cmd, sizeof cmd);
 }
 
+static void SendCommand_Upgrade(Unit *unit, unsigned int upgrade_id) {
+    Assert(upgrade_id < 0x100);
+    SendCommand_Select(unit);
+    uint8_t cmd[] = { commands::Upgrade, (uint8_t)upgrade_id };
+    bw::SendCommand(cmd, sizeof cmd);
+}
+
 static bool HasInfoMessage(const char *substr) {
     char *info_message = &bw::chat_messages[12][0];
     if (info_message[0] == 0)
@@ -3049,7 +3056,6 @@ constexpr AiUnload ai_unload_tests[] = {
 struct Test_AiUnload : public GameTest {
     Unit *transport;
     const AiUnload *variant;
-    int hallu_count;
     void Init() override {
         variant = ai_unload_tests;
         AiPlayer(1);
@@ -3105,6 +3111,89 @@ struct Test_AiUnload : public GameTest {
                     if (variant == test_end) {
                         Pass();
                     }
+                }
+            }
+        }
+    }
+};
+
+struct Test_DamageOverlays : public GameTest {
+    Unit *building;
+    Unit *attacker;
+    int flame_state;
+    int prev_small_flames;
+    int prev_large_flames;
+    void Init() override {
+        bw::minerals[0] = 500;
+        bw::gas[0] = 500;
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                building = CreateUnitForTestAt(UnitId::Academy, 0, Point(100, 100));
+                attacker = CreateUnitForTestAt(UnitId::Marine, 0, Point(100, 100));
+                attacker->IssueOrderTargetingUnit(OrderId::AttackUnit, building);
+                flame_state = 0;
+                prev_small_flames = 0;
+                prev_large_flames = 0;
+                state++;
+            } break; case 1: {
+                int small_flames = 0;
+                int large_flames = 0;
+                for (Image *img : building->sprite->last_overlay) {
+                    if (img->image_id >= 0x1c2 && img->image_id <= 0x1c9) {
+                        small_flames += 1;
+                    } else if (img->image_id >= 0x1d8 && img->image_id <= 0x1df) {
+                        large_flames += 1;
+                    } else if (img->drawfunc != Image::HpBar) {
+                        // Flames should be topmost only
+                        TestAssert(small_flames == 0 && large_flames == 0);
+                    }
+                }
+                if (small_flames != prev_small_flames || large_flames != prev_large_flames) {
+                    prev_small_flames = small_flames;
+                    prev_large_flames = large_flames;
+                    flame_state += 1;
+                }
+                // Flames grow large before another one spawns
+                TestAssert(small_flames == flame_state % 2);
+                TestAssert(large_flames == flame_state / 2);
+                if (flame_state == 6) {
+                    // Test that the overlay spawns below flames
+                    SendCommand_Upgrade(building, UpgradeId::U_238Shells);
+                    attacker->Kill(nullptr);
+                    Unit *scv = CreateUnitForTestAt(UnitId::SCV, 0, Point(100, 100));
+                    scv->IssueOrderTargetingUnit(OrderId::Repair, building);
+                    state++;
+                }
+            } break; case 2: {
+                int small_flames = 0;
+                int large_flames = 0;
+                for (Image *img : building->sprite->last_overlay) {
+                    if (img->image_id >= 0x1c2 && img->image_id <= 0x1c9) {
+                        small_flames += 1;
+                    } else if (img->image_id >= 0x1d8 && img->image_id <= 0x1df) {
+                        large_flames += 1;
+                    } else if (img->drawfunc != Image::HpBar) {
+                        // Flames should be topmost only
+                        TestAssert(small_flames == 0 && large_flames == 0);
+                    }
+                }
+                if (small_flames != prev_small_flames || large_flames != prev_large_flames) {
+                    prev_small_flames = small_flames;
+                    prev_large_flames = large_flames;
+                    flame_state -= 1;
+                }
+                // Large flames shrink before small ones disppear
+                if (flame_state > 3) {
+                    TestAssert(large_flames == flame_state - 3);
+                    TestAssert(small_flames == 6 - flame_state);
+                } else {
+                    TestAssert(large_flames == 0);
+                    TestAssert(small_flames == flame_state);
+                }
+                if (flame_state == 0) {
+                    Pass();
                 }
             }
         }
@@ -3167,6 +3256,7 @@ GameTests::GameTests()
     AddTest("Ai stim", new Test_AiStim);
     AddTest("Hallucination dying from spells", new Test_HalluSpell);
     AddTest("Ai unloading", new Test_AiUnload);
+    AddTest("Damage overlays", new Test_DamageOverlays);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)

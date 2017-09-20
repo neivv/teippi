@@ -272,17 +272,25 @@ Image *Image::Iscript_AddOverlay(Iscript::Context *ctx, ImageType overlay_id, in
     Image *img = new Image(parent, overlay_id, x, y);
     if (above)
     {
-        img->list.prev = nullptr;
-        img->list.next = parent->first_overlay;
-        parent->first_overlay->list.prev = img;
-        parent->first_overlay = img;
+        if (this == parent->first_overlay) {
+            parent->first_overlay = img;
+        } else {
+            list.prev->list.next = img;
+        }
+        img->list.prev = list.prev;
+        list.prev = img;
+        img->list.next = this;
     }
     else
     {
-        img->list.next = nullptr;
-        img->list.prev = parent->last_overlay;
-        parent->last_overlay->list.next = img;
-        parent->last_overlay = img;
+        if (this == parent->last_overlay) {
+            parent->last_overlay = img;
+        } else {
+            list.next->list.prev = img;
+        }
+        img->list.next = list.next;
+        list.next = img;
+        img->list.prev = this;
     }
     bool success = img->InitIscript(ctx);
     if (!success)
