@@ -996,6 +996,10 @@ void Save::SaveGame(uint32_t time)
         sprite_to_id[sprite] = id;
     });
 
+    uint32_t magic = ~0;
+    fwrite(&magic, 1, 4, file);
+    uint32_t version = 1;
+    fwrite(&version, 1, 4, file);
     lone_sprites->Serialize(this);
     //SaveObjectChunk(&Save::CreateFlingySave, first_allocated_flingy);
     bullet_system->Serialize(this);
@@ -1015,6 +1019,16 @@ void Save::SaveGame(uint32_t time)
         ValidateList(bw::first_player_unit[i]);
     for (unsigned i = 0; i < Limits::Players; i++)
         SaveUnitPtr(bw::first_player_unit[i]);
+    for (auto &player_hotkeys : bw::selection_hotkeys)
+    {
+        for (auto &group : player_hotkeys)
+        {
+            for (auto &unit : group)
+            {
+                SaveUnitPtr(unit);
+            }
+        }
+    }
 
     uint32_t original_tile_length = *bw::original_tile_width * *bw::original_tile_height * 2;
     fwrite(&original_tile_length, 1, 4, file);
@@ -1816,6 +1830,19 @@ void Load::LoadPathingChunk()
 
 void Load::LoadGame()
 {
+    uint32_t magic = 0;
+    fread(&magic, 1, 4, file);
+    if (magic == ~0)
+    {
+        // New format, has version here.
+        fread(&version, 1, 4, file);
+    }
+    else
+    {
+        // Else seek backwards.
+        fseek(file, -4, SEEK_CUR);
+        version = 0;
+    }
     lone_sprites->Deserialize(this);
 //  LoadObjectChunk<Flingy, false>(&Flingy::SaveAllocate, &first_allocated_flingy, 0);
     bullet_system->Deserialize(this);
@@ -1856,6 +1883,19 @@ void Load::LoadGame()
         LoadUnitPtr(&bw::first_player_unit[i].AsRawPointer());
     for (unsigned i = 0; i < Limits::Players; i++)
         ValidateList(bw::first_player_unit[i]);
+    for (auto &player_hotkeys : bw::selection_hotkeys)
+    {
+        for (auto &group : player_hotkeys)
+        {
+            for (auto &unit : group)
+            {
+                if (version >= 1)
+                    LoadUnitPtr(&unit);
+                else
+                    unit = nullptr;
+            }
+        }
+    }
 
     uint32_t original_tile_length;
     fread(&original_tile_length, 1, 4, file);

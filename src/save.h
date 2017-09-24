@@ -142,6 +142,7 @@ class Load : public SaveBase<Load>
         uint8_t *buf;
         uint8_t *buf_end;
         uint32_t buf_size;
+        uint32_t version;
 };
 
 #endif // SAVE_H
