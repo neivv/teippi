@@ -83,9 +83,11 @@ namespace Ai
         uint16_t wanted_unit;
         uint8_t dc222[0x2];
         uint32_t unk_count; // 0x224
-        uint8_t unk228[0x4];
+        uint32_t last_attack_seconds;
         uint8_t strategic_suicide; // 0x22c
-        uint8_t unk22d[0x3];
+        uint8_t spell_cooldown;
+        uint8_t attack_failed;
+        uint8_t difficulty;
         uint16_t attack_force[0x40]; // 0x230
         uint8_t unk2b0[0x140];
         uint8_t unit_build_limits[0xe4]; // 0x3f0

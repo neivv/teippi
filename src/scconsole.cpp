@@ -43,6 +43,7 @@ ScConsole::ScConsole()
     draw_ai_data = false;
     draw_ai_full = false;
     draw_ai_named = false;
+    draw_ai_unit_homes = false;
     for (int i = 0; i < Limits::Players; i++)
         show_ai[i] = 1;
     draw_coords = false;
@@ -1010,6 +1011,19 @@ void ScConsole::DrawAiInfo(uint8_t *textbuf, uint8_t *framebuf, xuint w, yuint h
                 ai_data.request_count, ai_data.wanted_unit, ai_data.liftoff_cooldown, CountScripts(i));
         text_surface.DrawText(&font, str, info_pos, 0x55);
         info_pos += Point32(0, 10);
+        if (ai_data.attack_grouping_region != 0)
+        {
+            snprintf(
+                str,
+                sizeof str,
+                "Attack region %x, started %d ago, failed %d",
+                ai_data.attack_grouping_region - 1,
+                *bw::elapsed_seconds - ai_data.last_attack_seconds,
+                ai_data.attack_failed
+            );
+            text_surface.DrawText(&font, str, info_pos, 0x55);
+            info_pos += Point32(0, 10);
+        }
         if (ai_data.request_count)
         {
             std::string str = "Requests: ";
@@ -1070,6 +1084,47 @@ void ScConsole::DrawAiInfo(uint8_t *textbuf, uint8_t *framebuf, xuint w, yuint h
         {
             DrawAiRegions(i, &text_surface, region_text_pos);
             region_text_pos += Point32(0, 30);
+        }
+    }
+}
+
+void ScConsole::DrawAiUnitHomes(uint8_t *framebuf, xuint w, yuint h)
+{
+    if (!draw_ai_unit_homes)
+        return;
+
+    Common::Surface surface(framebuf, w, h);
+    Point32 screen_pos(*bw::screen_x, *bw::screen_y);
+    for (Unit *unit : *bw::first_active_unit)
+    {
+        if (unit->ai != nullptr && show_ai[unit->player] != 0)
+        {
+            auto sprite_pos_screen = unit->sprite->position - screen_pos;
+            switch (unit->ai->type)
+            {
+                case 1: {
+                    auto ai = (Ai::GuardAi *)unit->ai;
+                    surface.DrawLine(ai->home - screen_pos, sprite_pos_screen, 0x80);
+                    if (ai->home != ai->unk_pos)
+                    {
+                        surface.DrawLine(ai->unk_pos - screen_pos, sprite_pos_screen, 0xba);
+                    }
+                } break;
+                case 2: {
+                    auto ai = (Ai::WorkerAi *)unit->ai;
+                    surface.DrawLine(ai->town->position - screen_pos, sprite_pos_screen, 0x74);
+                } break;
+                case 3: {
+                    auto ai = (Ai::BuildingAi *)unit->ai;
+                    surface.DrawLine(ai->town->position - screen_pos, sprite_pos_screen, 0x74);
+                } break;
+                case 4: {
+                    auto ai = (Ai::MilitaryAi *)unit->ai;
+                    auto region = (*bw::pathing)->regions + ai->region->region_id;
+                    auto region_pos = Point32(region->x / 0x100, region->y / 0x100);
+                    surface.DrawLine(region_pos - screen_pos, sprite_pos_screen, 0x7c);
+                } break;
+            }
         }
     }
 }
@@ -1247,6 +1302,7 @@ void ScConsole::DrawDebugInfo(uint8_t *framebuf, xuint w, yuint h)
     DrawCrects(framebuf, w, h);
     DrawGrids(buffer, resolution::screen_width, resolution::screen_height);
     DrawAiInfo(text_buf, buffer, resolution::screen_width, resolution::screen_height);
+    DrawAiUnitHomes(buffer, resolution::screen_width, resolution::screen_height);
     DrawResourceAreas(text_buf, buffer, resolution::screen_width, resolution::screen_height);
     DrawOrders(buffer, resolution::screen_width, resolution::screen_height);
     DrawCoords(buffer, resolution::screen_width, resolution::screen_height);
@@ -1389,6 +1445,10 @@ bool ScConsole::Show(const CmdArgs &args)
                 }
             }
         }
+        else if (more == "units")
+        {
+            draw_ai_unit_homes = !draw_ai_unit_homes;
+        }
         else if (more == "")
         {
             draw_ai_towns = !draw_ai_towns;
@@ -1398,7 +1458,7 @@ bool ScConsole::Show(const CmdArgs &args)
         {
             return false;
         }
-        if (more != "")
+        if (more != "" && more != "units")
         {
             draw_ai_towns = true;
             draw_ai_data = true;
@@ -1407,7 +1467,7 @@ bool ScConsole::Show(const CmdArgs &args)
     else
     {
         Printf("show <nothing|fps|frame|regions|locations|paths|collision|coords|range|info|bullets|resareas>");
-        Printf("show ai [full|simple|named|raw|(player <player|all>>)]");
+        Printf("show ai [full|simple|named|raw|units|(player <player|all>>)]");
         Printf("show orders [all|selected]");
         return false;
     }

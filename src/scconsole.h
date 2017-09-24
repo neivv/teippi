@@ -61,6 +61,7 @@ class ScConsole : public Common::GenericConsole
         void DrawLocations(uint8_t *framebuf, xuint w, yuint h);
         void DrawCrects(uint8_t *framebuf, xuint w, yuint h);
         void DrawAiInfo(uint8_t *textbuf, uint8_t *framebuf, xuint w, yuint h);
+        void DrawAiUnitHomes(uint8_t *framebuf, xuint w, yuint h);
         void DrawOrders(uint8_t *framebuf, xuint w, yuint h);
         void DrawCoords(uint8_t *framebuf, xuint w, yuint h);
         void DrawDeaths(uint8_t *framebuf, xuint w, yuint h);
@@ -84,6 +85,7 @@ class ScConsole : public Common::GenericConsole
         bool draw_ai_data;
         bool draw_ai_full;
         bool draw_ai_named;
+        bool draw_ai_unit_homes;
         int show_ai[Limits::Players]; // 0 no, 1 yes, 2 extra
         bool draw_coords;
         bool draw_range;
