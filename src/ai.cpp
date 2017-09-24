@@ -303,6 +303,33 @@ void AddGuardAiToUnit(Unit *unit)
     ai->list.Add(bw::first_guard_ai[unit->player]);
 }
 
+static bool DeleteGuardAiRequests(GuardAi *ai, int player)
+{
+    for (auto town : bw::active_ai_towns[player])
+    {
+        for (auto building : town->first_building)
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                if (building->train_queue_types[i] == 2 && building->train_queue_values[i] == ai)
+                {
+                    building->train_queue_values[i] = nullptr;
+                }
+            }
+        }
+    }
+    for (int i = 0; i < bw::player_ai[player].request_count; i++)
+    {
+        auto &req = bw::player_ai[player].requests[i];
+        if (req.type == 2 && req.val == ai)
+        {
+            req.val = nullptr;
+        }
+    }
+
+    return false;
+}
+
 void UpdateGuardNeeds(int player)
 {
     GuardAi *ai = bw::first_guard_ai[player];
@@ -324,6 +351,7 @@ void UpdateGuardNeeds(int player)
         next = ai->list.next;
         if (bw::player_ai[player].flags & 0x20 && ai->unk_count >=3)
         {
+            DeleteGuardAiRequests(ai, player);
             ai->list.Remove(needed_guards[player]);
             delete ai;
         }
@@ -393,12 +421,13 @@ void UpdateGuardNeeds(int player)
 void DeleteGuardNeeds(int player)
 {
     GuardAi *next;
-    for (GuardAi *ai = needed_guards[player]; ai; ai = next)
+    for (GuardAi *ai = needed_guards[player]; ai != nullptr; ai = next)
     {
         next = ai->list.next;
+        DeleteGuardAiRequests(ai, player);
         delete ai;
     }
-    needed_guards[player] = 0;
+    needed_guards[player] = nullptr;
 }
 
 WorkerAi::WorkerAi()
@@ -781,7 +810,7 @@ void SetFinishedUnitAi(Unit *unit, Unit *parent)
     if (queue_type == 2) // Guard train
     {
         GuardAi *guard = (GuardAi *)queue_value;
-        if (!guard->parent)
+        if (guard != nullptr && guard->parent != nullptr)
         {
             guard->home = guard->unk_pos;
             guard->parent = unit;
@@ -1118,6 +1147,7 @@ void SuicideMission(int player, uint8_t random)
                 Region *region = GetAiRegion(unit);
                 AddMilitaryAi(unit, region, true);
             }
+            Assert(unit->ai->type == 4);
             if (IsInAttack(unit))
                 continue;
             if (target_region == nullptr)

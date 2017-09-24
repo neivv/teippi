@@ -229,6 +229,31 @@ inline void SetFrameState(int state)
     *bw::unk_frame_state = state;
 }
 
+static void CheckUnitAi()
+{
+    for (Unit *unit : *bw::first_active_unit)
+    {
+        if (unit->ai != nullptr)
+        {
+            switch (unit->ai->type)
+            {
+                case 1:
+                    Assert(((Ai::GuardAi *)unit->ai)->parent == unit);
+                break;
+                case 2:
+                    Assert(((Ai::WorkerAi *)unit->ai)->parent == unit);
+                break;
+                case 3:
+                    Assert(((Ai::BuildingAi *)unit->ai)->parent == unit);
+                break;
+                case 4:
+                    Assert(((Ai::MilitaryAi *)unit->ai)->parent == unit);
+                break;
+            }
+        }
+    }
+}
+
 static bool ProgressFrame()
 {
     uint32_t lag_tick = GetTickCount() + 2000;
@@ -274,6 +299,8 @@ static bool ProgressFrame()
             else
             {
                 (*bw::frame_count)++;
+                if (Debug)
+                    CheckUnitAi();
                 if (Debug && game_tests)
                     game_tests->NextFrame();
 
