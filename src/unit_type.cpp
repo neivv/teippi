@@ -275,6 +275,8 @@ uint32_t UnitType::Strength(bool ground) const
 static int GenerateStrength(UnitType unit_id, bool air)
 {
     using namespace UnitId;
+    UnitType weapon_unit_id;
+    WeaponType weapon;
     switch (unit_id.Raw())
     {
         case Larva:
@@ -282,26 +284,31 @@ static int GenerateStrength(UnitType unit_id, bool air)
         case Cocoon:
         case LurkerEgg:
             return 0;
+        break;
         case Carrier:
         case Gantrithor:
-            return GenerateStrength(Interceptor, air);
+            weapon_unit_id = Interceptor;
+        break;
         case Reaver:
         case Warbringer:
-            return GenerateStrength(Scarab, air);
+            weapon_unit_id = Scarab;
+        break;
         default:
             if (unit_id.Subunit() != UnitId::None)
-                unit_id = unit_id.Subunit();
-            WeaponType weapon;
-            if (air)
-                weapon = unit_id.AirWeapon();
+                weapon_unit_id = unit_id.Subunit();
             else
-                weapon = unit_id.GroundWeapon();
-            if (weapon == WeaponId::None)
-                return 1;
-            // Fixes ai hangs when using zero damage weapons as main weapon
-            int strength = bw::FinetuneBaseStrength(unit_id, bw::CalculateBaseStrength(weapon, unit_id));
-            return std::max(2, strength);
+                weapon_unit_id = unit_id;
+        break;
     }
+    if (air)
+        weapon = weapon_unit_id.AirWeapon();
+    else
+        weapon = weapon_unit_id.GroundWeapon();
+    if (weapon == WeaponId::None)
+        return 1;
+    // Fixes ai hangs when using zero damage weapons as main weapon
+    int strength = bw::FinetuneBaseStrength(unit_id, bw::CalculateBaseStrength(weapon, unit_id));
+    return std::max(2, strength);
 }
 
 // Fixes ai hangs with some mods (See GenerateStrength comment)
