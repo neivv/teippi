@@ -725,9 +725,12 @@ static int CountImages(Sprite *sprite) {
 
 static int CountUnitImages(Unit *unit)
 {
-    int count = CountImages(unit->sprite.get());
-    if (unit->subunit != nullptr) {
-        count += CountImages(unit->subunit->sprite.get());
+    int count = 0;
+    if (unit->sprite != nullptr) {
+        count += CountImages(unit->sprite.get());
+        if (unit->subunit != nullptr && unit->subunit->sprite != nullptr) {
+            count += CountImages(unit->subunit->sprite.get());
+        }
     }
     return count;
 }
