@@ -1041,12 +1041,13 @@ void Bullet::SpawnBroodlingHit(vector<Unit *> *killed_units) const
     parent->IncrementKills();
 }
 
-Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
+tuple<Optional<SpellCast>, bool> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
 {
+    auto scourge_exe_edit_remove = false;
+    auto spellcast = Optional<SpellCast>();
     if (Type().Behaviour() == 6 && EnableScourgeExeEdit() && target != nullptr) {
         if (target->hitpoints != 0 && parent != nullptr) {
-            parent->flags |= UnitStatus::SelfDestructing;
-            parent->Remove(nullptr);
+            scourge_exe_edit_remove = true;
         }
     }
     auto effect = Type().Effect();
@@ -1091,11 +1092,11 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
                 }
                 SpawnBroodlingHit(bufs->killed_units);
                 if (~target->flags & UnitStatus::Hallucination)
-                    return SpellCast(player, target->sprite->position, TechId::SpawnBroodlings, parent);
+                    spellcast = SpellCast(player, target->sprite->position, TechId::SpawnBroodlings, parent);
             }
         break;
         case 0x8:
-            return SpellCast(player, sprite->position, TechId::EmpShockwave, parent);
+            spellcast = SpellCast(player, sprite->position, TechId::EmpShockwave, parent);
         break;
         case 0x9:
             if (target && !target->IsDying())
@@ -1115,7 +1116,7 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
                 Stasis(parent, order_target_pos);
         break;
         case 0xd:
-            return SpellCast(player, order_target_pos, TechId::DarkSwarm, parent);
+            spellcast = SpellCast(player, order_target_pos, TechId::DarkSwarm, parent);
         break;
         case 0xe:
             if (parent && target && !target->IsDying())
@@ -1127,10 +1128,10 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
         break;
         case 0x10:
             if (target && !target->IsDying())
-                return SpellCast(player, order_target_pos, TechId::Restoration, target);
+                spellcast = SpellCast(player, order_target_pos, TechId::Restoration, target);
         break;
         case 0x11:
-            return SpellCast(player, order_target_pos, TechId::DisruptionWeb, parent);
+            spellcast = SpellCast(player, order_target_pos, TechId::DisruptionWeb, parent);
         break;
         case 0x12:
             if (target != nullptr && !DoesMiss())
@@ -1146,17 +1147,17 @@ Optional<SpellCast> Bullet::DoMissileDmg(ProgressBulletBufs *bufs)
         break;
         case 0x15:
             if (target != nullptr && !target->IsDying())
-                return SpellCast(player, order_target_pos, TechId::OpticalFlare, target);
+                spellcast = SpellCast(player, order_target_pos, TechId::OpticalFlare, target);
         break;
         case 0x16:
             if (order_target_pos != Point(0, 0))
-                return SpellCast(player, order_target_pos, TechId::Maelstrom, parent);
+                spellcast = SpellCast(player, order_target_pos, TechId::Maelstrom, parent);
         break;
         case 0x17:
             // Unused as well
         break;
     }
-    return Optional<SpellCast>();
+    return make_tuple(move(spellcast), scourge_exe_edit_remove);
 }
 
 void BulletSystem::DeleteBullet(BulletContainer::entry *bullet)
@@ -1318,9 +1319,16 @@ void BulletSystem::ProgressFrames(BulletFramesInput input)
     bulletframes_in_progress = true;
     for (Bullet *bullet : state_results->do_missile_dmgs)
     {
-        auto spell = bullet->DoMissileDmg(&bufs);
+        auto parent = bullet->parent;
+        auto result = bullet->DoMissileDmg(&bufs);
+        auto &spell = get<0>(result);
         if (spell)
             spells->emplace_back(move(spell.take()));
+        if (get<1>(result))
+        {
+            parent->flags |= UnitStatus::SelfDestructing;
+            killed_units->emplace_back(parent);
+        }
     }
     auto pbf_time = clock.GetTime();
     clock.Start();

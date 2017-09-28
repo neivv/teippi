@@ -214,7 +214,8 @@ class Bullet
         BulletState State_MoveToPoint(BulletStateResults *results);
         BulletState State_MoveToUnit(BulletStateResults *results);
         BulletState State_MoveNearUnit(BulletStateResults *results);
-        Optional<SpellCast> DoMissileDmg(ProgressBulletBufs *bufs);
+        // Bool is true for scourge exe edit hacksupport
+        tuple<Optional<SpellCast>, bool> DoMissileDmg(ProgressBulletBufs *bufs);
 
         void UpdateMoveTarget(const Point &target);
         void Move(const Point &where);
