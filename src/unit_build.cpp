@@ -144,12 +144,18 @@ void Unit::CancelTrain(ProgressUnitResults *results)
     current_build_slot = 0;
 }
 
+static bool HasZergBuildingTrainingExeEdit()
+{
+    return *(uint32_t *)(0x00468477) == 0x90909090;
+}
+
 void Unit::Order_Train(ProgressUnitResults *results)
 {
     if (IsDisabled())
         return;
     // Some later added hackfix
-    if (Type().Race() == Race::Zerg && Type() != UnitId::InfestedCommandCenter)
+    auto skip_check = HasZergBuildingTrainingExeEdit();
+    if (!skip_check && Type().Race() == Race::Zerg && Type() != UnitId::InfestedCommandCenter)
         return;
     switch (secondary_order_state)
     {
