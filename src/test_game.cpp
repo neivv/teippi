@@ -3200,6 +3200,71 @@ struct Test_DamageOverlays : public GameTest {
     }
 };
 
+struct Test_AiBunkerStrength : public GameTest {
+    Ai::Region *region;
+    Point center;
+    void Init() override {
+        AiPlayer(1);
+        SetEnemy(0, 1);
+        SetEnemy(1, 0);
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                auto &pathing_region =
+                    GetPathingSystem()->regions[Pathing::GetRegion(Point(100, 100))];
+                center = Point(pathing_region.x / 0x100, pathing_region.y / 0x100);
+                region = Ai::GetAiRegion(1, center);
+                CreateUnitForTestAt(UnitId::Drone, 1, center);
+                state++;
+            } break; case 1: {
+                if (region->enemy_ground_strength == 0) {
+                    CreateUnitForTestAt(UnitId::Marine, 0, center);
+                    state++;
+                }
+            } break; case 2: {
+                if (region->enemy_ground_strength != 0) {
+                    // Assuming vanilla marine
+                    TestAssert(region->enemy_ground_strength == 100);
+                    ClearUnits();
+                    CreateUnitForTestAt(UnitId::Drone, 1, center);
+                    state++;
+                }
+            } break; case 3: {
+                if (region->enemy_ground_strength == 0) {
+                    Unit *bunker = CreateUnitForTestAt(UnitId::Bunker, 0, center);
+                    for (auto i = 0; i < 4; i++) {
+                        Unit *enemy = CreateUnitForTestAt(UnitId::Marine, 0, center);
+                        enemy->IssueOrderTargetingUnit(OrderId::EnterTransport, bunker);
+                    }
+                    state++;
+                }
+            } break; case 4: {
+                // Should be strength of 4 marines
+                if (region->enemy_ground_strength == 400) {
+                    ClearUnits();
+                    CreateUnitForTestAt(UnitId::Drone, 1, center);
+                    state++;
+                }
+            } break; case 5: {
+                if (region->enemy_ground_strength == 0) {
+                    Unit *bunker = CreateUnitForTestAt(UnitId::Bunker, 0, center);
+                    for (auto i = 0; i < 4; i++) {
+                        Unit *enemy = CreateUnitForTestAt(UnitId::Ghost, 0, center);
+                        enemy->IssueOrderTargetingUnit(OrderId::EnterTransport, bunker);
+                    }
+                    state++;
+                }
+            } break; case 6: {
+                // Should still be strength of 4 marines
+                if (region->enemy_ground_strength == 400) {
+                    Pass();
+                }
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -3257,6 +3322,7 @@ GameTests::GameTests()
     AddTest("Hallucination dying from spells", new Test_HalluSpell);
     AddTest("Ai unloading", new Test_AiUnload);
     AddTest("Damage overlays", new Test_DamageOverlays);
+    AddTest("Ai bunker strength", new Test_AiBunkerStrength);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)

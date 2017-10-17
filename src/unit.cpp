@@ -1646,7 +1646,7 @@ int Unit::CalculateStrength(bool ground) const
 {
     uint32_t multiplier = Type().Strength(ground);
     if (Type() == UnitId::Bunker)
-        multiplier *= GetUsedSpace();
+        multiplier = GetUsedSpace() * UnitId::Marine.Strength(ground);
     if ((~flags & UnitStatus::Hallucination) && (Type().Flags() & UnitFlags::Spellcaster))
         multiplier += energy >> 9;
 
