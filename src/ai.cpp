@@ -810,7 +810,7 @@ void SetFinishedUnitAi(Unit *unit, Unit *parent)
     if (queue_type == 2) // Guard train
     {
         GuardAi *guard = (GuardAi *)queue_value;
-        if (guard != nullptr && guard->parent != nullptr)
+        if (guard != nullptr && guard->parent == nullptr)
         {
             guard->home = guard->unk_pos;
             guard->parent = unit;
