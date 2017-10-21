@@ -261,6 +261,7 @@ namespace bw
     const Stdcall<void(Unit *)> PlaySelectionSound = 0x0048F910;
 
     const Stdcall<void()> InitResourceAreas = 0x00446350;
+    const Stdcall<int(Unit *, Ai::Town *)> Ai_RepairSomething = 0x00433C70;
 }
 
 

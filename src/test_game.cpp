@@ -3265,6 +3265,142 @@ struct Test_AiBunkerStrength : public GameTest {
     }
 };
 
+struct Test_AiRepair : public GameTest {
+    Unit *enemy;
+    Unit *builder;
+    int prev_supply_hitpoints;
+    vector<Unit *> scvs;
+    void Init() override {
+        AiPlayer(1);
+        SetEnemy(0, 1);
+        SetEnemy(1, 0);
+        scvs.clear();
+    }
+    void CreateAiTown(const Point &pos, int player) {
+        CreateUnitForTestAt(UnitId::CommandCenter, player, pos);
+        for (int i = 0; i < 10; i++)
+        {
+            CreateUnitForTestAt(UnitId::SCV, player, pos + Point(0, 100));
+            CreateUnitForTestAt(UnitId::Drone, player, pos + Point(0, 100));
+            Unit *mineral = CreateUnitForTestAt(
+                UnitId::MineralPatch1,
+                NeutralPlayer,
+                pos + Point(0, 128 + i * 32)
+            );
+            mineral->resource.resource_amount = 1500;
+        }
+        bw::AiScript_StartTown(pos.x, pos.y, 1, player);
+    }
+    void NextFrame() override {
+        switch (state) {
+            case 0: {
+                if (CanStartTest()) {
+                    CreateAiTown(Point(100, 100), 1);
+                    builder = FindUnit(UnitId::SCV);
+                    builder->build_queue[builder->current_build_slot] = UnitId::SupplyDepot;
+                    builder->IssueOrderTargetingGround(OrderId::BuildTerran, Point(400, 200));
+                    state++;
+                }
+            } break; case 1: {
+                Unit *supply = FindUnit(UnitId::SupplyDepot);
+                if (supply != nullptr && supply->flags & UnitStatus::Completed) {
+                    builder->Kill(nullptr);
+                    enemy = CreateUnitForTestAt(UnitId::Marine, 0, Point(500, 500));
+                    enemy->IssueOrderTargetingUnit(OrderId::AttackUnit, supply);
+                    prev_supply_hitpoints = supply->hitpoints;
+                    state++;
+                }
+            } break; case 2: {
+                Unit *supply = FindUnit(UnitId::SupplyDepot);
+                // The AI should eventually bring an scv to repair
+                if (supply->hitpoints > prev_supply_hitpoints) {
+                    enemy->Kill(nullptr);
+                    state++;
+                } else {
+                    prev_supply_hitpoints = supply->hitpoints;
+                }
+            } break; case 3: {
+                Unit *supply = FindUnit(UnitId::SupplyDepot);
+                if (supply->GetHitPoints() == supply->GetMaxHitPoints()) {
+                    builder = FindUnit(UnitId::SCV);
+                    builder->build_queue[builder->current_build_slot] = UnitId::Barracks;
+                    builder->IssueOrderTargetingGround(OrderId::BuildTerran, Point(400, 400));
+                    state++;
+                }
+            } break; case 4: {
+                Unit *barracks = FindUnit(UnitId::Barracks);
+                if (barracks != nullptr) {
+                    if (barracks->GetHitPoints() > barracks->GetMaxHitPoints() / 2) {
+                        builder->Kill(nullptr);
+                        state++;
+                    }
+                }
+            } break; case 5: {
+                // The AI should continue construction
+                Unit *barracks = FindUnit(UnitId::Barracks);
+                if (barracks != nullptr && barracks->flags & UnitStatus::Completed) {
+                    CreateUnitForTestAt(UnitId::Vulture, 1, Point(200, 200));
+                    enemy = CreateUnitForTestAt(UnitId::Marine, 0, Point(200, 260));
+                    state++;
+                }
+            } break; case 6: {
+                Unit *mech = FindUnit(UnitId::Vulture);
+                if (mech->GetHitPoints() < mech->GetMaxHitPoints()) {
+                    state++;
+                }
+            } break; case 7: {
+                // The AI should repair the mech as it got damaged by marine
+                Unit *mech = FindUnit(UnitId::Vulture);
+                if (mech->GetMaxHitPoints() - mech->GetHitPoints() < 2) {
+                    state++;
+                }
+            } break; case 8: {
+                Unit *drone = FindUnit(UnitId::Drone);
+                drone->build_queue[drone->current_build_slot] = UnitId::Hatchery;
+                drone->IssueOrderTargetingGround(OrderId::DroneStartBuild, Point(400, 600));
+                state++;
+            } break; case 9: {
+                Unit *hatchery = FindUnit(UnitId::Hatchery);
+                if (hatchery != nullptr && hatchery->flags & UnitStatus::Completed) {
+                    enemy = CreateUnitForTestAt(UnitId::Battlecruiser, 0, Point(500, 500));
+                    enemy->IssueOrderTargetingUnit(OrderId::AttackUnit, hatchery);
+                    state++;
+                }
+            } break; case 10: {
+                Unit *hatchery = FindUnit(UnitId::Hatchery);
+                if (hatchery->GetHitPoints() < hatchery->GetMaxHitPoints() / 2) {
+                    enemy->Kill(nullptr);
+                    frames_remaining = 24 * 60;
+                    state++;
+                }
+            } break; case 11: {
+                // Wait a bit
+                if (frames_remaining == 10) {
+                    frames_remaining = 24 * 6000;
+                    for (Unit *unit : *bw::first_active_unit) {
+                        if (unit->Type() == UnitId::SCV) {
+                            scvs.emplace_back(unit);
+                        }
+                    }
+                    state++;
+                }
+            } break; case 12: {
+                // All SCVs should keep mining
+                if (!scvs.empty()) {
+                    if (scvs[0]->target != nullptr) {
+                        auto target = scvs[0]->target->Type();
+                        if (target == UnitId::MineralPatch1) {
+                            scvs.erase(scvs.begin());
+                        }
+                    }
+                } else {
+                    Pass();
+                }
+            }
+        }
+    }
+};
+
 GameTests::GameTests()
 {
     current_test = -1;
@@ -3323,6 +3459,7 @@ GameTests::GameTests()
     AddTest("Ai unloading", new Test_AiUnload);
     AddTest("Damage overlays", new Test_DamageOverlays);
     AddTest("Ai bunker strength", new Test_AiBunkerStrength);
+    AddTest("Ai repair", new Test_AiRepair);
 }
 
 void GameTests::AddTest(const char *name, GameTest *test)

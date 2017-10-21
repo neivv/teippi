@@ -668,6 +668,7 @@ class Unit
         // unit_ai.cpp
         void Ai_Cloak();
         bool Ai_TryReturnHome(bool dont_issue);
+        int Ai_RepairSomething(Ai::Town *town);
 
         Ai::BuildingAi *AiAsBuildingAi();
 

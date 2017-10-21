@@ -125,3 +125,69 @@ bool Unit::Ai_TryReturnHome(bool dont_issue)
         IssueOrderTargetingGround(OrderId::ComputerReturn, guard->home);
     return true;
 }
+
+int Unit::Ai_RepairSomething(Ai::Town *town)
+{
+    Unit *incomplete= nullptr;
+    Unit *damaged = nullptr;
+    for (auto ai : town->first_building)
+    {
+        auto building = ai->parent;
+        if (building == nullptr || building->related != nullptr)
+            continue;
+        if (!bw::Ai_IsBuildingSafe(building) || building->Type().Race() != Race::Terran)
+            continue;
+        if (~building->flags & UnitStatus::Completed)
+        {
+            incomplete = building;
+            break;
+        }
+        auto hp = building->GetHitPoints();
+        if (hp != building->GetMaxHitPoints())
+        {
+            if (damaged == nullptr || damaged->GetHitPoints() < hp)
+            {
+                damaged = building;
+            }
+        }
+
+    }
+    Unit *repair_this = nullptr;
+    class OrderType repair_order;
+    if (incomplete != nullptr)
+    {
+        repair_this = incomplete;
+        repair_order = OrderId::ConstructingBuilding;
+    }
+    else if (damaged != nullptr)
+    {
+        repair_this = damaged;
+        repair_order = OrderId::Repair;
+    }
+    else
+    {
+        if (town->building_scv == nullptr)
+        {
+            town->building_scv = this;
+        }
+        if (town->building_scv == this)
+        {
+            Unit *unit = bw::FindRepairableUnit(this);
+            if (unit != nullptr)
+            {
+                repair_this = unit;
+                repair_order = OrderId::Repair;
+            }
+        }
+    }
+    if (repair_this != nullptr)
+    {
+        IssueOrder(repair_order, repair_this, repair_this->sprite->position, UnitId::None);
+        repair_this->related = this;
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}

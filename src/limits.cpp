@@ -655,4 +655,5 @@ void RemoveLimits(Common::PatchContext *patch)
 
     patch->Hook(bw::PlaySelectionSound, PlaySelectionSound);
     patch->Hook(bw::InitResourceAreas, InitResourceAreas);
+    patch->Hook(bw::Ai_RepairSomething, &Unit::Ai_RepairSomething);
 }

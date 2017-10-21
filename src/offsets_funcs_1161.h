@@ -598,6 +598,8 @@ BW_FUNC(int(Unit *, uint32_t, uint32_t), HighestResourceConcentration, 0x00445B0
 BW_FUNC(Unit *(const uint8_t *, Unit *, x32, y32), FindNearestMineral, 0x004447D0, Eax, Stack, Stack, Stack);
 
 BW_FUNC(int(const Unit *), GetMaxEnergy, 0x00491870, Eax);
+BW_FUNC(int(const Unit *), Ai_IsBuildingSafe, 0x00438910, Esi);
+BW_FUNC(Unit *(const Unit *), FindRepairableUnit, 0x00443160, Eax);
 
 FUNC_LIST_END(bw_1161)
 
