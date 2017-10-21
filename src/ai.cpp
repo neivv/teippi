@@ -237,11 +237,11 @@ void RemoveTownGasReferences(Unit *unit)
     }
 }
 
-void RemoveUnitAi(Unit *unit, bool unk)
+void RemoveUnitAi(Unit *unit, bool was_killed)
 {
     // If ai is not guard, it will be deleted by following funcs
     bool is_guard = unit->ai && unit->ai->type == 1;
-    bw::RemoveFromAiStructs(unit, unk);
+    bw::RemoveFromAiStructs(unit, was_killed);
     RemoveWorkerOrBuildingAi(unit, false);
     if (is_guard)
     {

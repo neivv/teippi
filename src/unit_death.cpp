@@ -368,7 +368,7 @@ static void Die(Unit *unit, ProgressUnitResults *results)
     }
 
     RemoveFromBulletTargets(unit);
-    Ai::RemoveUnitAi(unit, false);
+    Ai::RemoveUnitAi(unit, true);
     if (unit->Type().IsSubunit())
     {
         SubunitCleanup(unit);
@@ -586,7 +586,7 @@ void Unit::Kill(ProgressUnitResults *results)
     }
 
     IssueOrderTargetingGround(OrderId::Die, order_target_pos);
-    Ai::RemoveUnitAi(this, false);
+    Ai::RemoveUnitAi(this, true);
 }
 
 void Unit::Remove(ProgressUnitResults *results)
