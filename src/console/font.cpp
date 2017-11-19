@@ -60,7 +60,7 @@ Optional<const Character *> Font::GetChar(FT_ULong code)
             auto glyph = face->glyph;
             auto bmp = glyph->bitmap;
             if (character_cache.size() >= character_cache_size)
-                character_cache.pop_front();
+                character_cache.erase(character_cache.begin() + 0);
             character_cache.emplace_back();
             Character &next = character_cache.back();
             next.code = code;

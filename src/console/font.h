@@ -45,7 +45,7 @@ class Font
         static FT_Library freetype;
         static bool inited;
         std::vector<FT_Face> faces;
-        std::deque<Character> character_cache;
+        std::vector<Character> character_cache;
         static const int character_cache_size = 0x100;
 };
 
