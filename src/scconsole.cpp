@@ -31,6 +31,52 @@
 using namespace Common;
 using std::get;
 
+struct TextLayout
+{
+    TextLayout(Common::Surface *surface) : surface(surface) {
+    }
+
+    void Draw(Font *font, const std::string &str, const Point32 &default_pos, uint8_t color) {
+        auto width = font->TextLength(str);
+        auto height = 10;
+        Point32 pos;
+        for (int i = 0; i < 60; i++) {
+            auto pos = Point32(default_pos.x, default_pos.y + i * 10);
+            Rect32 suggest(pos.x, pos.y, pos.x + width, pos.y + height);
+            if (TryDrawAt(font, str, suggest, color)) {
+                return;
+            }
+            pos = Point32(default_pos.x, default_pos.y - i * 10);
+            suggest = Rect32(pos.x, pos.y, pos.x + width, pos.y + height);
+            if (TryDrawAt(font, str, suggest, color)) {
+                return;
+            }
+        }
+    }
+
+    bool TryDrawAt(Font *font, const std::string &str, const Rect32 &suggest, uint8_t color) {
+        if (suggest.top < 0 || suggest.bottom >= surface->height) {
+            return false;
+        }
+        auto collide = std::any_of(blocks.begin(), blocks.end(), [&](const auto &block) {
+            return block.left < suggest.right &&
+                block.right > suggest.left &&
+                block.top < suggest.bottom &&
+                block.bottom > suggest.top;
+        });
+        if (!collide) {
+            surface->DrawText(font, str, Point32(suggest.left, suggest.top), color);
+            blocks.push_back(suggest);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    Common::Surface *surface;
+    vector<Rect32> blocks;
+};
+
 ScConsole::ScConsole()
 {
     show_fps = Debug == true;
@@ -44,6 +90,7 @@ ScConsole::ScConsole()
     draw_ai_full = false;
     draw_ai_named = false;
     draw_ai_unit_homes = false;
+    draw_ai_guards = false;
     for (int i = 0; i < Limits::Players; i++)
         show_ai[i] = 1;
     draw_coords = false;
@@ -1129,6 +1176,128 @@ void ScConsole::DrawAiUnitHomes(uint8_t *framebuf, xuint w, yuint h)
     }
 }
 
+void ScConsole::DrawGuardAi(
+    Common::Surface *surface,
+    TextLayout *text_layout,
+    Ai::GuardAi *ai,
+    int player,
+    bool alive
+) {
+    char str[128];
+    char unit_name[64];
+    Point32 screen_pos(*bw::screen_x, *bw::screen_y);
+    auto ai_pos = Point32(ai->home) - screen_pos;
+    if (alive)
+    {
+        surface->DrawLine(ai->parent->sprite->position - screen_pos, ai_pos, 0x80);
+    }
+
+    Rect32 rect = Rect32(Point32(ai->home), 9).OffsetBy(screen_pos.Negate());
+    surface->DrawRect(rect, 0xb9);
+    if (ai->home != ai->unk_pos) {
+        Rect32 rect = Rect32(Point32(ai->unk_pos), 9).OffsetBy(screen_pos.Negate());
+        surface->DrawRect(rect, 0xb9);
+    }
+    if (ai->home != ai->unk_pos) {
+        surface->DrawLine(ai->unk_pos - screen_pos, ai_pos, 0xba);
+    }
+
+    // Early exit if text is outside screen bounds
+    int w = resolution::screen_width;
+    int h = resolution::screen_height;
+    if (ai_pos.x < -300 || ai_pos.y < 0 || ai_pos.x >= w + 100 || ai_pos.y >= h)
+    {
+        return;
+    }
+    if (draw_ai_named)
+    {
+        auto name = (*bw::stat_txt_tbl)->GetTblString(ai->unit_id + 1);
+        snprintf(unit_name, sizeof unit_name, "%s", name);
+    }
+    else
+    {
+        snprintf(unit_name, sizeof unit_name, "%x", ai->unit_id);
+    }
+    if (alive)
+    {
+        snprintf(
+            str,
+            sizeof str,
+            "Player %d, alive %s, deaths %d",
+            player,
+            unit_name,
+            ai->times_died
+        );
+    }
+    else
+    {
+        snprintf(
+            str,
+            sizeof str,
+            "Player %d, needed %s, deaths %d",
+            player,
+            unit_name,
+            ai->times_died
+        );
+    }
+    if (ai->previous_update != 0)
+    {
+        char buf2[sizeof str];
+        auto time = *bw::elapsed_seconds - ai->previous_update;
+        snprintf(buf2, sizeof buf2, "%s, requested %d ago", str, time);
+        strcpy(str, buf2);
+    }
+    text_layout->Draw(&font, str, ai_pos + Point32(-100, 10), 0x55);
+}
+
+void ScConsole::DrawAiGuards(uint8_t *text_buf, uint8_t *framebuf, xuint w, yuint h)
+{
+    if (!draw_ai_guards)
+        return;
+
+    Common::Surface surface(framebuf, w, h);
+    Common::Surface text_surface(text_buf, w, h);
+    TextLayout text(&text_surface);
+    Point32 screen_pos(*bw::screen_x, *bw::screen_y);
+    for (Unit *unit : *bw::first_active_unit)
+    {
+        if (unit->ai != nullptr && show_ai[unit->player] != 0 && unit->ai->type == 1)
+        {
+            DrawGuardAi(&surface, &text, (Ai::GuardAi *)unit->ai, unit->player, true);
+        }
+        if (unit->ai != nullptr && show_ai[unit->player] != 0 && unit->ai->type == 3)
+        {
+            auto ai = (Ai::BuildingAi *)unit->ai;
+            for (int i = 0; i < 5; i++)
+            {
+                if (ai->train_queue_types[i] == 2 && ai->train_queue_values[i] != nullptr)
+                {
+                    auto guard_ai = (Ai::GuardAi *)ai->train_queue_values[i];
+                    auto ai_pos = guard_ai->home - screen_pos;
+                    surface.DrawLine(unit->sprite->position - screen_pos, ai_pos, 0xa4);
+                }
+            }
+        }
+    }
+    for (Unit *unit : *bw::first_hidden_unit)
+    {
+        if (unit->ai != nullptr && show_ai[unit->player] != 0 && unit->ai->type == 1)
+        {
+            DrawGuardAi(&surface, &text, (Ai::GuardAi *)unit->ai, unit->player, true);
+        }
+    }
+    for (int i = 0; i < Limits::ActivePlayers; i++)
+    {
+        if (show_ai[i])
+        {
+            for (Ai::GuardAi *ai : Ai::needed_guards[i])
+            {
+                DrawGuardAi(&surface, &text, ai, i, false);
+            }
+        }
+    }
+}
+
 void ScConsole::DrawResourceAreas(uint8_t *textbuf, uint8_t *framebuf, xuint w, yuint h)
 {
     if (!draw_resource_areas)
@@ -1303,6 +1472,7 @@ void ScConsole::DrawDebugInfo(uint8_t *framebuf, xuint w, yuint h)
     DrawGrids(buffer, resolution::screen_width, resolution::screen_height);
     DrawAiInfo(text_buf, buffer, resolution::screen_width, resolution::screen_height);
     DrawAiUnitHomes(buffer, resolution::screen_width, resolution::screen_height);
+    DrawAiGuards(text_buf, buffer, resolution::screen_width, resolution::screen_height);
     DrawResourceAreas(text_buf, buffer, resolution::screen_width, resolution::screen_height);
     DrawOrders(buffer, resolution::screen_width, resolution::screen_height);
     DrawCoords(buffer, resolution::screen_width, resolution::screen_height);
@@ -1449,6 +1619,10 @@ bool ScConsole::Show(const CmdArgs &args)
         {
             draw_ai_unit_homes = !draw_ai_unit_homes;
         }
+        else if (more == "guards")
+        {
+            draw_ai_guards = !draw_ai_guards;
+        }
         else if (more == "")
         {
             draw_ai_towns = !draw_ai_towns;
@@ -1467,7 +1641,7 @@ bool ScConsole::Show(const CmdArgs &args)
     else
     {
         Printf("show <nothing|fps|frame|regions|locations|paths|collision|coords|range|info|bullets|resareas>");
-        Printf("show ai [full|simple|named|raw|units|(player <player|all>>)]");
+        Printf("show ai [full|simple|named|raw|units|guards|(player <player|all>>)]");
         Printf("show orders [all|selected]");
         return false;
     }

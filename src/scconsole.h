@@ -15,6 +15,8 @@ struct Grid
     uint8_t color;
 };
 
+struct TextLayout;
+
 class ScConsole : public Common::GenericConsole
 {
     public:
@@ -62,6 +64,14 @@ class ScConsole : public Common::GenericConsole
         void DrawCrects(uint8_t *framebuf, xuint w, yuint h);
         void DrawAiInfo(uint8_t *textbuf, uint8_t *framebuf, xuint w, yuint h);
         void DrawAiUnitHomes(uint8_t *framebuf, xuint w, yuint h);
+        void DrawAiGuards(uint8_t *textbuf, uint8_t *framebuf, xuint w, yuint h);
+        void DrawGuardAi(
+            Common::Surface *surface,
+            TextLayout *text_surface,
+            Ai::GuardAi *ai,
+            int player,
+            bool alive
+        );
         void DrawOrders(uint8_t *framebuf, xuint w, yuint h);
         void DrawCoords(uint8_t *framebuf, xuint w, yuint h);
         void DrawDeaths(uint8_t *framebuf, xuint w, yuint h);
@@ -86,6 +96,7 @@ class ScConsole : public Common::GenericConsole
         bool draw_ai_full;
         bool draw_ai_named;
         bool draw_ai_unit_homes;
+        bool draw_ai_guards;
         int show_ai[Limits::Players]; // 0 no, 1 yes, 2 extra
         bool draw_coords;
         bool draw_range;

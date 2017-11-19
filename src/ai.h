@@ -209,7 +209,7 @@ namespace Ai
         public:
             ListEntry<GuardAi, 0x0> list;
             uint8_t type;
-            uint8_t unk_count;
+            uint8_t times_died;
             uint8_t unka[0x2];
             Unit *parent;
             uint16_t unit_id; // 0x10

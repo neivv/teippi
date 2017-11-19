@@ -246,8 +246,8 @@ void RemoveUnitAi(Unit *unit, bool was_killed)
     if (is_guard)
     {
         GuardAi *ai = (GuardAi *)unit->ai;
-        if (ai->unk_count < 100)
-            ai->unk_count++;
+        if (ai->times_died < 100)
+            ai->times_died++;
 
         ai->parent = nullptr;
         ai->list.Change(bw::first_guard_ai[unit->player], needed_guards[unit->player]);
@@ -264,7 +264,7 @@ GuardAi *CreateGuardAi(int player, Unit *unit, int unit_id, Point pos)
     ai->home = pos;
     ai->unk_pos = pos;
     ai->unit_id = unit_id;
-    ai->unk_count = 0;
+    ai->times_died = 0;
     ai->previous_update = 0;
     return ai;
 }
@@ -293,7 +293,7 @@ void AddGuardAiToUnit(Unit *unit)
 
             ai->home = unit->sprite->position;
             ai->parent = unit;
-            ai->unk_count = 0;
+            ai->times_died = 0;
             return;
         }
     }
@@ -349,7 +349,7 @@ void UpdateGuardNeeds(int player)
     for (GuardAi *ai = needed_guards[player]; ai != nullptr; ai = next)
     {
         next = ai->list.next;
-        if (bw::player_ai[player].flags & 0x20 && ai->unk_count >=3)
+        if (bw::player_ai[player].flags & 0x20 && ai->times_died >=3)
         {
             DeleteGuardAiRequests(ai, player);
             ai->list.Remove(needed_guards[player]);
@@ -360,7 +360,7 @@ void UpdateGuardNeeds(int player)
             if (ai->previous_update)
             {
                 uint32_t time;
-                if (ai->unk_count)
+                if (ai->times_died != 0)
                 {
                     UnitType unit_id(ai->unit_id);
                     if (unit_id == UnitId::SiegeTank_Sieged)
