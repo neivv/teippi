@@ -197,14 +197,14 @@ class Surface
             if (draw_pos.x + bmp->width <= 0 || draw_pos.y + bmp->height <= 0)
                 return;
             int bmp_row_pos = 0;
-            int out_row_pos = draw_pos.y * width;
+            int out_row_pos = draw_pos.y < 0 ? 0 : draw_pos.y * width;
             int draw_pos_x_skip = draw_pos.x < 0 ? (0 - draw_pos.x) : 0;
             int draw_pos_y_skip = draw_pos.y < 0 ? (0 - draw_pos.y) : 0;
             int x_limit = bmp->width < width - draw_pos.x ? bmp->width : width - draw_pos.x;
             int y_limit = bmp->height < height - draw_pos.y ? bmp->height : height - draw_pos.y;
             for (int row = draw_pos_y_skip; row < y_limit; row++)
             {
-                uint8_t *out_pos = buf + out_row_pos + draw_pos.x;
+                uint8_t *out_pos = buf + out_row_pos + (draw_pos.x < 0 ? 0 : (int)draw_pos.x);
                 const uint8_t *in_pos = bmp->data.data() + bmp_row_pos + draw_pos_x_skip;
                 for (int x = draw_pos_x_skip; x < x_limit; x++)
                 {
